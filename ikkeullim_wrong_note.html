@@ -540,7 +540,7 @@
     margin-bottom:6px;
   }
 
-  /* ===== 학원송 ===== */
+  /* ===== CM송 ===== */
   .song-hero{
     background:linear-gradient(135deg, var(--deep-green), var(--blue));
   }
@@ -1098,7 +1098,7 @@
     <button class="tab-btn" data-panel="panel-custom"><span>🎯</span>맞춤 시스템</button>
     <button class="tab-btn" data-panel="panel-flow"><span>📚</span>수업 플로우</button>
     <button class="tab-btn" data-panel="panel-eval"><span>📊</span>평가 시스템</button>
-    <button class="tab-btn" data-panel="panel-song"><span>🎵</span>학원송</button>
+    <button class="tab-btn" data-panel="panel-song"><span>🎵</span>CM송</button>
   </div>
 
   <div class="tab-group-label">🛠️ 학습 관리 도구</div>
@@ -1353,11 +1353,11 @@
     </div>
   </div>
 
-  <!-- ===== 패널 0-6: 학원송 ===== -->
+  <!-- ===== 패널 0-6: CM송 ===== -->
   <div class="panel" id="panel-song">
     <div class="intro-hero song-hero">
       <div class="intro-hero-badge">SONG</div>
-      <h2>🎵 이끌림수학학원 학원송</h2>
+      <h2>🎵 이끌림수학학원 CM송</h2>
       <p>우리 학원만의 시그니처 송을 들어보세요</p>
     </div>
 
@@ -1365,7 +1365,7 @@
       <div class="song-art">🎶</div>
       <div class="song-info">
         <div class="song-title">슈퍼 이끌림</div>
-        <div class="song-sub">이끌림수학학원 공식 학원송</div>
+        <div class="song-sub">이끌림수학학원 공식 CM송</div>
       </div>
       <audio id="academySongPlayer" controls preload="metadata" style="width:100%; margin-top:18px;">
         <source src="assets/academy_song.mp3" type="audio/mpeg">
@@ -2314,7 +2314,7 @@ document.addEventListener('keydown', (e)=>{
 });
 
 /* ============================================================
-   학원송 플레이어
+   CM송 플레이어
    ============================================================ */
 const academySongPlayer = document.getElementById('academySongPlayer');
 document.getElementById('songPlayBtn').addEventListener('click', ()=> academySongPlayer.play());
