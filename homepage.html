@@ -46,6 +46,61 @@
     padding:28px 24px 90px;
   }
 
+  /* ===== 실시간 공지 배너 ===== */
+  .notice-banner{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:linear-gradient(135deg, #FFF4D6, #FFE9B8);
+    border:1.5px solid #F0C878;
+    border-radius:12px;
+    padding:14px 18px;
+    margin-bottom:18px;
+    box-shadow:0 4px 14px rgba(232,168,60,0.15);
+    animation:noticeSlideIn 0.35s ease;
+  }
+  @keyframes noticeSlideIn{
+    from{ opacity:0; transform:translateY(-8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .notice-banner-icon{
+    font-size:20px;
+    flex-shrink:0;
+  }
+  .notice-banner-text{
+    flex:1;
+    min-width:0;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    flex-wrap:wrap;
+    font-size:14px;
+    color:#7A5A15;
+  }
+  .notice-banner-text strong{
+    font-family:'Jua', sans-serif;
+    font-weight:400;
+    font-size:15px;
+    color:#8A5E0A;
+    flex-shrink:0;
+  }
+  .notice-banner-close{
+    background:transparent;
+    border:none;
+    color:#8A5E0A;
+    font-size:14px;
+    cursor:pointer;
+    padding:4px 8px;
+    border-radius:6px;
+    flex-shrink:0;
+    opacity:0.6;
+    transition:opacity 0.15s ease, background 0.15s ease;
+  }
+  .notice-banner-close:hover{
+    opacity:1;
+    background:rgba(138,94,10,0.1);
+  }
+
   /* ===== 헤더 ===== */
   .masthead{
     display:flex;
@@ -1133,6 +1188,16 @@
     </div>
   </div>
 
+  <!-- ===== 실시간 공지 배너 (구글 시트 연동) ===== -->
+  <div class="notice-banner" id="noticeBanner" style="display:none;">
+    <span class="notice-banner-icon">📢</span>
+    <div class="notice-banner-text">
+      <strong id="noticeBannerTitle"></strong>
+      <span id="noticeBannerBody"></span>
+    </div>
+    <button class="notice-banner-close" id="noticeBannerClose" aria-label="공지 닫기">✕</button>
+  </div>
+
   <!-- ===== 탭 ===== -->
   <div class="tabs">
     <button class="tab-btn active" data-panel="panel-about"><span>🏫</span>학원 소개</button>
@@ -1570,6 +1635,71 @@ document.addEventListener('keydown', (e)=>{
 const academySongPlayer = document.getElementById('academySongPlayer');
 document.getElementById('songPlayBtn').addEventListener('click', ()=> academySongPlayer.play());
 document.getElementById('songPauseBtn').addEventListener('click', ()=> academySongPlayer.pause());
+
+/* ============================================================
+   실시간 공지 배너 (구글 시트 CSV 연동)
+   ============================================================ */
+const NOTICE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRkzKtDoraEq9gpJpxO0o6dbA_TcqsATbdW66-xEaKpyHXqybZNL9GJ6fbF0W7vMwBhaKdgxgDbylGo/pub?gid=0&single=true&output=csv';
+const NOTICE_DISMISS_KEY = 'academy_notice_dismissed_v1';
+
+function parseNoticeCsv(text){
+  text = text.replace(/^\uFEFF/, '');
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for(let i=0; i<text.length; i++){
+    const char = text[i];
+    const next = text[i+1];
+    if(inQuotes){
+      if(char === '"' && next === '"'){ field += '"'; i++; }
+      else if(char === '"'){ inQuotes = false; }
+      else{ field += char; }
+    }else{
+      if(char === '"'){ inQuotes = true; }
+      else if(char === ','){ row.push(field); field=''; }
+      else if(char === '\r'){ /* skip */ }
+      else if(char === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else{ field += char; }
+    }
+  }
+  if(field.length > 0 || row.length > 0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || (r.length===1 && r[0].trim() !== ''));
+}
+
+async function loadNoticeBanner(){
+  try{
+    // 사용자가 이전에 오늘 이 공지를 닫았다면 다시 띄우지 않음
+    const dismissedSig = sessionStorage.getItem(NOTICE_DISMISS_KEY);
+
+    const res = await fetch(NOTICE_SHEET_CSV_URL, { cache: 'no-store' });
+    if(!res.ok) return;
+    const text = await res.text();
+    const rows = parseNoticeCsv(text);
+    if(rows.length < 2) return; // 헤더 행만 있고 내용 없음
+
+    const dataRow = rows[1]; // 헤더(1행) 다음 첫 데이터 행
+    const title = (dataRow[0] || '').trim();
+    const body = (dataRow[1] || '').trim();
+    if(!title && !body) return; // 비어있으면 배너 숨김 유지
+
+    const signature = title + '|' + body;
+    if(dismissedSig === signature) return; // 이미 닫은 동일 공지는 다시 안 띄움
+
+    document.getElementById('noticeBannerTitle').textContent = title;
+    document.getElementById('noticeBannerBody').textContent = body ? (' ' + body) : '';
+    document.getElementById('noticeBanner').style.display = 'flex';
+
+    document.getElementById('noticeBannerClose').addEventListener('click', ()=>{
+      document.getElementById('noticeBanner').style.display = 'none';
+      sessionStorage.setItem(NOTICE_DISMISS_KEY, signature);
+    });
+  }catch(e){
+    console.error('공지 배너 로드 실패', e);
+    // 실패해도 페이지 나머지 기능에는 영향 없음 (배너만 안 보임)
+  }
+}
+loadNoticeBanner();
 </script>
 
 </body>
