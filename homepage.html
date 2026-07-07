@@ -716,10 +716,55 @@
     font-size:15px;
   }
 
+  .fee-table-v2{
+    width:70%;
+    max-width:480px;
+    margin:0 auto;
+    border-collapse:collapse;
+    overflow:hidden;
+    border-radius:10px;
+  }
+  .fee-table-v2 thead th{
+    background:var(--deep-green);
+    color:var(--white);
+    font-family:'Jua', sans-serif;
+    font-weight:400;
+    font-size:13px;
+    padding:12px 10px;
+    text-align:center;
+    line-height:1.4;
+  }
+  .fee-table-v2 tbody td{
+    padding:12px 10px;
+    font-size:13.5px;
+    color:var(--ink);
+    border-bottom:1px solid var(--line);
+    background:var(--cream);
+    text-align:center;
+  }
+  .fee-table-v2 tbody tr:last-child td{
+    border-bottom:none;
+  }
+  .fee-table-v2 tbody td:first-child{
+    text-align:center;
+    font-weight:600;
+  }
+  .fee-table-v2 thead th:last-child{
+    text-align:center;
+  }
+  .fee-table-v2 tbody td.fee-amount{
+    font-family:'Jua', sans-serif;
+    color:var(--deep-green);
+    font-weight:400;
+    font-size:15px;
+    text-align:center;
+  }
+
   @media (max-width:900px){
     .book-level-grid{ grid-template-columns:1fr; }
     .three-col-grid{ grid-template-columns:1fr; }
     .facility-grid{ grid-template-columns:1fr; }
+    .fee-table-v2{ width:100%; max-width:100%; }
   }
 
   /* ===== 카드 ===== */
@@ -1519,30 +1564,46 @@
 
     <div class="card">
       <div class="card-title"><div class="title-left">💰 교습비 안내</div></div>
-      <p class="desc-text" style="margin-bottom:16px;">학원의 설립·운영 및 과외교습에 관한 법률에 따라 교습비를 안내드립니다.</p>
-      <table class="notice-fee-table">
+      <p class="desc-text" style="margin-bottom:16px;">학원의 설립·운영 및 과외교습에 관한 법률에 따라 교습비를 안내드립니다. (2026년 7월 7일 기준)</p>
+      <table class="fee-table-v2">
         <thead>
           <tr>
-            <th>과정</th>
+            <th>수강과목</th>
             <th>월 교습비</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>초등 (저학년)</td>
-            <td>250,000원</td>
+            <td>초등수학1</td>
+            <td class="fee-amount">220,000원</td>
           </tr>
           <tr>
-            <td>초등 (고학년)</td>
-            <td>290,000원</td>
+            <td>초등수학2</td>
+            <td class="fee-amount">250,000원</td>
           </tr>
           <tr>
-            <td>중등</td>
-            <td>360,000원</td>
+            <td>초등수학3</td>
+            <td class="fee-amount">290,000원</td>
           </tr>
           <tr>
-            <td>고등</td>
-            <td>430,000원</td>
+            <td>중등수학1</td>
+            <td class="fee-amount">300,000원</td>
+          </tr>
+          <tr>
+            <td>중등수학2</td>
+            <td class="fee-amount">360,000원</td>
+          </tr>
+          <tr>
+            <td>고등수학1</td>
+            <td class="fee-amount">400,000원</td>
+          </tr>
+          <tr>
+            <td>고등수학2</td>
+            <td class="fee-amount">430,000원</td>
+          </tr>
+          <tr>
+            <td>고등수학3</td>
+            <td class="fee-amount">500,000원</td>
           </tr>
         </tbody>
       </table>
