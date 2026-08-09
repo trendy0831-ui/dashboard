@@ -193,7 +193,8 @@ async function loadRecordsForWeek(){
   try{
     const rows = await apiGet({action:"records", weekStart: toDateStr(weekStart)});
     rows.forEach(rec=>{
-      const key = rec.date+"|"+rec.block+"|"+rec.slot;
+      const slotIdx = (parseInt(rec.slot) || 1) - 1; // 시트는 1~4, 화면은 0~3
+      const key = rec.date+"|"+rec.block+"|"+slotIdx;
       records[key] = { status: rec.status||"normal", hw: !!rec.hw, hwNote: rec.hwNote||"", attitude: !!rec.attitude };
     });
   }catch(e){}
@@ -212,7 +213,7 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   try{
     await apiPost({
       action:"saveRecord",
-      record:{ date:dateStr, day:dayName, block:block, slot:slot,
+      record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
         status:rec.status, hw:rec.hw, hwNote:rec.hwNote, attitude:rec.attitude }
     });
     setSync('ok');
