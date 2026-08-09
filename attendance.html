@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>출결·숙제 체크 | 이끌림수학학원</title>
+<link rel="apple-touch-icon" href="assets/logo-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="출결체크">
+<meta name="theme-color" content="#2F5233">
+<style>
+  :root{
+    --ink:#1F2A1F;
+    --ink-soft:#5B6B5B;
+    --paper:#F7F8F4;
+    --card:#FFFFFF;
+    --line:#DFE3D9;
+    --green:#2F5233;
+    --green-soft:#E8EDE7;
+    --amber:#B8860B;
+    --amber-bg:#FCEEC9;
+    --red:#B3392C;
+    --red-bg:#FBE3DE;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  #app{max-width:520px;margin:0 auto;padding:16px 14px 48px;}
+
+  header{position:sticky;top:0;background:var(--paper);z-index:10;padding:14px 0 10px;
+    display:flex;align-items:center;justify-content:space-between;}
+  header h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-0.2px;}
+  header .sub{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+
+  .weekbar{display:flex;align-items:center;justify-content:space-between;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:10px 14px;margin-bottom:12px;}
+  .weekbar button{background:none;border:none;font-size:18px;color:var(--green);
+    padding:4px 8px;cursor:pointer;}
+  .weekbar .range{font-size:14px;font-weight:600;}
+
+  .toolbar{display:flex;gap:8px;margin-bottom:14px;}
+  .toolbar button{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:9px 0;font-size:13px;color:var(--ink);cursor:pointer;}
+  .toolbar button.active{background:var(--green);color:#fff;border-color:var(--green);}
+
+  .hint{font-size:11px;color:var(--ink-soft);margin-bottom:12px;line-height:1.5;}
+
+  .day-block{margin-bottom:18px;}
+  .day-title{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:baseline;gap:6px;}
+  .day-title .date{font-weight:400;font-size:11px;color:var(--ink-soft);}
+
+  .time-label{font-size:11px;color:var(--ink-soft);font-weight:600;margin:8px 0 6px;
+    text-transform:none;}
+
+  .slot-card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:8px 10px;margin-bottom:6px;}
+  .slot-empty{border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px;
+    font-size:12px;color:var(--ink-soft);}
+
+  .slot-top{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .slot-name{flex:1;font-size:14px;font-weight:600;}
+  .slot-name.hw-missing{border-bottom:2px solid var(--amber);padding-bottom:1px;}
+  .icon-btn{background:none;border:none;padding:3px;cursor:pointer;color:var(--ink-soft);
+    display:flex;align-items:center;justify-content:center;}
+  .icon-btn.on{color:var(--green);}
+  .icon-btn.on.attitude{color:var(--red);}
+  .icon-btn.on.memo{color:#3D6B99;}
+  .icon-btn svg{width:17px;height:17px;}
+
+  .memo-box{font-size:11.5px;color:var(--ink-soft);background:var(--green-soft);
+    border-radius:6px;padding:4px 8px;margin-bottom:6px;}
+  .memo-edit{display:flex;gap:6px;margin-bottom:6px;}
+  .memo-edit input{flex:1;font-size:12.5px;border:1px solid var(--line);border-radius:8px;
+    padding:6px 8px;font-family:inherit;}
+  .memo-edit button{font-size:12px;border:none;background:var(--green);color:#fff;
+    border-radius:8px;padding:0 12px;}
+
+  .status-row{display:flex;gap:5px;}
+  .status-btn{flex:1;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;
+    border:1px solid var(--line);background:transparent;color:var(--ink-soft);cursor:pointer;}
+  .status-btn.present{border-color:#3B6D11;}
+  .status-btn.present.active{background:#639922;color:#fff;border-color:#639922;}
+  .status-btn.late{border-color:var(--amber);}
+  .status-btn.late.active{background:var(--amber);color:#fff;}
+  .status-btn.absent{border-color:var(--red);}
+  .status-btn.absent.active{background:var(--red);color:#fff;}
+
+  .edit-day{font-size:14px;font-weight:700;margin:14px 0 6px;}
+  .edit-block{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:8px 10px;margin-bottom:8px;}
+  .edit-block .lbl{font-size:11px;color:var(--ink-soft);margin-bottom:6px;font-weight:600;}
+  .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .edit-grid input{font-size:13px;border:1px solid var(--line);border-radius:8px;
+    padding:7px 8px;font-family:inherit;}
+
+  .status-msg{text-align:center;font-size:12px;color:var(--ink-soft);padding:20px 0;}
+  .sync-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#639922;
+    margin-right:5px;vertical-align:1px;}
+  .sync-dot.busy{background:var(--amber);}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>출결·숙제 체크</h1>
+      <div class="sub" id="syncStatus"><span class="sync-dot"></span>불러오는 중</div>
+    </div>
+  </header>
+  <div id="content"><div class="status-msg">불러오는 중...</div></div>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxfCyW21GXuVUb45m_amnhWvx-eIr9eIJNES1ppEd44iv1KRFPD_EXhqhGlB74iiYOW/exec";
+const DAYS = ["월","화","수","목","금","토"];
+const BLOCKS = ["13:00","15:00","17:00","19:00"];
+const SUB = 4;
+const STATUS_LABEL = {present:"출석", late:"지각", absent:"결석"};
+
+const ICONS = {
+  circle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>',
+  circleCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v13l-4 4H5z"/><path d="M9 9h6M9 13h4"/></svg>',
+  dot: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>',
+  chevL: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg>',
+  chevR: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>'
+};
+
+function pad(n){return n<10?"0"+n:""+n;}
+function toDateStr(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function mondayOf(d){
+  const day=d.getDay(); const diff=day===0?-6:1-day;
+  const r=new Date(d); r.setDate(d.getDate()+diff); r.setHours(0,0,0,0); return r;
+}
+function addDays(d,n){const r=new Date(d); r.setDate(r.getDate()+n); return r;}
+function fmtMD(d){return pad(d.getMonth()+1)+"/"+pad(d.getDate());}
+
+let weekStart = mondayOf(new Date());
+let roster = {};      // roster[day][block] = [name,name,name,name]
+let records = {};     // key "date|block|slot" -> {status,hw,hwNote,attitude}
+let editMode = false;
+let openMemoKey = null;
+let syncBusy = false;
+
+function emptyRoster(){
+  const r={};
+  DAYS.forEach(d=>{ r[d]={}; BLOCKS.forEach(b=>{ r[d][b]=["","","",""]; }); });
+  return r;
+}
+
+function setSync(state){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  if(state==='busy'){ el.innerHTML = '<span class="sync-dot busy"></span>저장 중'; }
+  else if(state==='error'){ el.innerHTML = '<span class="sync-dot" style="background:#B3392C"></span>저장 실패, 다시 시도해주세요'; }
+  else { el.innerHTML = '<span class="sync-dot"></span>동기화됨'; }
+}
+
+async function apiGet(params){
+  const url = SCRIPT_URL + "?" + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  return res.json();
+}
+async function apiPost(body){
+  const res = await fetch(SCRIPT_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function loadRoster(){
+  try{
+    const rows = await apiGet({action:"roster"});
+    const r = emptyRoster();
+    rows.forEach(item=>{
+      if(r[item.day] && r[item.day][item.block]){
+        r[item.day][item.block][item.slot-1] = item.name || "";
+      }
+    });
+    roster = r;
+  }catch(e){ roster = emptyRoster(); }
+}
+
+async function loadRecordsForWeek(){
+  records = {};
+  try{
+    const rows = await apiGet({action:"records", weekStart: toDateStr(weekStart)});
+    rows.forEach(rec=>{
+      const key = rec.date+"|"+rec.block+"|"+rec.slot;
+      records[key] = { status: rec.status||"normal", hw: !!rec.hw, hwNote: rec.hwNote||"", attitude: !!rec.attitude };
+    });
+  }catch(e){}
+}
+
+function getRec(dateStr, block, slot){
+  const key = dateStr+"|"+block+"|"+slot;
+  return records[key] || {status:"normal", hw:false, hwNote:"", attitude:false};
+}
+function setRecLocal(dateStr, block, slot, rec){
+  records[dateStr+"|"+block+"|"+slot] = rec;
+}
+
+async function pushRecord(dateStr, dayName, block, slot, rec){
+  setSync('busy');
+  try{
+    await apiPost({
+      action:"saveRecord",
+      record:{ date:dateStr, day:dayName, block:block, slot:slot,
+        status:rec.status, hw:rec.hw, hwNote:rec.hwNote, attitude:rec.attitude }
+    });
+    setSync('ok');
+  }catch(e){ setSync('error'); }
+}
+
+async function pushRoster(){
+  setSync('busy');
+  const rows = [];
+  DAYS.forEach(day=>{
+    BLOCKS.forEach(block=>{
+      roster[day][block].forEach((name, idx)=>{
+        rows.push({day, block, slot: idx+1, name});
+      });
+    });
+  });
+  try{
+    await apiPost({action:"saveRoster", roster: rows});
+    setSync('ok');
+  }catch(e){ setSync('error'); }
+}
+
+function render(){
+  const content = document.getElementById('content');
+  const weekEnd = addDays(weekStart,5);
+  let html = "";
+
+  html += `<div class="weekbar">
+    <button id="prevWeek" aria-label="이전 주">${ICONS.chevL}</button>
+    <div class="range">${fmtMD(weekStart)} ~ ${fmtMD(weekEnd)}</div>
+    <button id="nextWeek" aria-label="다음 주">${ICONS.chevR}</button>
+  </div>`;
+
+  html += `<div class="toolbar">
+    <button id="toggleEdit" class="${editMode?'active':''}">${editMode? '편집 종료' : '명단 편집'}</button>
+  </div>`;
+
+  html += editMode ? renderEdit() : renderWeek();
+  content.innerHTML = html;
+  attachHandlers();
+}
+
+function renderEdit(){
+  let html = `<div class="hint">요일 × 시간블록별 고정 명단을 입력하세요. 빈칸은 배정 가능 자리로 표시됩니다. 편집 종료를 누르면 저장됩니다.</div>`;
+  DAYS.forEach(day=>{
+    html += `<div class="edit-day">${day}요일</div>`;
+    BLOCKS.forEach(block=>{
+      html += `<div class="edit-block"><div class="lbl">${block}</div><div class="edit-grid">`;
+      for(let s=0;s<SUB;s++){
+        const val = roster[day][block][s] || "";
+        html += `<input type="text" data-day="${day}" data-block="${block}" data-slot="${s}" value="${val.replace(/"/g,'&quot;')}" placeholder="이름">`;
+      }
+      html += `</div></div>`;
+    });
+  });
+  return html;
+}
+
+function renderWeek(){
+  let html = `<div class="hint">출석/지각/결석 버튼으로 체크 · 원=숙제완료 · 메모=숙제내용 · 점=태도특이</div>`;
+  for(let i=0;i<6;i++){
+    const d = addDays(weekStart, i);
+    const dateStr = toDateStr(d);
+    const dayName = DAYS[i];
+    html += `<div class="day-block"><div class="day-title">${dayName} <span class="date">${fmtMD(d)}</span></div>`;
+    BLOCKS.forEach(block=>{
+      const names = roster[dayName][block];
+      html += `<div class="time-label">${block}</div>`;
+      for(let s=0;s<SUB;s++){
+        const name = names[s];
+        if(!name || !name.trim()){
+          html += `<div class="slot-empty">빈 자리</div>`;
+          continue;
+        }
+        const rec = getRec(dateStr, block, s);
+        const mk = dateStr+"|"+block+"|"+s;
+        const memoOpen = openMemoKey===mk;
+        html += `<div class="slot-card">
+          <div class="slot-top">
+            <span class="slot-name ${rec.hw? '' : 'hw-missing'}">${name}</span>
+            <button class="icon-btn hwBtn ${rec.hw?'on':''}" data-key="${mk}" aria-label="숙제 완료">${rec.hw?ICONS.circleCheck:ICONS.circle}</button>
+            <button class="icon-btn memoBtn ${rec.hwNote?'on memo':''}" data-key="${mk}" aria-label="숙제 내용 메모">${ICONS.note}</button>
+            <button class="icon-btn attBtn ${rec.attitude?'on attitude':''}" data-key="${mk}" aria-label="태도 특이">${ICONS.dot}</button>
+          </div>`;
+        if(rec.hwNote && !memoOpen){
+          html += `<div class="memo-box">${rec.hwNote}</div>`;
+        }
+        if(memoOpen){
+          html += `<div class="memo-edit">
+            <input type="text" class="memoInput" data-key="${mk}" value="${(rec.hwNote||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p">
+            <button class="memoSave" data-key="${mk}">저장</button>
+          </div>`;
+        }
+        html += `<div class="status-row">`;
+        ["present","late","absent"].forEach(st=>{
+          const active = rec.status===st;
+          html += `<button class="status-btn ${st} ${active?'active':''}" data-key="${mk}" data-status="${st}">${STATUS_LABEL[st]}</button>`;
+        });
+        html += `</div></div>`;
+      }
+    });
+    html += `</div>`;
+  }
+  return html;
+}
+
+function parseKey(k){
+  const parts = k.split("|");
+  return {dateStr:parts[0], block:parts[1], slot:parseInt(parts[2])};
+}
+function dayNameForDate(dateStr){
+  const d = new Date(dateStr+"T00:00:00");
+  return DAYS[(d.getDay()+6)%7];
+}
+
+function attachHandlers(){
+  const prevBtn = document.getElementById('prevWeek');
+  const nextBtn = document.getElementById('nextWeek');
+  const editBtn = document.getElementById('toggleEdit');
+
+  if(prevBtn) prevBtn.onclick = async ()=>{
+    weekStart = addDays(weekStart,-7); openMemoKey=null;
+    render();
+    await loadRecordsForWeek(); render();
+  };
+  if(nextBtn) nextBtn.onclick = async ()=>{
+    weekStart = addDays(weekStart,7); openMemoKey=null;
+    render();
+    await loadRecordsForWeek(); render();
+  };
+  if(editBtn) editBtn.onclick = async ()=>{
+    if(editMode){
+      document.querySelectorAll('input[data-day]').forEach(inp=>{
+        roster[inp.getAttribute('data-day')][inp.getAttribute('data-block')][parseInt(inp.getAttribute('data-slot'))] = inp.value.trim();
+      });
+      editMode = false;
+      render();
+      await pushRoster();
+    } else {
+      editMode = true;
+      render();
+    }
+  };
+
+  document.querySelectorAll('.status-btn').forEach(el=>{
+    el.onclick = async ()=>{
+      const {dateStr, block, slot} = parseKey(el.getAttribute('data-key'));
+      const status = el.getAttribute('data-status');
+      const rec = getRec(dateStr, block, slot);
+      rec.status = (rec.status===status) ? "normal" : status;
+      setRecLocal(dateStr, block, slot, rec);
+      render();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+  document.querySelectorAll('.hwBtn').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const {dateStr, block, slot} = parseKey(el.getAttribute('data-key'));
+      const rec = getRec(dateStr, block, slot);
+      rec.hw = !rec.hw;
+      setRecLocal(dateStr, block, slot, rec);
+      render();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+  document.querySelectorAll('.memoBtn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      openMemoKey = (openMemoKey===key) ? null : key;
+      render();
+    };
+  });
+  document.querySelectorAll('.memoSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const {dateStr, block, slot} = parseKey(key);
+      const input = document.querySelector('.memoInput[data-key="'+key+'"]');
+      const rec = getRec(dateStr, block, slot);
+      rec.hwNote = input.value.trim();
+      setRecLocal(dateStr, block, slot, rec);
+      openMemoKey = null;
+      render();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+  document.querySelectorAll('.attBtn').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const {dateStr, block, slot} = parseKey(el.getAttribute('data-key'));
+      const rec = getRec(dateStr, block, slot);
+      rec.attitude = !rec.attitude;
+      setRecLocal(dateStr, block, slot, rec);
+      render();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+}
+
+(async function init(){
+  await loadRoster();
+  await loadRecordsForWeek();
+  setSync('ok');
+  render();
+})();
+</script>
+</body>
+</html>
