@@ -30,9 +30,11 @@
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     -webkit-tap-highlight-color:transparent;}
 
-  #topbar{background:var(--teal);color:#fff;padding:14px 16px 12px;
-    display:flex;align-items:center;justify-content:space-between;}
-  #topbar h1{font-size:16px;font-weight:700;margin:0;letter-spacing:-0.2px;}
+  #topbar{background:var(--teal);color:#fff;padding:12px 16px;
+    display:flex;align-items:center;gap:10px;}
+  .header-logo{width:32px;height:30px;object-fit:contain;flex-shrink:0;display:block;
+    background:#fff;border-radius:8px;padding:3px;}
+  #topbar h1{font-size:14.5px;font-weight:700;margin:0;letter-spacing:-0.2px;white-space:nowrap;}
   #topbar .sub{font-size:10.5px;color:#DDF2EC;margin-top:2px;}
   .sync-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);
     margin-right:5px;vertical-align:1px;}
@@ -86,6 +88,10 @@
 
   .memo-box{font-size:11.5px;color:var(--ink-soft);background:var(--paper);
     border-radius:6px;padding:4px 8px;margin-bottom:6px;}
+  .memo-box.att{color:var(--red);background:#FBEAE7;}
+  .memo-box.reason{color:var(--amber);background:#FBF2DD;margin-top:6px;margin-bottom:0;}
+  .reason-add{background:none;border:none;color:var(--ink-soft);font-size:11px;
+    padding:4px 0 0;cursor:pointer;text-decoration:underline;}
   .memo-edit{display:flex;gap:6px;margin-bottom:6px;}
   .memo-edit input{flex:1;font-size:12.5px;border:1px solid var(--line);border-radius:8px;
     padding:6px 8px;font-family:inherit;}
@@ -117,8 +123,9 @@
 </head>
 <body>
 <div id="topbar">
+  <img src="data:image/png;base64,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" alt="이끌림수학학원 로고" class="header-logo">
   <div>
-    <h1>출결·숙제 체크</h1>
+    <h1>이끌림수학 출결·숙제 체크</h1>
     <div class="sub" id="syncStatus"><span class="sync-dot"></span>불러오는 중</div>
   </div>
 </div>
@@ -138,6 +145,8 @@ const ICONS = {
   circleCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
   note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v13l-4 4H5z"/><path d="M9 9h6M9 13h4"/></svg>',
   dot: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>',
+  faceNeutral: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 15h7"/></svg>',
+  faceConcern: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 16c1-1.3 2.2-1.3 3.5-1.3s2.5 0 3.5 1.3"/></svg>',
   chevL: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg>',
   chevR: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>'
 };
@@ -155,7 +164,9 @@ let weekStart = mondayOf(new Date());
 let roster = {};
 let records = {};
 let editMode = false;
-let openMemoKey = null;
+let openMemoKey = null;   // 숙제 메모
+let openAttKey = null;    // 태도 메모
+let openStatusKey = null; // 지각/결석 사유 메모
 let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
 
@@ -207,14 +218,15 @@ async function loadRecordsForWeek(){
     rows.forEach(rec=>{
       const slotIdx = (parseInt(rec.slot) || 1) - 1;
       const key = rec.date+"|"+rec.block+"|"+slotIdx;
-      records[key] = { status: rec.status||"normal", hw: !!rec.hw, hwNote: rec.hwNote||"", attitude: !!rec.attitude };
+      records[key] = { status: rec.status||"normal", hw: !!rec.hw, hwNote: rec.hwNote||"", attitude: !!rec.attitude,
+        statusNote: rec.statusNote||"", attNote: rec.attNote||"" };
     });
   }catch(e){}
 }
 
 function getRec(dateStr, block, slot){
   const key = dateStr+"|"+block+"|"+slot;
-  return records[key] || {status:"normal", hw:false, hwNote:"", attitude:false};
+  return records[key] || {status:"normal", hw:false, hwNote:"", attitude:false, statusNote:"", attNote:""};
 }
 function setRecLocal(dateStr, block, slot, rec){
   records[dateStr+"|"+block+"|"+slot] = rec;
@@ -226,7 +238,8 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
     await apiPost({
       action:"saveRecord",
       record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
-        status:rec.status, hw:rec.hw, hwNote:rec.hwNote, attitude:rec.attitude }
+        status:rec.status, hw:rec.hw, hwNote:rec.hwNote, attitude:rec.attitude,
+        statusNote:rec.statusNote, attNote:rec.attNote }
     });
     setSync('ok');
   }catch(e){ setSync('error'); }
@@ -318,12 +331,14 @@ function renderDayContent(i){
       const rec = getRec(dateStr, block, s);
       const mk = dateStr+"|"+block+"|"+s;
       const memoOpen = openMemoKey===mk;
+      const attOpen = openAttKey===mk;
+      const statusOpen = openStatusKey===mk;
       html += `<div class="slot-card">
         <div class="slot-top">
           <span class="slot-name ${rec.hw? '' : 'hw-missing'}">${name}</span>
           <button class="icon-btn hwBtn ${rec.hw?'on':''}" data-key="${mk}" aria-label="숙제 완료">${rec.hw?ICONS.circleCheck:ICONS.circle}</button>
           <button class="icon-btn memoBtn ${rec.hwNote?'on memo':''}" data-key="${mk}" aria-label="숙제 내용 메모">${ICONS.note}</button>
-          <button class="icon-btn attBtn ${rec.attitude?'on attitude':''}" data-key="${mk}" aria-label="태도 특이">${ICONS.dot}</button>
+          <button class="icon-btn attBtn ${rec.attitude||rec.attNote?'on attitude':''}" data-key="${mk}" aria-label="태도 특이 메모">${rec.attNote?ICONS.faceConcern:ICONS.faceNeutral}</button>
         </div>`;
       if(rec.hwNote && !memoOpen){
         html += `<div class="memo-box">${rec.hwNote}</div>`;
@@ -334,12 +349,35 @@ function renderDayContent(i){
           <button class="memoSave" data-key="${mk}">저장</button>
         </div>`;
       }
+      if(rec.attNote && !attOpen){
+        html += `<div class="memo-box att">${rec.attNote}</div>`;
+      }
+      if(attOpen){
+        html += `<div class="memo-edit">
+          <input type="text" class="attInput" data-key="${mk}" value="${(rec.attNote||"").replace(/"/g,'&quot;')}" placeholder="예: 수업 중 산만함, 집중력 저하">
+          <button class="attSave" data-key="${mk}">저장</button>
+        </div>`;
+      }
       html += `<div class="status-row">`;
       ["present","late","absent"].forEach(st=>{
         const active = rec.status===st;
         html += `<button class="status-btn ${st} ${active?'active':''}" data-key="${mk}" data-status="${st}">${STATUS_LABEL[st]}</button>`;
       });
-      html += `</div></div>`;
+      html += `</div>`;
+      const needsReason = (rec.status==="late" || rec.status==="absent");
+      if(needsReason && rec.statusNote && !statusOpen){
+        html += `<div class="memo-box reason">사유: ${rec.statusNote}</div>`;
+      }
+      if(needsReason && statusOpen){
+        html += `<div class="memo-edit">
+          <input type="text" class="statusInput" data-key="${mk}" value="${(rec.statusNote||"").replace(/"/g,'&quot;')}" placeholder="예: 병원 방문, 가족 행사">
+          <button class="statusSave" data-key="${mk}">저장</button>
+        </div>`;
+      }
+      if(needsReason && !rec.statusNote && !statusOpen){
+        html += `<button class="reason-add" data-key="${mk}">+ 사유 입력</button>`;
+      }
+      html += `</div>`;
     }
   });
   if(!html){
@@ -397,7 +435,7 @@ function attachHandlers(){
   document.querySelectorAll('.daytab').forEach(el=>{
     el.onclick = ()=>{
       activeDayIdx = parseInt(el.getAttribute('data-idx'));
-      openMemoKey = null;
+      openMemoKey = null; openAttKey = null; openStatusKey = null;
       render();
     };
   });
@@ -413,6 +451,12 @@ function attachSlotHandlers(){
       const rec = getRec(dateStr, block, slot);
       rec.status = (rec.status===status) ? "normal" : status;
       setRecLocal(dateStr, block, slot, rec);
+      const key = el.getAttribute('data-key');
+      if((rec.status==="late"||rec.status==="absent") && !rec.statusNote){
+        openStatusKey = key;
+      } else if(rec.status==="normal" || rec.status==="present"){
+        openStatusKey = null;
+      }
       refreshDayPanel();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
@@ -451,12 +495,46 @@ function attachSlotHandlers(){
     };
   });
   document.querySelectorAll('.attBtn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      openAttKey = (openAttKey===key) ? null : key;
+      refreshDayPanel();
+    };
+  });
+  document.querySelectorAll('.attSave').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
-      const {dateStr, block, slot} = parseKey(el.getAttribute('data-key'));
+      const key = el.getAttribute('data-key');
+      const {dateStr, block, slot} = parseKey(key);
+      const input = document.querySelector('.attInput[data-key="'+key+'"]');
       const rec = getRec(dateStr, block, slot);
-      rec.attitude = !rec.attitude;
+      rec.attNote = input.value.trim();
+      rec.attitude = !!rec.attNote;
       setRecLocal(dateStr, block, slot, rec);
+      openAttKey = null;
+      refreshDayPanel();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+  document.querySelectorAll('.reason-add').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      openStatusKey = key;
+      refreshDayPanel();
+    };
+  });
+  document.querySelectorAll('.statusSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const {dateStr, block, slot} = parseKey(key);
+      const input = document.querySelector('.statusInput[data-key="'+key+'"]');
+      const rec = getRec(dateStr, block, slot);
+      rec.statusNote = input.value.trim();
+      setRecLocal(dateStr, block, slot, rec);
+      openStatusKey = null;
       refreshDayPanel();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
@@ -469,7 +547,6 @@ function attachSlotHandlers(){
   setSync('ok');
   render();
 })();
-// 테스트 커밋
 </script>
 </body>
 </html>
