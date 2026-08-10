@@ -45,8 +45,9 @@
   .weekbar{display:flex;align-items:center;justify-content:space-between;
     background:var(--card);border-bottom:1px solid var(--line);
     padding:10px 14px;}
-  .weekbar button{background:none;border:none;font-size:18px;color:var(--teal);
-    padding:4px 8px;cursor:pointer;}
+  .weekbar button{background:var(--paper);border:1px solid var(--line);font-size:18px;color:#018875;
+    padding:6px 10px;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .weekbar button svg{width:18px;height:18px;display:block;}
   .weekbar .range{font-size:13.5px;font-weight:600;}
 
   .toolbar{padding:10px 14px 0;}
@@ -147,8 +148,8 @@ const ICONS = {
   dot: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>',
   faceNeutral: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 15h7"/></svg>',
   faceConcern: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 16c1-1.3 2.2-1.3 3.5-1.3s2.5 0 3.5 1.3"/></svg>',
-  chevL: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg>',
-  chevR: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>'
+  chevL: '<svg viewBox="0 0 24 24" fill="none" stroke="#018875" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg>',
+  chevR: '<svg viewBox="0 0 24 24" fill="none" stroke="#018875" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>'
 };
 
 function pad(n){return n<10?"0"+n:""+n;}
