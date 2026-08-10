@@ -50,6 +50,15 @@ function getSheet(name) {
   return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
 }
 
+// 시트가 "15:30" 같은 값을 시간(Date)으로 자동 변환해 저장하는 경우가 있어,
+// 비교/반환 전에 항상 'HH:mm' 문자열로 정규화한다.
+function normalizeBlock(val) {
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'HH:mm');
+  }
+  return String(val).trim();
+}
+
 // ---------- 명단 ----------
 function getRoster() {
   const sheet = getSheet('명단');
@@ -161,10 +170,11 @@ function getHomeworkForWeek(weekStart) {
     const d = new Date(r[0]);
     if (d >= start && d <= end) {
       const dateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
-      const key = dateStr + '|' + String(r[2]).trim() + '|' + String(r[3]).trim();
+      const block = normalizeBlock(r[2]);
+      const key = dateStr + '|' + block + '|' + String(r[3]).trim();
       byKey[key] = {
         date: dateStr,
-        day: r[1], block: r[2], name: r[3],
+        day: r[1], block: block, name: r[3],
         completed: r[4], memo: r[5] || ""
       };
     }
@@ -177,7 +187,7 @@ function saveHomeworkRecord(date, dayOfWeek, slot, studentName, completed, memo)
   const sheet = getHomeworkSheet();
   const data = sheet.getDataRange().getValues();
   const targetDate = date;
-  const targetBlock = String(slot).trim();
+  const targetBlock = normalizeBlock(slot);
   const targetName = String(studentName).trim();
   const tz = Session.getScriptTimeZone();
 
@@ -185,7 +195,7 @@ function saveHomeworkRecord(date, dayOfWeek, slot, studentName, completed, memo)
     const cellVal = data[i][0];
     if (!cellVal) continue;
     const rowDate = Utilities.formatDate(new Date(cellVal), tz, 'yyyy-MM-dd');
-    const rowBlock = String(data[i][2]).trim();
+    const rowBlock = normalizeBlock(data[i][2]);
     const rowName = String(data[i][3]).trim();
     if (rowDate === targetDate && rowBlock === targetBlock && rowName === targetName) {
       // update existing row
