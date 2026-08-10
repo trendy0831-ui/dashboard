@@ -66,6 +66,10 @@
   .daytab .d{font-size:9.5px;color:var(--ink-soft);font-weight:400;}
   .daytab.active{background:var(--paper);color:var(--teal-dark);border-left-color:var(--teal);}
   .daytab.today .day-dot{width:4px;height:4px;border-radius:50%;background:var(--blue);margin-top:1px;}
+  .daytab.holiday span:not(.holiday-name),.daytab.holiday .d{color:var(--red);}
+  .daytab.holiday.active{background:#FBEAE7;}
+  .holiday-name{font-size:8.5px;color:var(--red);font-weight:400;line-height:1.2;
+    max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   .daypanel{flex:1;padding:12px 12px 20px;min-width:0;}
   .hint{font-size:11px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5;}
@@ -141,11 +145,12 @@
     .body-row{display:block;}
     .daytabs{display:flex;flex-direction:row;width:auto;border-right:none;
       border-bottom:2px solid var(--line);padding:0 20px;}
-    .daytab{flex:1;flex-direction:row;gap:8px;padding:16px 0;
+    .daytab{flex:1;flex-direction:column;gap:4px;padding:14px 4px;
       border-left:none;border-bottom:3px solid transparent;}
     .daytab.active{border-left:none;border-bottom-color:var(--teal);background:transparent;}
     .daytab .d{font-size:13px;}
     .daytab.today .day-dot{margin-top:0;}
+    .holiday-name{max-width:90px;font-size:10px;}
 
     .daypanel{padding:22px 28px 32px;}
 
@@ -214,6 +219,7 @@ function fmtMD(d){return pad(d.getMonth()+1)+"/"+pad(d.getDate());}
 let weekStart = mondayOf(new Date());
 let roster = {};
 let records = {};
+let holidays = {}; // { "YYYY-MM-DD": "공휴일명" }
 let editMode = false;
 let openMemoKey = null;   // 숙제 메모
 let openAttKey = null;    // 태도 메모
@@ -260,6 +266,15 @@ async function loadRoster(){
     });
     roster = r;
   }catch(e){ roster = emptyRoster(); }
+}
+
+async function loadHolidays(){
+  try{
+    const thisYear = new Date().getFullYear();
+    const years = [thisYear, thisYear+1];
+    const data = await apiGet({action:"holidays", years: years.join(",")});
+    holidays = data || {};
+  }catch(e){ holidays = {}; }
 }
 
 async function loadRecordsForWeek(){
@@ -354,9 +369,12 @@ function renderDayTabs(){
   const todayIdx = (new Date().getDay()+6)%7;
   DAYS.forEach((day,i)=>{
     const d = addDays(weekStart, i);
+    const dateStr = toDateStr(d);
     const isToday = todayIdx===i && toDateStr(mondayOf(new Date()))===toDateStr(weekStart);
-    html += `<button class="daytab ${activeDayIdx===i?'active':''} ${isToday?'today':''}" data-idx="${i}">
-      <span>${day}</span><span class="d">${fmtMD(d)}</span>${isToday?'<span class="day-dot"></span>':''}
+    const holidayName = holidays[dateStr];
+    const isHoliday = !!holidayName;
+    html += `<button class="daytab ${activeDayIdx===i?'active':''} ${isToday?'today':''} ${isHoliday?'holiday':''}" data-idx="${i}">
+      <span>${day}</span><span class="d">${fmtMD(d)}</span>${isToday?'<span class="day-dot"></span>':''}${isHoliday?`<span class="holiday-name">${holidayName}</span>`:''}
     </button>`;
   });
   html += `</div><div class="daypanel">`;
@@ -596,6 +614,7 @@ function attachSlotHandlers(){
 (async function init(){
   await loadRoster();
   await loadRecordsForWeek();
+  loadHolidays().then(()=>{ render(); }); // 공휴일은 백그라운드 로드 후 재렌더
   setSync('ok');
   render();
 })();
