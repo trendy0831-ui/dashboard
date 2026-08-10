@@ -52,8 +52,10 @@ function getSheet(name) {
 
 // 시트가 "15:30" 같은 값을 시간(Date)으로 자동 변환해 저장하는 경우가 있어,
 // 비교/반환 전에 항상 'HH:mm' 문자열로 정규화한다.
+// SpreadsheetApp이 돌려주는 Date는 realm이 달라 instanceof Date가 false로 나올 수 있어
+// realm에 안전한 Object.prototype.toString으로 판별한다.
 function normalizeBlock(val) {
-  if (val instanceof Date) {
+  if (Object.prototype.toString.call(val) === '[object Date]') {
     return Utilities.formatDate(val, Session.getScriptTimeZone(), 'HH:mm');
   }
   return String(val).trim();
