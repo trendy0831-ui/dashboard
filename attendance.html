@@ -56,6 +56,22 @@
     padding:9px 0;font-size:13px;color:var(--ink);cursor:pointer;}
   .toolbar button.active{background:var(--teal);color:#fff;border-color:var(--teal);}
 
+  .section-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);}
+  .section-tab{flex:1;padding:12px 0;text-align:center;font-size:13.5px;font-weight:700;
+    color:var(--ink-soft);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;}
+  .section-tab.active{color:var(--teal-dark);border-bottom-color:var(--teal);}
+
+  .hw-status-btn{flex:1;display:flex;align-items:center;justify-content:space-between;
+    background:transparent;border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;font-family:inherit;cursor:pointer;text-align:left;}
+  .hw-name{font-size:14px;font-weight:600;color:var(--ink);}
+  .hw-status-label{font-size:12px;font-weight:700;color:var(--ink-soft);}
+  .hw-status-btn.done{background:var(--teal);border-color:var(--teal);}
+  .hw-status-btn.done .hw-name,.hw-status-btn.done .hw-status-label{color:#fff;}
+  .hw-status-btn.missing{border:2px solid var(--amber);}
+  .hw-status-btn.missing .hw-status-label{color:var(--amber);}
+  .hw-status-btn.unchecked{border-style:dashed;}
+
   .body-row{display:flex;}
 
   .daytabs{display:flex;flex-direction:column;background:var(--card);
@@ -84,7 +100,6 @@
 
   .slot-top{display:flex;align-items:center;gap:4px;margin-bottom:6px;}
   .slot-name{flex:1;font-size:14px;font-weight:600;}
-  .slot-name.hw-missing{border-bottom:2px solid var(--amber);padding-bottom:1px;}
   .icon-btn{background:none;border:none;padding:3px;cursor:pointer;color:var(--ink-soft);
     display:flex;align-items:center;justify-content:center;}
   .icon-btn.on{color:var(--teal);}
@@ -139,6 +154,7 @@
     .weekbar button svg{width:26px;height:26px;}
     .toolbar{padding:18px 28px 0;}
     .toolbar button{font-size:17px;padding:14px 0;}
+    .section-tab{font-size:16px;padding:16px 0;}
     .hint{font-size:14.5px;margin:0 28px 16px;}
 
     /* 요일 탭: 세로 사이드바 -> 상단 가로 바 */
@@ -162,6 +178,9 @@
     .slot-empty{margin-bottom:0;padding:16px 20px;font-size:14px;}
     .slot-name{font-size:20px;}
     .icon-btn svg{width:25px;height:25px;}
+    .hw-status-btn{padding:12px 14px;}
+    .hw-name{font-size:18px;}
+    .hw-status-label{font-size:14px;}
     .status-btn{font-size:16.5px;padding:13px 0;}
     .memo-edit input{font-size:16px;padding:11px 13px;}
     .memo-box{font-size:15px;padding:9px 13px;}
@@ -219,13 +238,17 @@ function fmtMD(d){return pad(d.getMonth()+1)+"/"+pad(d.getDate());}
 let weekStart = mondayOf(new Date());
 let roster = {};
 let records = {};
+let homeworkRecords = {};
 let holidays = {}; // { "YYYY-MM-DD": "공휴일명" }
 let editMode = false;
-let openMemoKey = null;   // 숙제 메모
+let activeSection = 'attendance'; // 'attendance' | 'homework'
 let openAttKey = null;    // 태도 메모
 let openStatusKey = null; // 지각/결석 사유 메모
+let openHwMemoKey = null; // 숙제 메모
 let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
+
+const HW_CYCLE = {"완료":"미완료", "미완료":"미확인", "미확인":"완료"};
 
 function emptyRoster(){
   const r={};
@@ -311,6 +334,41 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   }catch(e){ setSync('error'); }
 }
 
+async function loadHomeworkForWeek(){
+  homeworkRecords = {};
+  try{
+    const rows = await apiGet({action:"homework", weekStart: toDateStr(weekStart)});
+    rows.forEach(rec=>{
+      const key = rec.date+"|"+rec.block+"|"+rec.name;
+      homeworkRecords[key] = { completed: rec.completed||"미확인", memo: rec.memo||"" };
+    });
+  }catch(e){}
+}
+
+function getHwRec(dateStr, block, name){
+  const key = dateStr+"|"+block+"|"+name;
+  return homeworkRecords[key] || {completed:"미확인", memo:""};
+}
+function setHwRecLocal(dateStr, block, name, rec){
+  homeworkRecords[dateStr+"|"+block+"|"+name] = rec;
+}
+
+async function pushHomeworkRecord(dateStr, dayName, block, name, rec){
+  setSync('busy');
+  try{
+    await apiPost({
+      action:"saveHomework",
+      record:{ date:dateStr, day:dayName, block:block, name:name,
+        completed:rec.completed, memo:rec.memo }
+    });
+    setSync('ok');
+  }catch(e){ setSync('error'); }
+}
+
+async function loadWeekData(){
+  await Promise.all([loadRecordsForWeek(), loadHomeworkForWeek()]);
+}
+
 async function pushRoster(){
   setSync('busy');
   const rows = [];
@@ -331,6 +389,11 @@ function render(){
   const content = document.getElementById('content');
   const weekEnd = addDays(weekStart,5);
   let html = "";
+
+  html += `<div class="section-tabs">
+    <button class="section-tab ${activeSection==='attendance'?'active':''}" data-section="attendance">출결</button>
+    <button class="section-tab ${activeSection==='homework'?'active':''}" data-section="homework">숙제</button>
+  </div>`;
 
   html += `<div class="weekbar">
     <button id="prevWeek" aria-label="이전 주">${ICONS.chevL}</button>
@@ -378,8 +441,9 @@ function renderDayTabs(){
     </button>`;
   });
   html += `</div><div class="daypanel">`;
-  html += `<div class="hint">출석/지각/결석 체크 · 원=숙제완료 · 메모=숙제내용 · 점=태도특이</div>`;
-  html += renderDayContent(activeDayIdx);
+  html += activeSection==='attendance'
+    ? `<div class="hint">출석/지각/결석 체크 · 점=태도특이</div>` + renderDayContent(activeDayIdx)
+    : `<div class="hint">이름을 탭하면 완료→미완료→미확인 순으로 바뀝니다 · 메모=숙제내용</div>` + renderHomeworkDayContent(activeDayIdx);
   html += `</div></div>`;
   return html;
 }
@@ -399,25 +463,13 @@ function renderDayContent(i){
       if(!name || !name.trim()) continue;
       const rec = getRec(dateStr, block, s);
       const mk = dateStr+"|"+block+"|"+s;
-      const memoOpen = openMemoKey===mk;
       const attOpen = openAttKey===mk;
       const statusOpen = openStatusKey===mk;
       html += `<div class="slot-card">
         <div class="slot-top">
-          <span class="slot-name ${rec.hw? '' : 'hw-missing'}">${name}</span>
-          <button class="icon-btn hwBtn ${rec.hw?'on':''}" data-key="${mk}" aria-label="숙제 완료">${rec.hw?ICONS.circleCheck:ICONS.circle}</button>
-          <button class="icon-btn memoBtn ${rec.hwNote?'on memo':''}" data-key="${mk}" aria-label="숙제 내용 메모">${ICONS.note}</button>
+          <span class="slot-name">${name}</span>
           <button class="icon-btn attBtn ${rec.attitude||rec.attNote?'on attitude':''}" data-key="${mk}" aria-label="태도 특이 메모">${rec.attNote?ICONS.faceConcern:ICONS.faceNeutral}</button>
         </div>`;
-      if(rec.hwNote && !memoOpen){
-        html += `<div class="memo-box">${rec.hwNote}</div>`;
-      }
-      if(memoOpen){
-        html += `<div class="memo-edit">
-          <input type="text" class="memoInput" data-key="${mk}" value="${(rec.hwNote||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p">
-          <button class="memoSave" data-key="${mk}">저장</button>
-        </div>`;
-      }
       if(rec.attNote && !attOpen){
         html += `<div class="memo-box att">${rec.attNote}</div>`;
       }
@@ -456,9 +508,57 @@ function renderDayContent(i){
   return html;
 }
 
+function renderHomeworkDayContent(i){
+  const d = addDays(weekStart, i);
+  const dateStr = toDateStr(d);
+  const dayName = DAYS[i];
+  let html = "";
+  BLOCKS.forEach(block=>{
+    const names = roster[dayName][block];
+    const hasAny = names.some(n=>n && n.trim());
+    if(!hasAny) return;
+    html += `<div class="time-label">${block}</div><div class="slot-group">`;
+    for(let s=0;s<SUB;s++){
+      const name = names[s];
+      if(!name || !name.trim()) continue;
+      const rec = getHwRec(dateStr, block, name);
+      const mk = dateStr+"|"+block+"|"+name;
+      const memoOpen = openHwMemoKey===mk;
+      const statusClass = rec.completed==="완료" ? "done" : rec.completed==="미완료" ? "missing" : "unchecked";
+      html += `<div class="slot-card">
+        <div class="slot-top">
+          <button class="hw-status-btn ${statusClass}" data-key="${mk}">
+            <span class="hw-name">${name}</span>
+            <span class="hw-status-label">${rec.completed}</span>
+          </button>
+          <button class="icon-btn hwMemoBtn ${rec.memo?'on memo':''}" data-key="${mk}" aria-label="숙제 메모">${ICONS.note}</button>
+        </div>`;
+      if(rec.memo && !memoOpen){
+        html += `<div class="memo-box">${rec.memo}</div>`;
+      }
+      if(memoOpen){
+        html += `<div class="memo-edit">
+          <input type="text" class="hwMemoInput" data-key="${mk}" value="${(rec.memo||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p, 3번 문제 재풀이">
+          <button class="hwMemoSave" data-key="${mk}">저장</button>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`; // .slot-group 닫기
+  });
+  if(!html){
+    html = `<div class="status-msg">이 요일에는 배정된 학생이 없어요.</div>`;
+  }
+  return html;
+}
+
 function parseKey(k){
   const parts = k.split("|");
   return {dateStr:parts[0], block:parts[1], slot:parseInt(parts[2])};
+}
+function parseHwKey(k){
+  const parts = k.split("|");
+  return {dateStr:parts[0], block:parts[1], name:parts.slice(2).join("|")};
 }
 function dayNameForDate(dateStr){
   const d = new Date(dateStr+"T00:00:00");
@@ -469,8 +569,8 @@ function refreshDayPanel(){
   const panel = document.querySelector('.daypanel');
   if(!panel) return;
   const hint = panel.querySelector('.hint').outerHTML;
-  panel.innerHTML = hint + renderDayContent(activeDayIdx);
-  attachSlotHandlers();
+  panel.innerHTML = hint + (activeSection==='attendance' ? renderDayContent(activeDayIdx) : renderHomeworkDayContent(activeDayIdx));
+  if(activeSection==='attendance') attachSlotHandlers(); else attachHomeworkSlotHandlers();
 }
 
 function attachHandlers(){
@@ -479,14 +579,14 @@ function attachHandlers(){
   const editBtn = document.getElementById('toggleEdit');
 
   if(prevBtn) prevBtn.onclick = async ()=>{
-    weekStart = addDays(weekStart,-7); openMemoKey=null;
+    weekStart = addDays(weekStart,-7); openAttKey=null; openStatusKey=null; openHwMemoKey=null;
     render();
-    await loadRecordsForWeek(); render();
+    await loadWeekData(); render();
   };
   if(nextBtn) nextBtn.onclick = async ()=>{
-    weekStart = addDays(weekStart,7); openMemoKey=null;
+    weekStart = addDays(weekStart,7); openAttKey=null; openStatusKey=null; openHwMemoKey=null;
     render();
-    await loadRecordsForWeek(); render();
+    await loadWeekData(); render();
   };
   if(editBtn) editBtn.onclick = async ()=>{
     if(editMode){
@@ -502,15 +602,25 @@ function attachHandlers(){
     }
   };
 
-  document.querySelectorAll('.daytab').forEach(el=>{
+  document.querySelectorAll('.section-tab').forEach(el=>{
     el.onclick = ()=>{
-      activeDayIdx = parseInt(el.getAttribute('data-idx'));
-      openMemoKey = null; openAttKey = null; openStatusKey = null;
+      activeSection = el.getAttribute('data-section');
+      openAttKey = null; openStatusKey = null; openHwMemoKey = null;
       render();
     };
   });
 
-  attachSlotHandlers();
+  document.querySelectorAll('.daytab').forEach(el=>{
+    el.onclick = ()=>{
+      activeDayIdx = parseInt(el.getAttribute('data-idx'));
+      openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+      render();
+    };
+  });
+
+  if(!editMode){
+    if(activeSection==='attendance') attachSlotHandlers(); else attachHomeworkSlotHandlers();
+  }
 }
 
 function attachSlotHandlers(){
@@ -527,39 +637,6 @@ function attachSlotHandlers(){
       } else if(rec.status==="normal" || rec.status==="present"){
         openStatusKey = null;
       }
-      refreshDayPanel();
-      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
-    };
-  });
-  document.querySelectorAll('.hwBtn').forEach(el=>{
-    el.onclick = async (e)=>{
-      e.stopPropagation();
-      const {dateStr, block, slot} = parseKey(el.getAttribute('data-key'));
-      const rec = getRec(dateStr, block, slot);
-      rec.hw = !rec.hw;
-      setRecLocal(dateStr, block, slot, rec);
-      refreshDayPanel();
-      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
-    };
-  });
-  document.querySelectorAll('.memoBtn').forEach(el=>{
-    el.onclick = (e)=>{
-      e.stopPropagation();
-      const key = el.getAttribute('data-key');
-      openMemoKey = (openMemoKey===key) ? null : key;
-      refreshDayPanel();
-    };
-  });
-  document.querySelectorAll('.memoSave').forEach(el=>{
-    el.onclick = async (e)=>{
-      e.stopPropagation();
-      const key = el.getAttribute('data-key');
-      const {dateStr, block, slot} = parseKey(key);
-      const input = document.querySelector('.memoInput[data-key="'+key+'"]');
-      const rec = getRec(dateStr, block, slot);
-      rec.hwNote = input.value.trim();
-      setRecLocal(dateStr, block, slot, rec);
-      openMemoKey = null;
       refreshDayPanel();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
@@ -611,9 +688,45 @@ function attachSlotHandlers(){
   });
 }
 
+function attachHomeworkSlotHandlers(){
+  document.querySelectorAll('.hw-status-btn').forEach(el=>{
+    el.onclick = async ()=>{
+      const key = el.getAttribute('data-key');
+      const {dateStr, block, name} = parseHwKey(key);
+      const rec = getHwRec(dateStr, block, name);
+      rec.completed = HW_CYCLE[rec.completed] || "완료";
+      setHwRecLocal(dateStr, block, name, rec);
+      refreshDayPanel();
+      await pushHomeworkRecord(dateStr, dayNameForDate(dateStr), block, name, rec);
+    };
+  });
+  document.querySelectorAll('.hwMemoBtn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      openHwMemoKey = (openHwMemoKey===key) ? null : key;
+      refreshDayPanel();
+    };
+  });
+  document.querySelectorAll('.hwMemoSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const {dateStr, block, name} = parseHwKey(key);
+      const input = document.querySelector('.hwMemoInput[data-key="'+key+'"]');
+      const rec = getHwRec(dateStr, block, name);
+      rec.memo = input.value.trim();
+      setHwRecLocal(dateStr, block, name, rec);
+      openHwMemoKey = null;
+      refreshDayPanel();
+      await pushHomeworkRecord(dateStr, dayNameForDate(dateStr), block, name, rec);
+    };
+  });
+}
+
 (async function init(){
   await loadRoster();
-  await loadRecordsForWeek();
+  await loadWeekData();
   loadHolidays().then(()=>{ render(); }); // 공휴일은 백그라운드 로드 후 재렌더
   setSync('ok');
   render();
