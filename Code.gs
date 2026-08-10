@@ -59,6 +59,14 @@ function normalizeBlock(val) {
   return String(val).trim();
 }
 
+// new Date("yyyy-MM-dd")는 UTC 자정으로 파싱되어 스프레드시트 타임존 기준 값과 어긋나므로,
+// 'T00:00:00'을 붙여 로컬(스크립트 타임존)로 파싱한 뒤 주간 종료일 문자열을 구한다.
+function weekEndDateStr(weekStart, tz) {
+  const d = new Date(weekStart + 'T00:00:00');
+  d.setDate(d.getDate() + 6);
+  return Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+}
+
 // ---------- 명단 ----------
 function getRoster() {
   const sheet = getSheet('명단');
@@ -92,17 +100,14 @@ function getRecordsForWeek(weekStart) {
   const sheet = getSheet('기록');
   const data = sheet.getDataRange().getValues();
   const rows = data.slice(1);
-  const start = new Date(weekStart);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
   const tz = Session.getScriptTimeZone();
+  const endStr = weekEndDateStr(weekStart, tz);
 
   const byKey = {}; // 같은 날짜|블록|슬롯 중복 시 마지막(가장 아래) 행이 최종 반영됨
   rows.forEach(r => {
     if (!r[0]) return;
-    const d = new Date(r[0]);
-    if (d >= start && d <= end) {
-      const dateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+    const dateStr = Utilities.formatDate(new Date(r[0]), tz, 'yyyy-MM-dd');
+    if (dateStr >= weekStart && dateStr <= endStr) {
       const key = dateStr + '|' + String(r[2]).trim() + '|' + String(parseInt(r[3], 10));
       byKey[key] = {
         date: dateStr,
@@ -159,17 +164,14 @@ function getHomeworkForWeek(weekStart) {
   const sheet = getHomeworkSheet();
   const data = sheet.getDataRange().getValues();
   const rows = data.slice(1);
-  const start = new Date(weekStart);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
   const tz = Session.getScriptTimeZone();
+  const endStr = weekEndDateStr(weekStart, tz);
 
   const byKey = {}; // 같은 날짜|블록|학생이름 중복 시 마지막(가장 아래) 행이 최종 반영됨
   rows.forEach(r => {
     if (!r[0]) return;
-    const d = new Date(r[0]);
-    if (d >= start && d <= end) {
-      const dateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+    const dateStr = Utilities.formatDate(new Date(r[0]), tz, 'yyyy-MM-dd');
+    if (dateStr >= weekStart && dateStr <= endStr) {
       const block = normalizeBlock(r[2]);
       const key = dateStr + '|' + block + '|' + String(r[3]).trim();
       byKey[key] = {
