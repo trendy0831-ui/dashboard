@@ -144,31 +144,36 @@
   /* 태블릿(아이패드) 이상 넓은 화면 대응: 상단 가로 탭 + 2열 그리드 */
   @media (min-width: 900px){
     #app{max-width:1200px;}
+    #content{display:grid;grid-template-columns:1fr auto;}
     #topbar{padding:22px 32px;}
     #topbar h1{font-size:22px;}
     #topbar .sub{font-size:14px;}
     .header-logo{width:46px;height:44px;}
-    .weekbar{padding:18px 28px;}
+    .section-tabs{grid-column:1/-1;}
+    .weekbar{padding:18px 28px;grid-column:1/-1;}
     .weekbar .range{font-size:19px;}
     .weekbar button{padding:11px 18px;}
     .weekbar button svg{width:26px;height:26px;}
-    .toolbar{padding:18px 28px 0;}
-    .toolbar button{font-size:17px;padding:14px 0;}
+    .toolbar{padding:18px 28px 0;grid-column:2;align-self:center;}
+    .toolbar button{width:auto;font-size:13px;padding:10px 20px;
+      background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:8px;}
     .section-tab{font-size:16px;padding:16px 0;}
     .hint{font-size:14.5px;margin:0 28px 16px;}
 
-    /* 요일 탭: 세로 사이드바 -> 상단 가로 바 */
-    .body-row{display:block;}
-    .daytabs{display:flex;flex-direction:row;width:auto;border-right:none;
-      border-bottom:2px solid var(--line);padding:0 20px;}
-    .daytab{flex:1;flex-direction:column;gap:4px;padding:14px 4px;
-      border-left:none;border-bottom:3px solid transparent;}
-    .daytab.active{border-left:none;border-bottom-color:var(--teal);background:transparent;}
+    /* 요일 탭: 세로 사이드바 -> 상단 가로 바, 카드형(A안: 대비감 있게) */
+    /* .body-row는 display:contents로 투명화해서 daytabs/daypanel이 #content 그리드에 직접 배치됨 */
+    .body-row{display:contents;}
+    .daytabs{display:flex;flex-direction:row;width:auto;grid-column:1;border-right:none;
+      border-bottom:none;padding:14px 20px;gap:8px;}
+    .daytab{flex:1;flex-direction:column;gap:4px;padding:12px 6px;
+      border:1px solid var(--line);border-radius:10px;background:var(--card);}
+    .daytab.active{background:var(--teal);border-color:var(--teal);}
+    .daytab.active,.daytab.active .d{color:#fff;}
     .daytab .d{font-size:13px;}
     .daytab.today .day-dot{margin-top:0;}
     .holiday-name{max-width:90px;font-size:10px;}
 
-    .daypanel{padding:22px 28px 32px;}
+    .daypanel{padding:22px 28px 32px;grid-column:1/-1;}
 
     /* 시간블록/학생 카드: 2열 그리드로 */
     .time-label{font-size:16px;margin:20px 0 10px;}
@@ -186,7 +191,7 @@
     .memo-box{font-size:15px;padding:9px 13px;}
     .reason-add{font-size:14.5px;}
 
-    .edit-wrap{padding:20px 28px;}
+    .edit-wrap{padding:20px 28px;grid-column:1/-1;}
     .edit-day{font-size:19px;}
     .edit-block{padding:14px 16px;}
     .edit-block .lbl{font-size:14px;}
