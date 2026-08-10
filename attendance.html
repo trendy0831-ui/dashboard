@@ -30,8 +30,8 @@
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     -webkit-tap-highlight-color:transparent;}
 
-  #topbar{background:var(--teal);color:#fff;padding:12px 16px;
-    display:flex;align-items:center;gap:10px;}
+  #topbar{background:#085041;color:#fff;padding:12px 16px;
+    display:flex;align-items:center;gap:10px;border-bottom:2px solid #fff;}
   .header-logo{width:32px;height:30px;object-fit:contain;flex-shrink:0;display:block;
     background:#fff;border-radius:8px;padding:3px;}
   #topbar h1{font-size:14.5px;font-weight:700;margin:0;letter-spacing:-0.2px;white-space:nowrap;}
@@ -59,7 +59,7 @@
   .section-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);}
   .section-tab{flex:1;padding:12px 0;text-align:center;font-size:13.5px;font-weight:700;
     color:var(--ink-soft);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;}
-  .section-tab.active{color:var(--teal-dark);border-bottom-color:var(--teal);}
+  .section-tab.active{background:#085041;color:#FFFFFF;border-bottom-color:#085041;}
 
   .hw-status-btn{flex:1;display:flex;align-items:center;justify-content:space-between;
     background:transparent;border:1px solid var(--line);border-radius:8px;
@@ -86,6 +86,7 @@
   .daytab.holiday.active{background:#FBEAE7;}
   .holiday-name{font-size:8.5px;color:var(--red);font-weight:400;line-height:1.2;
     max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #toggleEditWide{display:none;}
 
   .daypanel{flex:1;padding:12px 12px 20px;min-width:0;}
   .hint{font-size:11px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5;}
@@ -149,31 +150,34 @@
     #topbar h1{font-size:22px;}
     #topbar .sub{font-size:14px;}
     .header-logo{width:46px;height:44px;}
-    .section-tabs{grid-column:1/-1;}
-    .weekbar{padding:18px 28px;grid-column:1/-1;}
+    .section-tabs{grid-column:1/-1;padding:0 20px;background:var(--paper);}
+    .weekbar{padding:18px 20px;grid-column:1/-1;background:var(--paper);}
     .weekbar .range{font-size:19px;}
     .weekbar button{padding:11px 18px;}
     .weekbar button svg{width:26px;height:26px;}
-    .toolbar{padding:18px 28px 0;grid-column:2;align-self:center;}
-    .toolbar button{width:auto;font-size:13px;padding:10px 20px;
+    .toolbar{padding:18px 20px 0;grid-column:2;align-self:center;}
+    .toolbar button{width:auto;font-size:13px;padding:10px 20px;font-family:inherit;
       background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:8px;}
+    /* 편집 모드가 아닐 땐 요일 탭 줄의 7번째 탭(#toggleEditWide)이 대신하므로 기존 툴바는 숨김 */
+    .toolbar:has(#toggleEdit:not(.active)){display:none;}
+    #toggleEditWide{display:flex;}
     .section-tab{font-size:16px;padding:16px 0;}
     .hint{font-size:14.5px;margin:0 28px 16px;}
 
     /* 요일 탭: 세로 사이드바 -> 상단 가로 바, 카드형(A안: 대비감 있게) */
     /* .body-row는 display:contents로 투명화해서 daytabs/daypanel이 #content 그리드에 직접 배치됨 */
     .body-row{display:contents;}
-    .daytabs{display:flex;flex-direction:row;width:auto;grid-column:1;border-right:none;
-      border-bottom:none;padding:14px 20px;gap:8px;}
-    .daytab{flex:1;flex-direction:column;gap:4px;padding:12px 6px;
+    .daytabs{display:flex;flex-direction:row;width:auto;grid-column:1/-1;border-right:none;
+      border-bottom:none;padding:14px 20px;gap:8px;background:var(--paper);}
+    .daytab{flex:1;flex-direction:column;gap:4px;padding:12px 6px;font-family:inherit;font-size:14px;
       border:1px solid var(--line);border-radius:10px;background:var(--card);}
-    .daytab.active{background:var(--teal);border-color:var(--teal);}
+    .daytab.active{background:#085041;border-color:#085041;}
     .daytab.active,.daytab.active .d{color:#fff;}
-    .daytab .d{font-size:13px;}
+    .daytab .d{font-size:14px;}
     .daytab.today .day-dot{margin-top:0;}
     .holiday-name{max-width:90px;font-size:10px;}
 
-    .daypanel{padding:22px 28px 32px;grid-column:1/-1;}
+    .daypanel{padding:22px 20px 32px;grid-column:1/-1;}
 
     /* 시간블록/학생 카드: 2열 그리드로 */
     .time-label{font-size:16px;margin:20px 0 10px;}
@@ -186,7 +190,7 @@
     .hw-status-btn{padding:12px 14px;}
     .hw-name{font-size:18px;}
     .hw-status-label{font-size:14px;}
-    .status-btn{font-size:16.5px;padding:13px 0;}
+    .status-btn{font-size:14px;padding:13px 0;}
     .memo-edit input{font-size:16px;padding:11px 13px;}
     .memo-box{font-size:15px;padding:9px 13px;}
     .reason-add{font-size:14.5px;}
@@ -445,9 +449,10 @@ function renderDayTabs(){
       <span>${day}</span><span class="d">${fmtMD(d)}</span>${isToday?'<span class="day-dot"></span>':''}${isHoliday?`<span class="holiday-name">${holidayName}</span>`:''}
     </button>`;
   });
+  html += `<button id="toggleEditWide" class="daytab">${editMode? '편집 종료' : '명단 편집'}</button>`;
   html += `</div><div class="daypanel">`;
   html += activeSection==='attendance'
-    ? `<div class="hint">출석/지각/결석 체크 · 점=태도특이</div>` + renderDayContent(activeDayIdx)
+    ? renderDayContent(activeDayIdx)
     : `<div class="hint">이름을 탭하면 완료→미완료→미확인 순으로 바뀝니다 · 메모=숙제내용</div>` + renderHomeworkDayContent(activeDayIdx);
   html += `</div></div>`;
   return html;
@@ -573,7 +578,8 @@ function dayNameForDate(dateStr){
 function refreshDayPanel(){
   const panel = document.querySelector('.daypanel');
   if(!panel) return;
-  const hint = panel.querySelector('.hint').outerHTML;
+  const hintEl = panel.querySelector('.hint');
+  const hint = hintEl ? hintEl.outerHTML : '';
   panel.innerHTML = hint + (activeSection==='attendance' ? renderDayContent(activeDayIdx) : renderHomeworkDayContent(activeDayIdx));
   if(activeSection==='attendance') attachSlotHandlers(); else attachHomeworkSlotHandlers();
 }
@@ -582,6 +588,7 @@ function attachHandlers(){
   const prevBtn = document.getElementById('prevWeek');
   const nextBtn = document.getElementById('nextWeek');
   const editBtn = document.getElementById('toggleEdit');
+  const editBtnWide = document.getElementById('toggleEditWide');
 
   if(prevBtn) prevBtn.onclick = async ()=>{
     weekStart = addDays(weekStart,-7); openAttKey=null; openStatusKey=null; openHwMemoKey=null;
@@ -593,7 +600,7 @@ function attachHandlers(){
     render();
     await loadWeekData(); render();
   };
-  if(editBtn) editBtn.onclick = async ()=>{
+  const toggleEdit = async ()=>{
     if(editMode){
       document.querySelectorAll('input[data-day]').forEach(inp=>{
         roster[inp.getAttribute('data-day')][inp.getAttribute('data-block')][parseInt(inp.getAttribute('data-slot'))] = inp.value.trim();
@@ -606,6 +613,8 @@ function attachHandlers(){
       render();
     }
   };
+  if(editBtn) editBtn.onclick = toggleEdit;
+  if(editBtnWide) editBtnWide.onclick = toggleEdit;
 
   document.querySelectorAll('.section-tab').forEach(el=>{
     el.onclick = ()=>{
@@ -615,7 +624,7 @@ function attachHandlers(){
     };
   });
 
-  document.querySelectorAll('.daytab').forEach(el=>{
+  document.querySelectorAll('.daytab[data-idx]').forEach(el=>{
     el.onclick = ()=>{
       activeDayIdx = parseInt(el.getAttribute('data-idx'));
       openAttKey = null; openStatusKey = null; openHwMemoKey = null;
