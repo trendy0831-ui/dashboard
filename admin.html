@@ -184,6 +184,33 @@
     justify-content:space-between;}
   .panel h2 .sub{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 
+  /* ===================== 대시보드 ===================== */
+  .dash-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  @media (max-width: 900px){ .dash-summary{grid-template-columns:repeat(2,1fr);} }
+  .dash-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 22px;}
+  .dash-card .dc-label{font-size:13px;color:var(--ink-soft);font-weight:700;margin-bottom:8px;}
+  .dash-card .dc-value{font-size:30px;font-weight:800;color:var(--ink);line-height:1.2;}
+  .dash-card .dc-value .unit{font-size:15px;font-weight:700;color:var(--ink-soft);margin-left:2px;}
+  .dash-card.accent-red .dc-value{color:var(--red);}
+  .dash-card.accent-teal .dc-value{color:var(--teal-dark);}
+  .dash-card.accent-blue .dc-value{color:var(--blue);}
+
+  .reason-feed{display:flex;flex-direction:column;gap:10px;}
+  .reason-item{display:flex;align-items:flex-start;gap:14px;background:var(--paper);
+    border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+  .reason-item .ri-badge{flex-shrink:0;font-size:12px;font-weight:800;padding:5px 11px;
+    border-radius:7px;color:#fff;white-space:nowrap;}
+  .reason-item .ri-badge.late{background:var(--amber);}
+  .reason-item .ri-badge.absent{background:var(--red);}
+  .reason-item .ri-body{flex:1;min-width:0;}
+  .reason-item .ri-top{display:flex;align-items:baseline;gap:8px;margin-bottom:3px;flex-wrap:wrap;}
+  .reason-item .ri-name{font-size:14.5px;font-weight:700;}
+  .reason-item .ri-meta{font-size:12px;color:var(--ink-soft);}
+  .reason-item .ri-date{font-size:12px;color:var(--ink-soft);margin-left:auto;white-space:nowrap;}
+  .reason-item .ri-text{font-size:13.5px;color:var(--ink);}
+  .reason-feed-empty{color:var(--ink-soft);font-size:14px;text-align:center;padding:40px 0;}
+
   .unchecked-list{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
   .unchecked-item{display:flex;align-items:center;justify-content:space-between;
     background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px 14px;}
@@ -267,6 +294,13 @@
     .hw-name{font-size:13.5px;}
     .hw-status-label{font-size:11px;}
     .bottom-grid{gap:14px;margin-top:18px;}
+    .dash-summary{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .dash-card{padding:14px 16px;}
+    .dash-card .dc-label{font-size:11.5px;}
+    .dash-card .dc-value{font-size:22px;}
+    .reason-item{padding:11px 12px;gap:10px;}
+    .reason-item .ri-name{font-size:13px;}
+    .reason-item .ri-text{font-size:12.5px;}
     .panel{padding:16px 16px;}
     .panel h2{font-size:14px;}
     .edit-grid{grid-template-columns:1fr 1fr;}
@@ -1031,6 +1065,116 @@ function emptyPagePanel(icon, title, desc){
   return '<div class="empty-panel"><div class="big">'+icon+'</div><div class="title">'+title+'</div><div>'+desc+'</div></div>';
 }
 
+/* ============ 대시보드 ============ */
+async function renderDashboard(){
+  renderDashSummary();
+  await renderReasonFeed();
+}
+
+function renderDashSummary(){
+  const el = document.getElementById('dashSummary');
+  if(!el) return;
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
+  const dayName = dayNameForDate(todayStr);
+  const sameWeek = toDateStr(mondayOf(today)) === toDateStr(weekStart);
+
+  let totalStudents=0, uncheckedCount=0, checkedInCount=0, checkedOutCount=0;
+  let hwDone=0, hwTotal=0;
+
+  if(dayName && roster[dayName]){
+    BLOCKS.forEach(block=>{
+      const names = roster[dayName][block];
+      for(let s=0;s<SUB;s++){
+        const name = names[s];
+        if(!name || !name.trim()) continue;
+        totalStudents++;
+        const rec = sameWeek ? getRec(todayStr, block, s) : {status:"normal"};
+        if(rec.status === "normal" || !rec.status) uncheckedCount++;
+        if(rec.checkIn) checkedInCount++;
+        if(rec.checkOut) checkedOutCount++;
+
+        hwTotal++;
+        const hw = sameWeek ? getHwRec(todayStr, block, name) : {completed:"미확인"};
+        if(hw.completed === "완료") hwDone++;
+      }
+    });
+  }
+
+  const hwRate = hwTotal ? Math.round((hwDone/hwTotal)*100) : 0;
+  const cards = [
+    { label:"오늘 미체크 학생", value: sameWeek ? uncheckedCount : '-', unit:"명", accent:"accent-red" },
+    { label:"오늘 등원 완료", value: sameWeek ? checkedInCount : '-', unit:`/ ${totalStudents}명`, accent:"accent-teal" },
+    { label:"오늘 하원 완료", value: sameWeek ? checkedOutCount : '-', unit:`/ ${totalStudents}명`, accent:"accent-blue" },
+    { label:"오늘 숙제 완료율", value: sameWeek ? hwRate : '-', unit:"%", accent:"" }
+  ];
+
+  el.innerHTML = cards.map(c=>
+    `<div class="dash-card ${c.accent}"><div class="dc-label">${c.label}</div><div class="dc-value">${c.value}<span class="unit">${c.unit}</span></div></div>`
+  ).join("");
+}
+
+async function renderReasonFeed(){
+  const el = document.getElementById('reasonFeed');
+  if(!el) return;
+
+  const today = new Date();
+  const start = addDays(today, -13); // 오늘 포함 최근 14일
+  let cursor = mondayOf(start);
+  const weeks = [];
+  while(cursor <= today){
+    weeks.push(new Date(cursor));
+    cursor = addDays(cursor, 7);
+  }
+
+  const items = [];
+  for(const ws of weeks){
+    try{
+      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
+      rows.forEach(rec=>{
+        if(!rec.statusNote) return;
+        if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
+        if(rec.status !== 'late' && rec.status !== 'absent') return;
+        const dayName = dayNameForDate(rec.date);
+        const names = roster[dayName] ? roster[dayName][rec.block] : null;
+        const slotIdx = (parseInt(rec.slot)||1)-1;
+        const rawName = (names && names[slotIdx]) ? names[slotIdx] : '';
+        if(!rawName) return;
+        items.push({ date: rec.date, block: rec.block, status: rec.status, note: rec.statusNote, name: rawName });
+      });
+    }catch(e){}
+  }
+
+  items.sort((a,b)=> b.date.localeCompare(a.date) || b.block.localeCompare(a.block));
+
+  if(!items.length){
+    el.innerHTML = `<div class="reason-feed-empty">최근 2주간 지각·결석 사유가 없어요.</div>`;
+    return;
+  }
+
+  const days=["일","월","화","수","목","금","토"];
+  el.innerHTML = items.map(it=>{
+    const stu = parseStudentEntry(it.name);
+    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+    const d = new Date(it.date+"T00:00:00");
+    const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days[d.getDay()]})`;
+    const badgeLabel = it.status === 'late' ? '지각' : '결석';
+    return `<div class="reason-item">
+      <span class="ri-badge ${it.status}">${badgeLabel}</span>
+      <div class="ri-body">
+        <div class="ri-top">
+          <span class="ri-name">${stu.name}</span>
+          ${meta?`<span class="ri-meta">${meta}</span>`:''}
+          <span class="ri-date">${dateLabel} · ${it.block}</span>
+        </div>
+        <div class="ri-text">${it.note}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+
 function switchPage(page){
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
@@ -1052,7 +1196,12 @@ function switchPage(page){
   topActions.style.display = 'none';
   otherPage.style.display = '';
   if(page === 'dashboard'){
-    otherPage.innerHTML = emptyPagePanel('📊','대시보드는 준비 중이에요','출결·숙제·성적 데이터가 쌓이면 요약 화면을 이곳에 붙일 예정이에요.');
+    otherPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
+      <div class="panel">
+        <h2>최근 지각·결석 사유 <span class="sub">(최근 2주)</span></h2>
+        <div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>`;
+    renderDashboard();
   } else if(page === 'students'){
     otherPage.innerHTML = emptyPagePanel('🧑‍🎓','학생 관리는 준비 중이에요','학생별 기본 정보, 학교, 반 편성을 관리하는 화면이 이곳에 들어올 예정이에요.');
   } else if(page === 'grades'){
