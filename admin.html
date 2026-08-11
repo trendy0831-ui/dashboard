@@ -70,6 +70,19 @@
     border-radius:11px;padding:11px 20px;font-size:14.5px;font-weight:700;cursor:pointer;}
   .edit-toggle.active{background:var(--teal);color:#fff;}
 
+  .sync-status{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);
+    font-weight:600;white-space:nowrap;}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:#6FA05A;flex-shrink:0;}
+  .sync-dot.busy{background:var(--yellow);animation:syncPulse 1s infinite;}
+  .sync-dot.error{background:var(--red);}
+  @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .refresh-btn{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    color:var(--teal);cursor:pointer;flex-shrink:0;}
+  .refresh-btn svg{width:17px;height:17px;}
+  .refresh-btn.spinning svg{animation:refreshSpin .7s linear infinite;}
+  @keyframes refreshSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
   #pageContent{flex:1;padding:28px 32px 48px;}
 
   .empty-panel{background:var(--card);border:1px dashed var(--line);border-radius:var(--radius);
@@ -99,6 +112,10 @@
     display:flex;flex-direction:column;gap:3px;}
   .daytab .d{font-size:12px;font-weight:400;color:var(--ink-soft);}
   .daytab.active{background:var(--paper);color:var(--teal-dark);border-bottom-color:var(--teal);}
+  .daytab.holiday span:not(.holiday-name),.daytab.holiday .d{color:var(--red);}
+  .daytab.holiday.active{background:#FBEAE7;}
+  .holiday-name{font-size:9.5px;color:var(--red);font-weight:400;line-height:1.2;
+    max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   .daypanel{background:var(--card);border:1px solid var(--line);border-top:none;
     border-radius:0 0 12px 12px;padding:24px;}
@@ -272,6 +289,9 @@
     #mainTopbar h1{font-size:16px;}
     .topbar-actions{width:100%;gap:8px;}
     .date-picker{flex:1;padding:9px 12px;font-size:13px;}
+    .sync-status{font-size:11px;order:1;}
+    .refresh-btn{width:32px;height:32px;order:2;}
+    .refresh-btn svg{width:14px;height:14px;}
     .date-picker input[type=date]{font-size:13px;width:100%;}
     .edit-toggle{padding:9px 14px;font-size:13px;white-space:nowrap;}
     #pageContent{padding:14px;}
@@ -283,6 +303,7 @@
     .daytabs{overflow-x:auto;}
     .daytab{padding:10px 4px;font-size:12.5px;min-width:44px;}
     .daytab .d{font-size:10px;}
+    .holiday-name{font-size:8px;max-width:50px;}
     .daypanel{padding:14px;}
     .time-label{font-size:12px;margin:14px 0 8px;}
     .slot-card{padding:11px 12px;}
@@ -353,6 +374,12 @@
     <div id="mainTopbar">
       <h1 id="pageTitle">출결 관리</h1>
       <div class="topbar-actions" id="attendanceTopActions">
+        <div class="sync-status" id="syncStatus">
+          <span class="sync-dot" id="syncDot"></span><span id="syncStatusText">동기화됨</span>
+        </div>
+        <button class="refresh-btn" id="refreshBtn" aria-label="새로고침">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+        </button>
         <div class="date-picker">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C7A72" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
           <input type="date" id="datePick">
@@ -436,6 +463,7 @@ let editMode = false;
 let openAttKey = null;    // 태도 메모 편집중인 카드 키
 let openStatusKey = null; // 지각/결석 사유 메모 편집중인 카드 키
 let openHwMemoKey = null; // 숙제 메모 편집중인 카드 키
+let holidays = {}; // { "YYYY-MM-DD": "공휴일명" }
 const HW_CYCLE = {"완료":"미완료", "미완료":"미확인", "미확인":"완료"};
 
 function emptyRoster(){
@@ -540,6 +568,86 @@ async function loadWeekData(){
   await Promise.all([loadRecordsForWeek(), loadHomeworkForWeek()]);
 }
 
+async function loadHolidays(){
+  try{
+    const thisYear = new Date().getFullYear();
+    const years = [thisYear, thisYear+1];
+    const data = await apiGet({action:"holidays", years: years.join(",")});
+    holidays = data || {};
+  }catch(e){ holidays = {}; }
+}
+
+/* ============ 동기화 상태 / 자동·수동 새로고침 ============ */
+let lastSyncAt = null;
+let autoRefreshTimer = null;
+const AUTO_REFRESH_INTERVAL = 30000; // 30초
+
+function setSyncStatus(state){
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncStatusText');
+  if(!dot || !text) return;
+  dot.classList.remove('busy','error');
+  if(state === 'busy'){
+    dot.classList.add('busy');
+    text.textContent = '동기화 중';
+  } else if(state === 'error'){
+    dot.classList.add('error');
+    text.textContent = '동기화 실패';
+  } else {
+    lastSyncAt = new Date();
+    text.textContent = '방금 업데이트됨';
+  }
+}
+
+function syncStatusTick(){
+  const text = document.getElementById('syncStatusText');
+  const dot = document.getElementById('syncDot');
+  if(!text || !lastSyncAt || (dot && (dot.classList.contains('busy')||dot.classList.contains('error')))) return;
+  const secs = Math.floor((Date.now() - lastSyncAt.getTime())/1000);
+  if(secs < 5) text.textContent = '방금 업데이트됨';
+  else if(secs < 60) text.textContent = secs+'초 전 업데이트';
+  else text.textContent = Math.floor(secs/60)+'분 전 업데이트';
+}
+setInterval(syncStatusTick, 5000);
+
+// 지금 무언가 입력/편집 중인지 — 이때는 자동 새로고침으로 화면을 덮어쓰지 않는다
+function isUserEditing(){
+  return editMode || !!openTimeKey || !!openAttKey || !!openStatusKey || !!openHwMemoKey;
+}
+
+async function refreshData(auto){
+  if(auto && isUserEditing()) return; // 편집 중이면 자동 새로고침은 건너뜀
+  setSyncStatus('busy');
+  const btn = document.getElementById('refreshBtn');
+  if(btn) btn.classList.add('spinning');
+  try{
+    await loadRoster();
+    await loadWeekData();
+    if(!editMode){
+      renderCardView();
+      populateStudentSelect();
+      if(selectedStudent) { await loadMonthRecords(); renderCalendar(); }
+      if(currentPage === 'dashboard') renderDashboard();
+    }
+    setSyncStatus('ok');
+  }catch(e){
+    setSyncStatus('error');
+  }finally{
+    if(btn) btn.classList.remove('spinning');
+  }
+}
+
+document.getElementById('refreshBtn').onclick = ()=> refreshData(false);
+
+function startAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(()=> refreshData(true), AUTO_REFRESH_INTERVAL);
+}
+// 화면이 다시 보일 때(예: 탭을 잠깐 나갔다 돌아왔을 때)도 한 번 갱신
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') refreshData(true);
+});
+
 async function pushRoster(){
   const rows = [];
   DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{ rows.push({day, block, slot: idx+1, name}); }); }); });
@@ -608,7 +716,10 @@ function renderCardView(){
   let th = "";
   DAYS.forEach((day,i)=>{
     const d = addDays(weekStart, i);
-    th += `<button class="daytab ${activeDayIdx===i?'active':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span></button>`;
+    const dateStr = toDateStr(d);
+    const holidayName = holidays[dateStr];
+    const isHoliday = !!holidayName;
+    th += `<button class="daytab ${activeDayIdx===i?'active':''} ${isHoliday?'holiday':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span>${isHoliday?`<span class="holiday-name">${holidayName}</span>`:''}</button>`;
   });
   tabsEl.innerHTML = th;
   tabsEl.querySelectorAll('.daytab').forEach(el=>{
@@ -1097,6 +1208,7 @@ const PAGE_TITLES = {
   attendance: "출결 관리",
   grades:     "성적 관리"
 };
+let currentPage = 'attendance';
 
 function emptyPagePanel(icon, title, desc){
   return '<div class="empty-panel"><div class="big">'+icon+'</div><div class="title">'+title+'</div><div>'+desc+'</div></div>';
@@ -1213,6 +1325,7 @@ async function renderReasonFeed(){
 
 
 function switchPage(page){
+  currentPage = page;
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-page')===page);
@@ -1261,6 +1374,9 @@ function renderAll(){
   populateStudentSelect();
   renderAll();
   renderCalendar();
+  setSyncStatus('ok');
+  startAutoRefresh();
+  loadHolidays().then(()=>{ if(activeSection==='attendance' && !editMode) renderCardView(); }); // 공휴일은 백그라운드 로드 후 재렌더
 })();
 </script>
 </body>
