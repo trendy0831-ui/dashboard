@@ -308,9 +308,17 @@
     .cal-grid{gap:3px;}
     .cal-cell{font-size:11px;}
   }
+  /* ===================== 저장 실패 알림 토스트 ===================== */
+  #saveToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--red);color:#fff;padding:13px 22px;border-radius:11px;font-size:14px;font-weight:700;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:999;opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;display:flex;align-items:center;gap:10px;}
+  #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #saveToast svg{width:18px;height:18px;flex-shrink:0;}
 </style>
 </head>
 <body>
+<div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
 <div id="shell">
   <div id="sidebar">
     <div class="side-brand">
@@ -446,13 +454,26 @@ async function apiPost(body){
   return res.json();
 }
 
+let saveToastTimer = null;
+function showSaveFailToast(msg){
+  const el = document.getElementById('saveToast');
+  if(!el) return;
+  document.getElementById('saveToastText').textContent = msg || '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
+  el.classList.add('show');
+  if(saveToastTimer) clearTimeout(saveToastTimer);
+  saveToastTimer = setTimeout(()=> el.classList.remove('show'), 4000);
+}
+
 async function loadRoster(){
   try{
     const rows = await apiGet({action:"roster"});
     const r = emptyRoster();
     rows.forEach(item=>{ if(r[item.day] && r[item.day][item.block]) r[item.day][item.block][item.slot-1] = item.name || ""; });
     roster = r;
-  }catch(e){ roster = emptyRoster(); }
+  }catch(e){
+    roster = emptyRoster();
+    showSaveFailToast('명단을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
+  }
 }
 
 async function loadRecordsForWeek(){
@@ -465,7 +486,9 @@ async function loadRecordsForWeek(){
       records[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
         checkIn: rec.checkIn||"", checkOut: rec.checkOut||"" };
     });
-  }catch(e){}
+  }catch(e){
+    showSaveFailToast('출결 기록을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
+  }
 }
 
 function getRec(dateStr, block, slot){
@@ -475,12 +498,16 @@ function getRec(dateStr, block, slot){
 function setRecLocal(dateStr, block, slot, rec){ records[dateStr+"|"+block+"|"+slot] = rec; }
 
 async function pushRecord(dateStr, dayName, block, slot, rec){
+  const body = { action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
+    status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
+    statusNote:rec.statusNote||"", attNote:rec.attNote||"",
+    checkIn:rec.checkIn||"", checkOut:rec.checkOut||"" } };
   try{
-    await apiPost({ action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
-      status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
-      statusNote:rec.statusNote||"", attNote:rec.attNote||"",
-      checkIn:rec.checkIn||"", checkOut:rec.checkOut||"" } });
-  }catch(e){}
+    await apiPost(body);
+  }catch(e){
+    try{ await apiPost(body); } // 일시적 네트워크 문제일 수 있어 한 번 더 시도
+    catch(e2){ showSaveFailToast('출결 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
+  }
 }
 
 async function loadHomeworkForWeek(){
@@ -499,10 +526,14 @@ function getHwRec(dateStr, block, name){
 }
 function setHwRecLocal(dateStr, block, name, rec){ homeworkRecords[dateStr+"|"+block+"|"+name] = rec; }
 async function pushHomeworkRecord(dateStr, dayName, block, name, rec){
+  const body = { action:"saveHomework", record:{ date:dateStr, day:dayName, block:block, name:name,
+    completed:rec.completed, memo:rec.memo } };
   try{
-    await apiPost({ action:"saveHomework", record:{ date:dateStr, day:dayName, block:block, name:name,
-      completed:rec.completed, memo:rec.memo } });
-  }catch(e){}
+    await apiPost(body);
+  }catch(e){
+    try{ await apiPost(body); }
+    catch(e2){ showSaveFailToast('숙제 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
+  }
 }
 
 async function loadWeekData(){
@@ -512,7 +543,13 @@ async function loadWeekData(){
 async function pushRoster(){
   const rows = [];
   DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{ rows.push({day, block, slot: idx+1, name}); }); }); });
-  try{ await apiPost({action:"saveRoster", roster: rows}); }catch(e){}
+  const body = {action:"saveRoster", roster: rows};
+  try{
+    await apiPost(body);
+  }catch(e){
+    try{ await apiPost(body); }
+    catch(e2){ showSaveFailToast('명단 저장에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); }
+  }
 }
 
 function dayNameForDate(dateStr){
