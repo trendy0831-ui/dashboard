@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>출결 관리</title>
+<style>
+  :root{
+    --teal:#018875;
+    --teal-dark:#016A5B;
+    --deep:#085041;
+    --blue:#027A94;
+    --green:#AACD98;
+    --yellow:#F2DE97;
+    --ink:#173B33;
+    --ink-soft:#5C7A72;
+    --paper:#F5F8F6;
+    --card:#FFFFFF;
+    --line:#E1EAE5;
+    --amber:#B8860B;
+    --red:#C0463A;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:transparent;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;}
+
+  /* ---------- 상단 컨트롤 바 ---------- */
+  .ctrl-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;
+    gap:12px;margin-bottom:18px;}
+
+  .date-picker{display:flex;align-items:center;gap:8px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;}
+  .date-picker input[type=date]{border:none;font-family:inherit;font-size:13px;font-weight:600;
+    color:var(--ink);background:none;}
+
+  /* ---------- 카드형(요일 탭) ---------- */
+  #cardView .weekbar{display:flex;align-items:center;justify-content:space-between;
+    background:var(--card);border:1px solid var(--line);border-radius:12px 12px 0 0;
+    padding:12px 16px;}
+  #cardView .weekbar button{background:var(--paper);border:1px solid var(--line);font-size:16px;color:var(--teal);
+    padding:7px 11px;cursor:pointer;border-radius:8px;}
+  #cardView .weekbar .range{font-size:14px;font-weight:700;}
+
+  .daytabs{display:flex;background:var(--card);border-left:1px solid var(--line);
+    border-right:1px solid var(--line);overflow-x:auto;}
+  .daytab{flex:1;min-width:70px;padding:10px 6px;text-align:center;font-size:13px;font-weight:700;
+    color:var(--ink-soft);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;
+    display:flex;flex-direction:column;gap:2px;font-family:inherit;}
+  .daytab .d{font-size:10.5px;font-weight:400;color:var(--ink-soft);}
+  .daytab.active{background:var(--paper);color:var(--teal-dark);border-bottom-color:var(--teal);}
+
+  .daypanel{background:var(--card);border:1px solid var(--line);border-top:none;
+    border-radius:0 0 12px 12px;padding:16px;}
+  .time-label{font-size:12px;color:var(--teal-dark);font-weight:800;margin:14px 0 8px;}
+  .time-label:first-child{margin-top:0;}
+  .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+  .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .slot-name{font-size:14px;font-weight:700;margin-bottom:8px;display:block;}
+  .status-row{display:flex;gap:5px;}
+  .status-btn{flex:1;font-size:12px;font-weight:700;padding:7px 0;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+  .status-btn.present.active{background:#6FA05A;color:#fff;border-color:#6FA05A;}
+  .status-btn.late.active{background:var(--amber);color:#fff;border-color:var(--amber);}
+  .status-btn.absent.active{background:var(--red);color:#fff;border-color:var(--red);}
+  .empty-hint{color:var(--ink-soft);font-size:13px;text-align:center;padding:30px 0;}
+
+  .time-row{display:flex;gap:6px;margin-top:8px;}
+  .time-field{flex:1;display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);
+    border-radius:7px;padding:5px 8px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;}
+  .time-field svg{width:12px;height:12px;flex-shrink:0;opacity:.7;}
+  .time-field .tf-label{font-weight:600;white-space:nowrap;}
+  .time-field .tf-val{flex:1;text-align:right;font-weight:700;color:var(--ink);}
+  .time-field .tf-val.empty{color:var(--ink-soft);font-weight:400;}
+  .time-field.editing{padding:4px 6px;}
+  .time-field input[type=time]{border:none;background:none;font-family:inherit;font-size:11.5px;
+    font-weight:700;color:var(--ink);width:100%;text-align:right;}
+  .time-field.checkout-btn{justify-content:center;font-family:inherit;color:var(--blue);
+    border-color:var(--blue);font-weight:700;}
+  .time-field.checkout-btn:hover{background:#EAF5F7;}
+
+  /* ---------- 하단: 통계 + 학생별 이력 ---------- */
+  .bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px;}
+  @media (max-width:820px){ .bottom-grid{grid-template-columns:1fr;} }
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+  .panel h2{font-size:14.5px;font-weight:800;margin:0 0 14px;display:flex;align-items:center;
+    justify-content:space-between;}
+  .panel h2 .sub{font-size:11.5px;font-weight:600;color:var(--ink-soft);}
+
+  .donut-row{display:flex;align-items:center;gap:22px;}
+  .legend{display:flex;flex-direction:column;gap:9px;font-size:13px;}
+  .legend .li{display:flex;align-items:center;gap:8px;}
+  .legend .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .legend .cnt{margin-left:auto;font-weight:700;padding-left:14px;}
+
+  .stu-select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+    font-size:13px;font-family:inherit;color:var(--ink);margin-bottom:12px;background:var(--paper);}
+
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cal-head button{border:none;background:var(--paper);border-radius:7px;width:28px;height:28px;
+    color:var(--teal);cursor:pointer;font-size:14px;}
+  .cal-head .lbl{font-size:13px;font-weight:700;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
+  .cal-dow{font-size:10.5px;color:var(--ink-soft);font-weight:700;padding-bottom:4px;}
+  .cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border-radius:8px;font-size:12px;position:relative;}
+  .cal-cell.pad{visibility:hidden;}
+  .cal-cell .dnum{font-size:11.5px;}
+  .cal-cell .mark{width:6px;height:6px;border-radius:50%;margin-top:2px;}
+  .cal-cell.present{background:#EAF3E5;}
+  .cal-cell.present .mark{background:#6FA05A;}
+  .cal-cell.late{background:#FBF2DD;}
+  .cal-cell.late .mark{background:var(--amber);}
+  .cal-cell.absent{background:#FBEAE7;}
+  .cal-cell.absent .mark{background:var(--red);}
+</style>
+</head>
+<body>
+
+<div class="ctrl-bar">
+  <div class="date-picker">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C7A72" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
+    <input type="date" id="datePick">
+  </div>
+</div>
+
+<div id="cardView">
+  <div class="weekbar">
+    <button id="prevWeek">‹</button>
+    <div class="range" id="weekRange"></div>
+    <button id="nextWeek">›</button>
+  </div>
+  <div class="daytabs" id="dayTabs"></div>
+  <div class="daypanel" id="dayPanel"></div>
+</div>
+
+<div class="bottom-grid">
+  <div class="panel">
+    <h2>선택 날짜 출결 통계 <span class="sub" id="statDateLabel"></span></h2>
+    <div class="donut-row">
+      <svg width="120" height="120" viewBox="0 0 120 120" id="donutSvg"></svg>
+      <div class="legend">
+        <div class="li"><span class="dot" style="background:#6FA05A"></span>출석<span class="cnt" id="cntPresent">0명</span></div>
+        <div class="li"><span class="dot" style="background:#B8860B"></span>지각<span class="cnt" id="cntLate">0명</span></div>
+        <div class="li"><span class="dot" style="background:#C0463A"></span>결석<span class="cnt" id="cntAbsent">0명</span></div>
+        <div class="li"><span class="dot" style="background:#D7E5DE"></span>미체크<span class="cnt" id="cntNone">0명</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>학생별 출결 이력</h2>
+    <select class="stu-select" id="stuSelect"><option value="">학생을 선택하세요</option></select>
+    <div class="cal-head">
+      <button id="calPrev">‹</button>
+      <div class="lbl" id="calLabel"></div>
+      <button id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<script>
+/* ============ 기존 attendance.html과 동일한 데이터/동기화 레이어 ============ */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzX1QnXFIXvq9sBrORDnu5fUgzobkYeCYvD-iN5mZGDTQXdxCUXO1SOpQVwv1aWRQQv/exec";
+const DAYS = ["월","화","수","목","금","토"];
+const BLOCKS = ["10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
+const SUB = 4;
+const STATUS_LABEL = {present:"출석", late:"지각", absent:"결석"};
+
+function pad(n){return n<10?"0"+n:""+n;}
+function toDateStr(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function mondayOf(d){ const day=d.getDay(); const diff=day===0?-6:1-day; const r=new Date(d); r.setDate(d.getDate()+diff); r.setHours(0,0,0,0); return r; }
+function addDays(d,n){const r=new Date(d); r.setDate(r.getDate()+n); return r;}
+function fmtMD(d){return pad(d.getMonth()+1)+"/"+pad(d.getDate());}
+
+let weekStart = mondayOf(new Date());
+let selectedDate = new Date();
+let roster = {};
+let records = {};       // 이번 주 기록 (카드/테이블 뷰용)
+let monthRecords = {};  // 학생별 캘린더용 (월 단위)
+let activeDayIdx = (new Date().getDay()+6)%7;
+if(activeDayIdx>5) activeDayIdx = 0;
+let openTimeKey = null; // "date|block|slot|in" or "...|out" — 현재 편집중인 시간 필드
+let calMonth = new Date(); calMonth.setDate(1);
+let selectedStudent = '';
+
+function emptyRoster(){
+  const r={};
+  DAYS.forEach(d=>{ r[d]={}; BLOCKS.forEach(b=>{ r[d][b]=["","","",""]; }); });
+  return r;
+}
+
+async function apiGet(params){
+  const url = SCRIPT_URL + "?" + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  return res.json();
+}
+async function apiPost(body){
+  const res = await fetch(SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(body) });
+  return res.json();
+}
+
+async function loadRoster(){
+  try{
+    const rows = await apiGet({action:"roster"});
+    const r = emptyRoster();
+    rows.forEach(item=>{ if(r[item.day] && r[item.day][item.block]) r[item.day][item.block][item.slot-1] = item.name || ""; });
+    roster = r;
+  }catch(e){ roster = emptyRoster(); }
+}
+
+async function loadRecordsForWeek(){
+  records = {};
+  try{
+    const rows = await apiGet({action:"records", weekStart: toDateStr(weekStart)});
+    rows.forEach(rec=>{
+      const slotIdx = (parseInt(rec.slot) || 1) - 1;
+      const key = rec.date+"|"+rec.block+"|"+slotIdx;
+      records[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
+        checkIn: rec.checkIn||"", checkOut: rec.checkOut||"" };
+    });
+  }catch(e){}
+}
+
+function getRec(dateStr, block, slot){
+  const key = dateStr+"|"+block+"|"+slot;
+  return records[key] || {status:"normal", statusNote:"", attNote:"", checkIn:"", checkOut:""};
+}
+function setRecLocal(dateStr, block, slot, rec){ records[dateStr+"|"+block+"|"+slot] = rec; }
+
+async function pushRecord(dateStr, dayName, block, slot, rec){
+  try{
+    await apiPost({ action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
+      status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
+      statusNote:rec.statusNote||"", attNote:rec.attNote||"",
+      checkIn:rec.checkIn||"", checkOut:rec.checkOut||"" } });
+  }catch(e){}
+}
+
+function dayNameForDate(dateStr){
+  const d = new Date(dateStr+"T00:00:00");
+  return DAYS[(d.getDay()+6)%7];
+}
+
+/* ============ 학생 목록 (roster 전체에서 고유 이름 추출) ============ */
+function allStudentNames(){
+  const set = new Set();
+  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach(n=>{ if(n && n.trim()) set.add(n.trim()); }); }); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b,'ko'));
+}
+
+/* ============ 날짜 선택 ============ */
+const datePick = document.getElementById('datePick');
+datePick.value = toDateStr(selectedDate);
+datePick.onchange = async ()=>{
+  selectedDate = new Date(datePick.value+"T00:00:00");
+  weekStart = mondayOf(selectedDate);
+  activeDayIdx = (selectedDate.getDay()+6)%7;
+  if(activeDayIdx>5) activeDayIdx = 0;
+  openTimeKey = null;
+  await loadRecordsForWeek();
+  renderAll();
+};
+
+/* ============ 카드형 렌더링 ============ */
+function renderCardView(){
+  const weekEnd = addDays(weekStart,5);
+  document.getElementById('weekRange').textContent = fmtMD(weekStart)+" ~ "+fmtMD(weekEnd);
+
+  const tabsEl = document.getElementById('dayTabs');
+  let th = "";
+  DAYS.forEach((day,i)=>{
+    const d = addDays(weekStart, i);
+    th += `<button class="daytab ${activeDayIdx===i?'active':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span></button>`;
+  });
+  tabsEl.innerHTML = th;
+  tabsEl.querySelectorAll('.daytab').forEach(el=>{
+    el.onclick = ()=>{
+      activeDayIdx = parseInt(el.getAttribute('data-idx'));
+      selectedDate = addDays(weekStart, activeDayIdx);
+      datePick.value = toDateStr(selectedDate);
+      openTimeKey = null;
+      renderCardView();
+      renderStats();
+    };
+  });
+
+  const panel = document.getElementById('dayPanel');
+  const d = addDays(weekStart, activeDayIdx);
+  const dateStr = toDateStr(d);
+  const dayName = DAYS[activeDayIdx];
+  let html = "";
+  BLOCKS.forEach(block=>{
+    const names = roster[dayName][block];
+    const hasAny = names.some(n=>n && n.trim());
+    if(!hasAny) return;
+    html += `<div class="time-label">${block}</div><div class="slot-group">`;
+    for(let s=0;s<SUB;s++){
+      const name = names[s];
+      if(!name || !name.trim()) continue;
+      const rec = getRec(dateStr, block, s);
+      const mk = dateStr+"|"+block+"|"+s;
+      html += `<div class="slot-card">
+        <span class="slot-name">${name}</span>
+        <div class="status-row">`;
+      ["present","late","absent"].forEach(st=>{
+        html += `<button class="status-btn ${st} ${rec.status===st?'active':''}" data-key="${mk}" data-status="${st}">${STATUS_LABEL[st]}</button>`;
+      });
+      html += `</div>`;
+      html += renderTimeRow(mk, rec);
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+  if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.</div>`;
+  panel.innerHTML = html;
+  attachCardHandlers();
+  renderStats();
+}
+
+function renderTimeRow(mk, rec){
+  const inEditing = openTimeKey === mk+"|in";
+  const outEditing = openTimeKey === mk+"|out";
+  const inVal = rec.checkIn || "";
+  const outVal = rec.checkOut || "";
+  const clockIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+  const inField = `<div class="time-field ${inEditing?'editing':''}" data-key="${mk}" data-kind="in">
+    ${inEditing
+      ? `<input type="time" class="time-input" data-key="${mk}" data-kind="in" value="${inVal}">`
+      : `${clockIcon}<span class="tf-label">등원</span><span class="tf-val ${inVal?'':'empty'}">${inVal||'--:--'}</span>`}
+  </div>`;
+
+  let outField;
+  if(!outVal && !outEditing){
+    // 하원 전: 버튼으로 표시, 누르면 현재 시각 자동 기록
+    outField = `<button class="time-field checkout-btn" data-key="${mk}">${clockIcon}<span class="tf-label">하원 체크</span></button>`;
+  } else {
+    outField = `<div class="time-field ${outEditing?'editing':''}" data-key="${mk}" data-kind="out">
+      ${outEditing
+        ? `<input type="time" class="time-input" data-key="${mk}" data-kind="out" value="${outVal}">`
+        : `${clockIcon}<span class="tf-label">하원</span><span class="tf-val">${outVal}</span>`}
+    </div>`;
+  }
+
+  return `<div class="time-row">${inField}${outField}</div>`;
+}
+
+function nowHHMM(){
+  const d = new Date();
+  return pad(d.getHours())+":"+pad(d.getMinutes());
+}
+
+function attachCardHandlers(){
+  document.querySelectorAll('#dayPanel .status-btn').forEach(el=>{
+    el.onclick = async ()=>{
+      const [dateStr, block, slotStr] = el.getAttribute('data-key').split("|");
+      const slot = parseInt(slotStr);
+      const status = el.getAttribute('data-status');
+      const rec = getRec(dateStr, block, slot);
+      const turningOn = rec.status !== status;
+      rec.status = turningOn ? status : "normal";
+      // 출석/지각으로 처음 표시할 때, 등원 시간이 비어있으면 현재 시각으로 자동 기록
+      if(turningOn && (status==='present' || status==='late') && !rec.checkIn){
+        rec.checkIn = nowHHMM();
+      }
+      setRecLocal(dateStr, block, slot, rec);
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+
+  document.querySelectorAll('#dayPanel .checkout-btn').forEach(el=>{
+    el.onclick = async ()=>{
+      const [dateStr, block, slotStr] = el.getAttribute('data-key').split("|");
+      const slot = parseInt(slotStr);
+      const rec = getRec(dateStr, block, slot);
+      if(!rec.checkOut) rec.checkOut = nowHHMM();
+      setRecLocal(dateStr, block, slot, rec);
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+
+  document.querySelectorAll('#dayPanel .time-field:not(.checkout-btn)').forEach(el=>{
+    el.onclick = (e)=>{
+      if(e.target.closest('.time-input')) return; // 이미 편집중인 input 클릭은 무시
+      const mk = el.getAttribute('data-key');
+      const kind = el.getAttribute('data-kind');
+      openTimeKey = mk+"|"+kind;
+      renderCardView();
+      // 렌더 직후 해당 input에 포커스
+      const input = document.querySelector(`.time-input[data-key="${mk}"][data-kind="${kind}"]`);
+      if(input) input.focus();
+    };
+  });
+
+  document.querySelectorAll('#dayPanel .time-input').forEach(el=>{
+    const commit = async ()=>{
+      const mk = el.getAttribute('data-key');
+      const kind = el.getAttribute('data-kind');
+      const [dateStr, block, slotStr] = mk.split("|");
+      const slot = parseInt(slotStr);
+      const rec = getRec(dateStr, block, slot);
+      if(kind==='in') rec.checkIn = el.value; else rec.checkOut = el.value;
+      setRecLocal(dateStr, block, slot, rec);
+      openTimeKey = null;
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+    el.onblur = commit;
+    el.onkeydown = (e)=>{ if(e.key==='Enter') el.blur(); };
+  });
+}
+
+/* ============ 선택 날짜 출결 통계 ============ */
+function renderStats(){
+  const dateStr = toDateStr(selectedDate);
+  const dayName = dayNameForDate(dateStr);
+  let present=0, late=0, absent=0, none=0;
+
+  BLOCKS.forEach(block=>{
+    const names = roster[dayName] ? roster[dayName][block] : ["","","",""];
+    for(let s=0;s<SUB;s++){
+      const name = names[s];
+      if(!name || !name.trim()) continue;
+      const rec = getRec(dateStr, block, s);
+      if(rec.status==='present') present++;
+      else if(rec.status==='late') late++;
+      else if(rec.status==='absent') absent++;
+      else none++;
+    }
+  });
+
+  const total = present+late+absent+none;
+  const days=["일","월","화","수","목","금","토"];
+  document.getElementById('statDateLabel').textContent =
+    `(${selectedDate.getFullYear()}년 ${selectedDate.getMonth()+1}월 ${selectedDate.getDate()}일 ${days[selectedDate.getDay()]})`;
+  document.getElementById('cntPresent').textContent = present+"명";
+  document.getElementById('cntLate').textContent = late+"명";
+  document.getElementById('cntAbsent').textContent = absent+"명";
+  document.getElementById('cntNone').textContent = none+"명";
+
+  drawDonut(present, late, absent, none, total);
+}
+
+function drawDonut(present, late, absent, none, total){
+  const svg = document.getElementById('donutSvg');
+  const cx=60, cy=60, r=44, sw=16;
+  const segs = [
+    {v:present, color:'#6FA05A'},
+    {v:late, color:'#B8860B'},
+    {v:absent, color:'#C0463A'},
+    {v:none, color:'#D7E5DE'}
+  ];
+  const circumference = 2*Math.PI*r;
+  let offset = 0;
+  let paths = "";
+  const denom = total || 1;
+  segs.forEach(seg=>{
+    const frac = seg.v/denom;
+    const len = frac*circumference;
+    if(len>0){
+      paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}"
+        stroke-dasharray="${len} ${circumference-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    }
+    offset += len;
+  });
+  if(total===0){
+    paths = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E1EAE5" stroke-width="${sw}"/>`;
+  }
+  svg.innerHTML = paths + `<text x="${cx}" y="${cy-3}" text-anchor="middle" font-size="20" font-weight="800" fill="#173B33">${total}</text>
+    <text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="10.5" fill="#5C7A72">총원</text>`;
+}
+
+/* ============ 학생별 출결 이력 캘린더 ============ */
+const stuSelect = document.getElementById('stuSelect');
+function populateStudentSelect(){
+  const names = allStudentNames();
+  stuSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
+    names.map(n=>`<option value="${n}">${n}</option>`).join("");
+}
+stuSelect.onchange = async ()=>{
+  selectedStudent = stuSelect.value;
+  await loadMonthRecords();
+  renderCalendar();
+};
+
+document.getElementById('calPrev').onclick = async ()=>{
+  calMonth.setMonth(calMonth.getMonth()-1);
+  await loadMonthRecords();
+  renderCalendar();
+};
+document.getElementById('calNext').onclick = async ()=>{
+  calMonth.setMonth(calMonth.getMonth()+1);
+  await loadMonthRecords();
+  renderCalendar();
+};
+
+// 월 전체 기록을 주 단위로 나눠 불러와 monthRecords에 채운다 (기존 records API 재사용)
+async function loadMonthRecords(){
+  monthRecords = {};
+  if(!selectedStudent) return;
+  const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+  const last = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0);
+  let cursor = mondayOf(first);
+  const weeks = [];
+  while(cursor <= last){
+    weeks.push(new Date(cursor));
+    cursor = addDays(cursor, 7);
+  }
+  for(const ws of weeks){
+    try{
+      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
+      rows.forEach(rec=>{
+        // 학생 이름은 records에 직접 없으므로 roster로 block+slot -> 이름 매칭
+        const dayName = dayNameForDate(rec.date);
+        const names = roster[dayName] ? roster[dayName][rec.block] : null;
+        if(!names) return;
+        const slotIdx = (parseInt(rec.slot)||1)-1;
+        if(names[slotIdx] && names[slotIdx].trim()===selectedStudent){
+          monthRecords[rec.date] = rec.status;
+        }
+      });
+    }catch(e){}
+  }
+}
+
+function renderCalendar(){
+  document.getElementById('calLabel').textContent = `${calMonth.getFullYear()}년 ${calMonth.getMonth()+1}월`;
+  const grid = document.getElementById('calGrid');
+  const dowNames = ["일","월","화","수","목","금","토"];
+  let html = dowNames.map(d=>`<div class="cal-dow">${d}</div>`).join("");
+
+  const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+  const startPad = first.getDay();
+  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0).getDate();
+
+  for(let i=0;i<startPad;i++) html += `<div class="cal-cell pad"></div>`;
+  for(let day=1; day<=daysInMonth; day++){
+    const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), day);
+    const dateStr = toDateStr(d);
+    const status = monthRecords[dateStr];
+    let cls = "";
+    if(status==='present') cls='present'; else if(status==='late') cls='late'; else if(status==='absent') cls='absent';
+    html += `<div class="cal-cell ${cls}"><span class="dnum">${day}</span>${cls?'<span class="mark"></span>':''}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+/* ============ 초기화 ============ */
+function renderAll(){
+  renderCardView();
+}
+
+function notifyHeight(){
+  const h = document.body.scrollHeight;
+  parent.postMessage({type:'resize', height:h}, '*');
+}
+
+(async function init(){
+  await loadRoster();
+  await loadRecordsForWeek();
+  populateStudentSelect();
+  renderAll();
+  renderCalendar();
+  setTimeout(notifyHeight, 200);
+  new ResizeObserver(notifyHeight).observe(document.body);
+})();
+</script>
+</body>
+</html>
