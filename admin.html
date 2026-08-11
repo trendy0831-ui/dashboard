@@ -982,7 +982,7 @@ function renderEditView(){
 function setEditMode(on){
   editMode = on;
   document.getElementById('cardView').style.display = on ? 'none' : '';
-  document.getElementById('editView').style.display = on ? '' : 'none';
+  document.getElementById('editView').style.display = on ? 'block' : 'none';
   document.getElementById('bottomGrid').style.display = (!on && activeSection==='attendance') ? '' : 'none';
   const btn = document.getElementById('toggleEdit');
   btn.textContent = on ? '편집 종료' : '명단 편집';
