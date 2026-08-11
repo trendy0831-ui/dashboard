@@ -530,11 +530,16 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
     status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
     statusNote:rec.statusNote||"", attNote:rec.attNote||"",
     checkIn:rec.checkIn||"", checkOut:rec.checkOut||"" } };
+  pendingSaveCount++;
   try{
-    await apiPost(body);
-  }catch(e){
-    try{ await apiPost(body); } // 일시적 네트워크 문제일 수 있어 한 번 더 시도
-    catch(e2){ showSaveFailToast('출결 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
+    try{
+      await apiPost(body);
+    }catch(e){
+      try{ await apiPost(body); } // 일시적 네트워크 문제일 수 있어 한 번 더 시도
+      catch(e2){ showSaveFailToast('출결 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
+    }
+  }finally{
+    pendingSaveCount--;
   }
 }
 
@@ -556,11 +561,16 @@ function setHwRecLocal(dateStr, block, name, rec){ homeworkRecords[dateStr+"|"+b
 async function pushHomeworkRecord(dateStr, dayName, block, name, rec){
   const body = { action:"saveHomework", record:{ date:dateStr, day:dayName, block:block, name:name,
     completed:rec.completed, memo:rec.memo } };
+  pendingSaveCount++;
   try{
-    await apiPost(body);
-  }catch(e){
-    try{ await apiPost(body); }
-    catch(e2){ showSaveFailToast('숙제 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
+    try{
+      await apiPost(body);
+    }catch(e){
+      try{ await apiPost(body); }
+      catch(e2){ showSaveFailToast('숙제 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
+    }
+  }finally{
+    pendingSaveCount--;
   }
 }
 
@@ -611,12 +621,19 @@ function syncStatusTick(){
 setInterval(syncStatusTick, 5000);
 
 // 지금 무언가 입력/편집 중인지 — 이때는 자동 새로고침으로 화면을 덮어쓰지 않는다
+let pendingSaveCount = 0; // 진행 중인 저장(POST) 요청 수 — 0보다 크면 자동 새로고침이 결과를 덮어쓸 수 있어 건너뜀
 function isUserEditing(){
-  return editMode || !!openTimeKey || !!openAttKey || !!openStatusKey || !!openHwMemoKey;
+  return editMode || !!openTimeKey || !!openAttKey || !!openStatusKey || !!openHwMemoKey || pendingSaveCount > 0;
 }
 
 async function refreshData(auto){
   if(auto && isUserEditing()) return; // 편집 중이면 자동 새로고침은 건너뜀
+  // 저장이 진행 중이면 그 저장이 끝날 때까지 잠깐 기다렸다가 새로고침 (최대 3초)
+  let waited = 0;
+  while(pendingSaveCount > 0 && waited < 3000){
+    await new Promise(r=>setTimeout(r, 150));
+    waited += 150;
+  }
   setSyncStatus('busy');
   const btn = document.getElementById('refreshBtn');
   if(btn) btn.classList.add('spinning');
@@ -652,11 +669,16 @@ async function pushRoster(){
   const rows = [];
   DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{ rows.push({day, block, slot: idx+1, name}); }); }); });
   const body = {action:"saveRoster", roster: rows};
+  pendingSaveCount++;
   try{
-    await apiPost(body);
-  }catch(e){
-    try{ await apiPost(body); }
-    catch(e2){ showSaveFailToast('명단 저장에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); }
+    try{
+      await apiPost(body);
+    }catch(e){
+      try{ await apiPost(body); }
+      catch(e2){ showSaveFailToast('명단 저장에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); }
+    }
+  }finally{
+    pendingSaveCount--;
   }
 }
 
