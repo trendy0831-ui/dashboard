@@ -478,8 +478,16 @@ async function apiGet(params){
   return res.json();
 }
 async function apiPost(body){
-  const res = await fetch(SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(body) });
-  return res.json();
+  // Apps Script 웹앱은 302 리다이렉트를 거치는 특성상 CORS 프리플라이트에서 간헐적으로
+  // 응답 헤더가 누락되는 경우가 있다. 응답 본문을 읽을 필요가 없는 저장 요청이므로
+  // no-cors 모드로 보내 이 문제를 원천적으로 피한다 (요청 자체는 서버에 정상 도달·처리됨).
+  await fetch(SCRIPT_URL, {
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(body)
+  });
+  return {status:"ok"};
 }
 
 let saveToastTimer = null;
