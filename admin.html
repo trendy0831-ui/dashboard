@@ -25,14 +25,75 @@
   html,body{margin:0;padding:0;background:transparent;color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;}
 
+  #topbar{background:#085041;color:#fff;padding:14px 18px;margin:-1px -1px 18px;
+    display:flex;align-items:center;gap:10px;border-radius:12px;}
+  .header-logo{width:34px;height:32px;object-fit:contain;flex-shrink:0;display:block;
+    background:#fff;border-radius:8px;padding:3px;}
+  #topbar h1{font-size:15px;font-weight:700;margin:0;letter-spacing:-0.2px;}
+  #topbar .sub{font-size:11px;color:#DDF2EC;margin-top:2px;}
+
   /* ---------- 상단 컨트롤 바 ---------- */
-  .ctrl-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;
+  .ctrl-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
     gap:12px;margin-bottom:18px;}
 
   .date-picker{display:flex;align-items:center;gap:8px;background:var(--card);
     border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;}
   .date-picker input[type=date]{border:none;font-family:inherit;font-size:13px;font-weight:600;
     color:var(--ink);background:none;}
+
+  .edit-toggle{background:var(--card);border:1px solid var(--teal);color:var(--teal);
+    border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .edit-toggle.active{background:var(--teal);color:#fff;}
+
+  /* ---------- 섹션 탭 (출결/숙제) ---------- */
+  .section-tabs{display:flex;background:var(--card);border:1px solid var(--line);border-bottom:none;
+    border-radius:12px 12px 0 0;overflow:hidden;}
+  .section-tab{flex:1;padding:12px 0;text-align:center;font-size:13.5px;font-weight:700;
+    color:var(--ink-soft);background:none;border:none;cursor:pointer;font-family:inherit;}
+  .section-tab.active{background:var(--deep);color:#fff;}
+
+  /* ---------- 아이콘 버튼(태도 메모) ---------- */
+  .slot-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:6px;}
+  .icon-btn{background:none;border:none;padding:2px;cursor:pointer;color:var(--ink-soft);
+    display:flex;align-items:center;justify-content:center;}
+  .icon-btn svg{width:16px;height:16px;}
+  .icon-btn.on{color:var(--red);}
+  .memo-box{font-size:11px;color:var(--ink-soft);background:#fff;border-radius:6px;
+    padding:4px 8px;margin-bottom:6px;}
+  .memo-box.att{color:var(--red);background:#FBEAE7;}
+  .memo-box.reason{color:var(--amber);background:#FBF2DD;margin-top:6px;}
+  .reason-add{background:none;border:none;color:var(--ink-soft);font-size:10.5px;
+    padding:4px 0 0;cursor:pointer;text-decoration:underline;font-family:inherit;}
+  .memo-edit{display:flex;gap:5px;margin-bottom:6px;}
+  .memo-edit input{flex:1;font-size:11.5px;border:1px solid var(--line);border-radius:7px;
+    padding:5px 7px;font-family:inherit;}
+  .memo-edit button{font-size:11px;border:none;background:var(--teal);color:#fff;
+    border-radius:7px;padding:0 10px;font-family:inherit;cursor:pointer;}
+
+  /* ---------- 숙제 카드 ---------- */
+  .hw-status-btn{width:100%;display:flex;align-items:flex-start;justify-content:space-between;
+    background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    font-family:inherit;cursor:pointer;text-align:left;margin-bottom:6px;}
+  .hw-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .hw-status-label{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
+  .hw-status-btn.done{background:var(--teal);border-color:var(--teal);}
+  .hw-status-btn.done .hw-name,.hw-status-btn.done .hw-status-label{color:#fff;}
+  .hw-status-btn.missing{border:2px solid var(--amber);}
+  .hw-status-btn.missing .hw-status-label{color:var(--amber);}
+  .hw-status-btn.unchecked{border-style:dashed;}
+
+  /* ---------- 명단 편집 ---------- */
+  #editView{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;}
+  .edit-hint{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;}
+  .edit-day{font-size:14px;font-weight:800;margin:16px 0 8px;color:var(--teal-dark);}
+  .edit-day:first-child{margin-top:0;}
+  .edit-block{background:var(--paper);border:1px solid var(--line);border-radius:9px;
+    padding:8px 10px;margin-bottom:6px;}
+  .edit-block .lbl{font-size:11px;color:var(--ink-soft);margin-bottom:6px;font-weight:700;}
+  .edit-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .edit-grid input{font-size:12.5px;border:1px solid var(--line);border-radius:7px;
+    padding:6px 8px;font-family:inherit;}
 
   /* ---------- 카드형(요일 탭) ---------- */
   #cardView .weekbar{display:flex;align-items:center;justify-content:space-between;
@@ -56,7 +117,8 @@
   .time-label:first-child{margin-top:0;}
   .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
   .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
-  .slot-name{font-size:14px;font-weight:700;margin-bottom:8px;display:block;}
+  .slot-name{font-size:14px;font-weight:700;}
+  .slot-meta{font-size:11px;color:var(--ink-soft);font-weight:600;}
   .status-row{display:flex;gap:5px;}
   .status-btn{flex:1;font-size:12px;font-weight:700;padding:7px 0;border-radius:8px;
     border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
@@ -83,16 +145,17 @@
   .bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px;}
   @media (max-width:820px){ .bottom-grid{grid-template-columns:1fr;} }
 
+  .unchecked-list{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;}
+  .unchecked-item{display:flex;align-items:center;justify-content:space-between;
+    background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 12px;}
+  .unchecked-item .uc-name{font-size:13.5px;font-weight:700;}
+  .unchecked-item .uc-block{font-size:11.5px;color:var(--ink-soft);}
+  .unchecked-empty{color:var(--ink-soft);font-size:13px;text-align:center;padding:24px 0;}
+
   .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
   .panel h2{font-size:14.5px;font-weight:800;margin:0 0 14px;display:flex;align-items:center;
     justify-content:space-between;}
   .panel h2 .sub{font-size:11.5px;font-weight:600;color:var(--ink-soft);}
-
-  .donut-row{display:flex;align-items:center;gap:22px;}
-  .legend{display:flex;flex-direction:column;gap:9px;font-size:13px;}
-  .legend .li{display:flex;align-items:center;gap:8px;}
-  .legend .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-  .legend .cnt{margin-left:auto;font-weight:700;padding-left:14px;}
 
   .stu-select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;
     font-size:13px;font-family:inherit;color:var(--ink);margin-bottom:12px;background:var(--paper);}
@@ -118,14 +181,27 @@
 </head>
 <body>
 
+<div id="topbar">
+  <img src="data:image/png;base64,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" alt="이끌림수학학원 로고" class="header-logo">
+  <div>
+    <h1>이끌림수학 출결·숙제 체크</h1>
+    <div class="sub">학생 관리 시스템</div>
+  </div>
+</div>
+
 <div class="ctrl-bar">
   <div class="date-picker">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C7A72" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
     <input type="date" id="datePick">
   </div>
+  <button class="edit-toggle" id="toggleEdit">명단 편집</button>
 </div>
 
 <div id="cardView">
+  <div class="section-tabs">
+    <button class="section-tab active" id="tabAttendance" data-section="attendance">출결</button>
+    <button class="section-tab" id="tabHomework" data-section="homework">숙제</button>
+  </div>
   <div class="weekbar">
     <button id="prevWeek">‹</button>
     <div class="range" id="weekRange"></div>
@@ -135,18 +211,12 @@
   <div class="daypanel" id="dayPanel"></div>
 </div>
 
-<div class="bottom-grid">
+<div id="editView"></div>
+
+<div class="bottom-grid" id="bottomGrid">
   <div class="panel">
-    <h2>선택 날짜 출결 통계 <span class="sub" id="statDateLabel"></span></h2>
-    <div class="donut-row">
-      <svg width="120" height="120" viewBox="0 0 120 120" id="donutSvg"></svg>
-      <div class="legend">
-        <div class="li"><span class="dot" style="background:#6FA05A"></span>출석<span class="cnt" id="cntPresent">0명</span></div>
-        <div class="li"><span class="dot" style="background:#B8860B"></span>지각<span class="cnt" id="cntLate">0명</span></div>
-        <div class="li"><span class="dot" style="background:#C0463A"></span>결석<span class="cnt" id="cntAbsent">0명</span></div>
-        <div class="li"><span class="dot" style="background:#D7E5DE"></span>미체크<span class="cnt" id="cntNone">0명</span></div>
-      </div>
-    </div>
+    <h2>오늘의 미체크 학생 <span class="sub" id="uncheckedDateLabel"></span></h2>
+    <div class="unchecked-list" id="uncheckedList"></div>
   </div>
 
   <div class="panel">
@@ -179,12 +249,19 @@ let weekStart = mondayOf(new Date());
 let selectedDate = new Date();
 let roster = {};
 let records = {};       // 이번 주 기록 (카드/테이블 뷰용)
+let homeworkRecords = {}; // 이번 주 숙제 기록
 let monthRecords = {};  // 학생별 캘린더용 (월 단위)
 let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
 let openTimeKey = null; // "date|block|slot|in" or "...|out" — 현재 편집중인 시간 필드
 let calMonth = new Date(); calMonth.setDate(1);
 let selectedStudent = '';
+let activeSection = 'attendance'; // 'attendance' | 'homework'
+let editMode = false;
+let openAttKey = null;    // 태도 메모 편집중인 카드 키
+let openStatusKey = null; // 지각/결석 사유 메모 편집중인 카드 키
+let openHwMemoKey = null; // 숙제 메모 편집중인 카드 키
+const HW_CYCLE = {"완료":"미완료", "미완료":"미확인", "미확인":"완료"};
 
 function emptyRoster(){
   const r={};
@@ -239,6 +316,38 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   }catch(e){}
 }
 
+async function loadHomeworkForWeek(){
+  homeworkRecords = {};
+  try{
+    const rows = await apiGet({action:"homework", weekStart: toDateStr(weekStart)});
+    rows.forEach(rec=>{
+      const key = rec.date+"|"+rec.block+"|"+rec.name;
+      homeworkRecords[key] = { completed: rec.completed||"미확인", memo: rec.memo||"" };
+    });
+  }catch(e){}
+}
+function getHwRec(dateStr, block, name){
+  const key = dateStr+"|"+block+"|"+name;
+  return homeworkRecords[key] || {completed:"미확인", memo:""};
+}
+function setHwRecLocal(dateStr, block, name, rec){ homeworkRecords[dateStr+"|"+block+"|"+name] = rec; }
+async function pushHomeworkRecord(dateStr, dayName, block, name, rec){
+  try{
+    await apiPost({ action:"saveHomework", record:{ date:dateStr, day:dayName, block:block, name:name,
+      completed:rec.completed, memo:rec.memo } });
+  }catch(e){}
+}
+
+async function loadWeekData(){
+  await Promise.all([loadRecordsForWeek(), loadHomeworkForWeek()]);
+}
+
+async function pushRoster(){
+  const rows = [];
+  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{ rows.push({day, block, slot: idx+1, name}); }); }); });
+  try{ await apiPost({action:"saveRoster", roster: rows}); }catch(e){}
+}
+
 function dayNameForDate(dateStr){
   const d = new Date(dateStr+"T00:00:00");
   return DAYS[(d.getDay()+6)%7];
@@ -251,6 +360,13 @@ function allStudentNames(){
   return Array.from(set).sort((a,b)=>a.localeCompare(b,'ko'));
 }
 
+// roster에는 "이름/학교/학년" 형식의 원본 문자열이 그대로 저장됨(예: 김휘은/동부고/중1).
+// 표시할 때만 이 함수로 분해해서 쓴다 — 저장 키(name)는 항상 원본 문자열을 그대로 사용.
+function parseStudentEntry(raw){
+  const parts = (raw||"").split("/").map(s=>s.trim());
+  return { name: parts[0]||"", school: parts[1]||"", grade: parts[2]||"" };
+}
+
 /* ============ 날짜 선택 ============ */
 const datePick = document.getElementById('datePick');
 datePick.value = toDateStr(selectedDate);
@@ -259,9 +375,24 @@ datePick.onchange = async ()=>{
   weekStart = mondayOf(selectedDate);
   activeDayIdx = (selectedDate.getDay()+6)%7;
   if(activeDayIdx>5) activeDayIdx = 0;
-  openTimeKey = null;
-  await loadRecordsForWeek();
+  openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  await loadWeekData();
   renderAll();
+};
+
+document.getElementById('prevWeek').onclick = async ()=>{
+  weekStart = addDays(weekStart, -7);
+  openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  renderCardView();
+  await loadWeekData();
+  renderCardView();
+};
+document.getElementById('nextWeek').onclick = async ()=>{
+  weekStart = addDays(weekStart, 7);
+  openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  renderCardView();
+  await loadWeekData();
+  renderCardView();
 };
 
 /* ============ 카드형 렌더링 ============ */
@@ -281,13 +412,20 @@ function renderCardView(){
       activeDayIdx = parseInt(el.getAttribute('data-idx'));
       selectedDate = addDays(weekStart, activeDayIdx);
       datePick.value = toDateStr(selectedDate);
-      openTimeKey = null;
+      openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
       renderCardView();
-      renderStats();
     };
   });
 
+  document.getElementById('bottomGrid').style.display = activeSection==='attendance' ? '' : 'none';
+
   const panel = document.getElementById('dayPanel');
+  panel.innerHTML = activeSection==='attendance' ? renderAttendanceDayContent() : renderHomeworkDayContent();
+  attachCardHandlers();
+  if(activeSection==='attendance') renderUnchecked();
+}
+
+function renderAttendanceDayContent(){
   const d = addDays(weekStart, activeDayIdx);
   const dateStr = toDateStr(d);
   const dayName = DAYS[activeDayIdx];
@@ -300,24 +438,90 @@ function renderCardView(){
     for(let s=0;s<SUB;s++){
       const name = names[s];
       if(!name || !name.trim()) continue;
+      const stu = parseStudentEntry(name);
+      const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
       const rec = getRec(dateStr, block, s);
       const mk = dateStr+"|"+block+"|"+s;
+      const attOpen = openAttKey===mk;
+      const statusOpen = openStatusKey===mk;
+      const faceIcon = rec.attNote
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 16c1-1.3 2.2-1.3 3.5-1.3s2.5 0 3.5 1.3"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 15h7"/></svg>';
       html += `<div class="slot-card">
-        <span class="slot-name">${name}</span>
-        <div class="status-row">`;
+        <div class="slot-top">
+          <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
+          <button class="icon-btn attBtn ${rec.attNote?'on':''}" data-key="${mk}" aria-label="태도 메모">${faceIcon}</button>
+        </div>`;
+      if(rec.attNote && !attOpen) html += `<div class="memo-box att">${rec.attNote}</div>`;
+      if(attOpen){
+        html += `<div class="memo-edit">
+          <input type="text" class="attInput" data-key="${mk}" value="${(rec.attNote||"").replace(/"/g,'&quot;')}" placeholder="예: 수업 중 산만함">
+          <button class="attSave" data-key="${mk}">저장</button>
+        </div>`;
+      }
+      html += `<div class="status-row">`;
       ["present","late","absent"].forEach(st=>{
         html += `<button class="status-btn ${st} ${rec.status===st?'active':''}" data-key="${mk}" data-status="${st}">${STATUS_LABEL[st]}</button>`;
       });
       html += `</div>`;
+      const needsReason = (rec.status==="late" || rec.status==="absent");
+      if(needsReason && rec.statusNote && !statusOpen) html += `<div class="memo-box reason">사유: ${rec.statusNote}</div>`;
+      if(needsReason && statusOpen){
+        html += `<div class="memo-edit">
+          <input type="text" class="statusInput" data-key="${mk}" value="${(rec.statusNote||"").replace(/"/g,'&quot;')}" placeholder="예: 병원 방문">
+          <button class="statusSave" data-key="${mk}">저장</button>
+        </div>`;
+      }
+      if(needsReason && !rec.statusNote && !statusOpen) html += `<button class="reason-add" data-key="${mk}">+ 사유 입력</button>`;
       html += renderTimeRow(mk, rec);
       html += `</div>`;
     }
     html += `</div>`;
   });
   if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.</div>`;
-  panel.innerHTML = html;
-  attachCardHandlers();
-  renderStats();
+  return html;
+}
+
+function renderHomeworkDayContent(){
+  const d = addDays(weekStart, activeDayIdx);
+  const dateStr = toDateStr(d);
+  const dayName = DAYS[activeDayIdx];
+  let html = "";
+  BLOCKS.forEach(block=>{
+    const names = roster[dayName][block];
+    const hasAny = names.some(n=>n && n.trim());
+    if(!hasAny) return;
+    html += `<div class="time-label">${block}</div><div class="slot-group">`;
+    for(let s=0;s<SUB;s++){
+      const name = names[s];
+      if(!name || !name.trim()) continue;
+      const stu = parseStudentEntry(name);
+      const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+      const rec = getHwRec(dateStr, block, name);
+      const mk = dateStr+"|"+block+"|"+name;
+      const memoOpen = openHwMemoKey===mk;
+      const statusClass = rec.completed==="완료" ? "done" : rec.completed==="미완료" ? "missing" : "unchecked";
+      const noteIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v13l-4 4H5z"/><path d="M9 9h6M9 13h4"/></svg>';
+      html += `<div class="slot-card">
+        <button class="hw-status-btn ${statusClass}" data-key="${mk}">
+          <span><span class="hw-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
+          <span class="hw-status-label">${rec.completed}</span>
+        </button>`;
+      if(rec.memo && !memoOpen) html += `<div class="memo-box">${rec.memo}</div>`;
+      if(memoOpen){
+        html += `<div class="memo-edit">
+          <input type="text" class="hwMemoInput" data-key="${mk}" value="${(rec.memo||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p">
+          <button class="hwMemoSave" data-key="${mk}">저장</button>
+        </div>`;
+      } else {
+        html += `<button class="icon-btn hwMemoBtn ${rec.memo?'on':''}" data-key="${mk}" aria-label="숙제 메모" style="margin-top:4px;">${noteIcon} <span style="font-size:11px;margin-left:4px;">메모</span></button>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+  if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.</div>`;
+  return html;
 }
 
 function renderTimeRow(mk, rec){
@@ -413,66 +617,135 @@ function attachCardHandlers(){
     el.onblur = commit;
     el.onkeydown = (e)=>{ if(e.key==='Enter') el.blur(); };
   });
-}
 
-/* ============ 선택 날짜 출결 통계 ============ */
-function renderStats(){
-  const dateStr = toDateStr(selectedDate);
-  const dayName = dayNameForDate(dateStr);
-  let present=0, late=0, absent=0, none=0;
-
-  BLOCKS.forEach(block=>{
-    const names = roster[dayName] ? roster[dayName][block] : ["","","",""];
-    for(let s=0;s<SUB;s++){
-      const name = names[s];
-      if(!name || !name.trim()) continue;
-      const rec = getRec(dateStr, block, s);
-      if(rec.status==='present') present++;
-      else if(rec.status==='late') late++;
-      else if(rec.status==='absent') absent++;
-      else none++;
-    }
+  // 태도 메모 열기/닫기
+  document.querySelectorAll('#dayPanel .attBtn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      openAttKey = (openAttKey===key) ? null : key;
+      renderCardView();
+    };
+  });
+  document.querySelectorAll('#dayPanel .attSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, slotStr] = key.split("|");
+      const slot = parseInt(slotStr);
+      const input = document.querySelector(`.attInput[data-key="${key}"]`);
+      const rec = getRec(dateStr, block, slot);
+      rec.attNote = input.value.trim();
+      setRecLocal(dateStr, block, slot, rec);
+      openAttKey = null;
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
   });
 
-  const total = present+late+absent+none;
+  // 지각/결석 사유 메모
+  document.querySelectorAll('#dayPanel .reason-add').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      openStatusKey = el.getAttribute('data-key');
+      renderCardView();
+    };
+  });
+  document.querySelectorAll('#dayPanel .statusSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, slotStr] = key.split("|");
+      const slot = parseInt(slotStr);
+      const input = document.querySelector(`.statusInput[data-key="${key}"]`);
+      const rec = getRec(dateStr, block, slot);
+      rec.statusNote = input.value.trim();
+      setRecLocal(dateStr, block, slot, rec);
+      openStatusKey = null;
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+
+  // 숙제 상태 버튼 (완료→미완료→미확인 순환)
+  document.querySelectorAll('#dayPanel .hw-status-btn').forEach(el=>{
+    el.onclick = async ()=>{
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, name] = key.split("|");
+      const rec = getHwRec(dateStr, block, name);
+      rec.completed = HW_CYCLE[rec.completed] || "완료";
+      setHwRecLocal(dateStr, block, name, rec);
+      renderCardView();
+      await pushHomeworkRecord(dateStr, dayNameForDate(dateStr), block, name, rec);
+    };
+  });
+  document.querySelectorAll('#dayPanel .hwMemoBtn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      openHwMemoKey = el.getAttribute('data-key');
+      renderCardView();
+    };
+  });
+  document.querySelectorAll('#dayPanel .hwMemoSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, name] = key.split("|");
+      const input = document.querySelector(`.hwMemoInput[data-key="${key}"]`);
+      const rec = getHwRec(dateStr, block, name);
+      rec.memo = input.value.trim();
+      setHwRecLocal(dateStr, block, name, rec);
+      openHwMemoKey = null;
+      renderCardView();
+      await pushHomeworkRecord(dateStr, dayNameForDate(dateStr), block, name, rec);
+    };
+  });
+}
+
+/* ============ 오늘의 미체크 학생 ============ */
+function renderUnchecked(){
+  const listEl = document.getElementById('uncheckedList');
+  const labelEl = document.getElementById('uncheckedDateLabel');
+  if(!listEl) return;
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
   const days=["일","월","화","수","목","금","토"];
-  document.getElementById('statDateLabel').textContent =
-    `(${selectedDate.getFullYear()}년 ${selectedDate.getMonth()+1}월 ${selectedDate.getDate()}일 ${days[selectedDate.getDay()]})`;
-  document.getElementById('cntPresent').textContent = present+"명";
-  document.getElementById('cntLate').textContent = late+"명";
-  document.getElementById('cntAbsent').textContent = absent+"명";
-  document.getElementById('cntNone').textContent = none+"명";
+  labelEl.textContent = `(${today.getMonth()+1}월 ${today.getDate()}일 ${days[today.getDay()]})`;
 
-  drawDonut(present, late, absent, none, total);
-}
+  const todayWeekStart = mondayOf(today);
+  // 현재 표시중인 주가 오늘이 속한 주가 아니면, records에 오늘 데이터가 없을 수 있음을 감안
+  const dayName = dayNameForDate(todayStr);
+  const sameWeek = toDateStr(todayWeekStart) === toDateStr(weekStart);
 
-function drawDonut(present, late, absent, none, total){
-  const svg = document.getElementById('donutSvg');
-  const cx=60, cy=60, r=44, sw=16;
-  const segs = [
-    {v:present, color:'#6FA05A'},
-    {v:late, color:'#B8860B'},
-    {v:absent, color:'#C0463A'},
-    {v:none, color:'#D7E5DE'}
-  ];
-  const circumference = 2*Math.PI*r;
-  let offset = 0;
-  let paths = "";
-  const denom = total || 1;
-  segs.forEach(seg=>{
-    const frac = seg.v/denom;
-    const len = frac*circumference;
-    if(len>0){
-      paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}"
-        stroke-dasharray="${len} ${circumference-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-    }
-    offset += len;
-  });
-  if(total===0){
-    paths = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E1EAE5" stroke-width="${sw}"/>`;
+  let items = [];
+  if(dayName && roster[dayName]){
+    BLOCKS.forEach(block=>{
+      const names = roster[dayName][block];
+      for(let s=0;s<SUB;s++){
+        const name = names[s];
+        if(!name || !name.trim()) continue;
+        const rec = sameWeek ? getRec(todayStr, block, s) : {status:"normal"};
+        if(rec.status === "normal" || !rec.status){
+          items.push({name, block});
+        }
+      }
+    });
   }
-  svg.innerHTML = paths + `<text x="${cx}" y="${cy-3}" text-anchor="middle" font-size="20" font-weight="800" fill="#173B33">${total}</text>
-    <text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="10.5" fill="#5C7A72">총원</text>`;
+
+  if(!sameWeek){
+    listEl.innerHTML = `<div class="unchecked-empty">현재 보고 있는 주가 오늘이 아니라 정확한 미체크 현황을 알 수 없어요.</div>`;
+    return;
+  }
+  if(!items.length){
+    listEl.innerHTML = `<div class="unchecked-empty">오늘 배정된 학생은 모두 출결 체크를 완료했어요.</div>`;
+    return;
+  }
+  listEl.innerHTML = items.map(it=>{
+    const stu = parseStudentEntry(it.name);
+    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+    return `<div class="unchecked-item"><span><span class="uc-name">${stu.name}</span>${meta?` <span class="uc-block">${meta}</span>`:''}</span><span class="uc-block">${it.block}</span></div>`;
+  }).join("");
 }
 
 /* ============ 학생별 출결 이력 캘린더 ============ */
@@ -480,7 +753,12 @@ const stuSelect = document.getElementById('stuSelect');
 function populateStudentSelect(){
   const names = allStudentNames();
   stuSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-    names.map(n=>`<option value="${n}">${n}</option>`).join("");
+    names.map(n=>{
+      const stu = parseStudentEntry(n);
+      const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+      const label = meta ? `${stu.name} (${meta})` : stu.name;
+      return `<option value="${n}">${label}</option>`;
+    }).join("");
 }
 stuSelect.onchange = async ()=>{
   selectedStudent = stuSelect.value;
@@ -550,6 +828,64 @@ function renderCalendar(){
   grid.innerHTML = html;
 }
 
+/* ============ 명단 편집 ============ */
+function renderEditView(){
+  const editView = document.getElementById('editView');
+  let html = `<div class="edit-hint">요일 × 시간블록별 고정 명단을 입력하세요. "이름/학교/학년" 형식으로 입력하면 카드에 함께 표시돼요 (예: 김휘은/동부고/중1). 학교·학년은 생략 가능해요. 빈칸은 배정 가능 자리로 표시됩니다. "편집 종료"를 누르면 저장됩니다.</div>`;
+  DAYS.forEach(day=>{
+    html += `<div class="edit-day">${day}요일</div>`;
+    BLOCKS.forEach(block=>{
+      html += `<div class="edit-block"><div class="lbl">${block}</div><div class="edit-grid">`;
+      for(let s=0;s<SUB;s++){
+        const val = roster[day][block][s] || "";
+        html += `<input type="text" data-day="${day}" data-block="${block}" data-slot="${s}" value="${val.replace(/"/g,'&quot;')}" placeholder="이름/학교/학년">`;
+      }
+      html += `</div></div>`;
+    });
+  });
+  editView.innerHTML = html;
+}
+
+function setEditMode(on){
+  editMode = on;
+  document.getElementById('cardView').style.display = on ? 'none' : '';
+  document.getElementById('editView').style.display = on ? '' : 'none';
+  document.getElementById('bottomGrid').style.display = (!on && activeSection==='attendance') ? '' : 'none';
+  const btn = document.getElementById('toggleEdit');
+  btn.textContent = on ? '편집 종료' : '명단 편집';
+  btn.classList.toggle('active', on);
+  if(on) renderEditView();
+}
+
+document.getElementById('toggleEdit').onclick = async ()=>{
+  if(editMode){
+    document.querySelectorAll('#editView input[data-day]').forEach(inp=>{
+      roster[inp.getAttribute('data-day')][inp.getAttribute('data-block')][parseInt(inp.getAttribute('data-slot'))] = inp.value.trim();
+    });
+    setEditMode(false);
+    renderCardView();
+    await pushRoster();
+  } else {
+    setEditMode(true);
+  }
+};
+
+/* ============ 섹션 탭 (출결/숙제) ============ */
+document.getElementById('tabAttendance').onclick = ()=>{
+  activeSection = 'attendance';
+  document.getElementById('tabAttendance').classList.add('active');
+  document.getElementById('tabHomework').classList.remove('active');
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  renderCardView();
+};
+document.getElementById('tabHomework').onclick = ()=>{
+  activeSection = 'homework';
+  document.getElementById('tabHomework').classList.add('active');
+  document.getElementById('tabAttendance').classList.remove('active');
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  renderCardView();
+};
+
 /* ============ 초기화 ============ */
 function renderAll(){
   renderCardView();
@@ -562,7 +898,7 @@ function notifyHeight(){
 
 (async function init(){
   await loadRoster();
-  await loadRecordsForWeek();
+  await loadWeekData();
   populateStudentSelect();
   renderAll();
   renderCalendar();
