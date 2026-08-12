@@ -1535,6 +1535,7 @@ function renderStudentGrid(){
 }
 
 
+function switchPage(page){
   currentPage = page;
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
