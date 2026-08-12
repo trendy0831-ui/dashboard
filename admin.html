@@ -205,6 +205,8 @@
   .panel h2{font-size:16px;font-weight:800;margin:0 0 16px;display:flex;align-items:center;
     justify-content:space-between;}
   .panel h2 .sub{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+  .panel h2 .badge-count{font-size:12px;font-weight:800;padding:3px 10px;border-radius:20px;
+    background:var(--red);color:#fff;}
 
   /* ===================== 대시보드 ===================== */
   .dash-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
@@ -1343,7 +1345,7 @@ async function renderMakeupFeed(){
 
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
 
-  if(labelEl) labelEl.textContent = items.length ? `(${items.length}건)` : '';
+  if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
 
   if(!items.length){
     el.innerHTML = `<div class="reason-feed-empty">이번 달 보강 대기 건이 없어요.</div>`;
