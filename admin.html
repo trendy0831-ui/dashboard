@@ -1319,8 +1319,71 @@ function emptyPagePanel(icon, title, desc){
 /* ============ 대시보드 ============ */
 async function renderDashboard(){
   renderDashSummary();
+  await renderUpcomingExams();
   await renderMakeupFeed();
   await renderReasonFeed();
+}
+
+async function renderUpcomingExams(){
+  const el = document.getElementById('examFeed');
+  const labelEl = document.getElementById('examCountLabel');
+  if(!el) return;
+
+  let rows = [];
+  try{
+    rows = await apiGet({action:"examSchedule"});
+  }catch(e){
+    el.innerHTML = `<div class="reason-feed-empty">시험 일정을 불러오지 못했어요.</div>`;
+    return;
+  }
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
+  const horizon = toDateStr(addDays(today, 28)); // 오늘부터 4주 이내
+
+  const items = (rows || [])
+    .filter(r => r.school && r.examStart)
+    .filter(r => r.examStart >= todayStr && r.examStart <= horizon)
+    .map(r=>{
+      let dday = null;
+      if(r.mathExamDate){
+        const diffMs = new Date(r.mathExamDate+"T00:00:00") - new Date(todayStr+"T00:00:00");
+        dday = Math.round(diffMs / 86400000);
+      }
+      // 내신 대비 시작일: 시험시작일 한 달(30일) 전
+      const prepStart = toDateStr(addDays(new Date(r.examStart+"T00:00:00"), -30));
+      return { ...r, dday, prepStart };
+    })
+    .sort((a,b)=> a.examStart.localeCompare(b.examStart));
+
+  if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
+
+  if(!items.length){
+    el.innerHTML = `<div class="reason-feed-empty">앞으로 4주 이내 예정된 시험이 없어요.</div>`;
+    return;
+  }
+
+  el.innerHTML = items.map(it=>{
+    const isDDay7 = it.dday === 7;
+    const periodLabel = it.examEnd && it.examEnd !== it.examStart
+      ? `${fmtMD(new Date(it.examStart+"T00:00:00"))} ~ ${fmtMD(new Date(it.examEnd+"T00:00:00"))}`
+      : fmtMD(new Date(it.examStart+"T00:00:00"));
+    const mathLabel = it.mathExamDate
+      ? `수학 ${fmtMD(new Date(it.mathExamDate+"T00:00:00"))}${it.dday!==null ? ` (D-${it.dday})` : ''}`
+      : '';
+    const prepLabel = `내신 대비 시작 ${fmtMD(new Date(it.prepStart+"T00:00:00"))}`;
+    return `<div class="reason-item" style="${isDDay7?'border-color:var(--amber);background:#FBF2DD;':''}">
+      <span class="ri-badge" style="background:${isDDay7?'var(--amber)':'var(--teal)'};">${it.memo || '시험'}</span>
+      <div class="ri-body">
+        <div class="ri-top">
+          <span class="ri-name">${it.school}</span>
+          <span class="ri-date">${periodLabel}</span>
+        </div>
+        ${mathLabel ? `<div class="ri-text" style="${isDDay7?'color:var(--amber);font-weight:700;':''}">${mathLabel}${isDDay7?' — 일주일 뒤 수학시험, 보강 확인!':''}</div>` : ''}
+        <div class="ri-text" style="color:var(--ink-soft);">${prepLabel}</div>
+      </div>
+    </div>`;
+  }).join("");
 }
 
 async function renderMakeupFeed(){
@@ -1558,6 +1621,10 @@ function switchPage(page){
   otherPage.style.display = '';
   if(page === 'dashboard'){
     otherPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>다가오는 시험 <span class="sub" id="examCountLabel"></span></h2>
+        <div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>
       <div class="panel" style="margin-bottom:20px;">
         <h2>이번 달 보강 대기 <span class="sub" id="makeupCountLabel"></span></h2>
         <div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
