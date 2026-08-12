@@ -343,7 +343,7 @@
 <div id="shell">
   <div id="sidebar">
     <div class="side-brand">
-      <img src="assets/logo.png" alt="이끌림수학학원 로고">
+      <img src="assets/logo-180.png" alt="이끌림수학학원 로고">
       <div class="names">
         <div class="t1">이끌림수학학원</div>
         <div class="t2">학생 관리 시스템</div>
@@ -564,7 +564,7 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
     }
     // no-cors라 저장 완료 여부를 알 수 없으므로, 시트 반영이 끝날 만한 시간만큼
     // 자동 새로고침이 결과를 덮어쓰지 않도록 인위적으로 대기한다.
-    await new Promise(r=>setTimeout(r, 1500));
+    await new Promise(r=>setTimeout(r, 3000));
   }finally{
     pendingSaveCount--;
   }
@@ -597,7 +597,7 @@ async function pushHomeworkRecord(dateStr, dayName, block, name, rec){
       try{ await apiPost(body); }
       catch(e2){ showSaveFailToast('숙제 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
     }
-    await new Promise(r=>setTimeout(r, 1500));
+    await new Promise(r=>setTimeout(r, 3000));
   }finally{
     pendingSaveCount--;
   }
