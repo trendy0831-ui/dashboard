@@ -520,23 +520,24 @@ async function loadRoster(){
     const rows = await apiGet({action:"roster"});
     const r = emptyRoster();
     rows.forEach(item=>{ if(r[item.day] && r[item.day][item.block]) r[item.day][item.block][item.slot-1] = item.name || ""; });
-    roster = r;
+    roster = r; // 성공했을 때만 교체 — 실패 시 기존 roster를 그대로 유지해 화면이 비지 않게 한다
   }catch(e){
-    roster = emptyRoster();
+    if(!roster || !Object.keys(roster).length) roster = emptyRoster(); // 최초 로드 실패 시에만 빈 값으로 초기화
     showSaveFailToast('명단을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
   }
 }
 
 async function loadRecordsForWeek(){
-  records = {};
   try{
     const rows = await apiGet({action:"records", weekStart: toDateStr(weekStart)});
+    const next = {};
     rows.forEach(rec=>{
       const slotIdx = (parseInt(rec.slot) || 1) - 1;
       const key = rec.date+"|"+rec.block+"|"+slotIdx;
-      records[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
+      next[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
         checkIn: rec.checkIn||"", checkOut: rec.checkOut||"" };
     });
+    records = next; // 성공했을 때만 교체 — 실패 시 기존 records(방금 클릭한 로컬 반영 포함)를 그대로 둔다
   }catch(e){
     showSaveFailToast('출결 기록을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
   }
@@ -570,13 +571,14 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
 }
 
 async function loadHomeworkForWeek(){
-  homeworkRecords = {};
   try{
     const rows = await apiGet({action:"homework", weekStart: toDateStr(weekStart)});
+    const next = {};
     rows.forEach(rec=>{
       const key = rec.date+"|"+rec.block+"|"+rec.name;
-      homeworkRecords[key] = { completed: rec.completed||"미확인", memo: rec.memo||"" };
+      next[key] = { completed: rec.completed||"미확인", memo: rec.memo||"" };
     });
+    homeworkRecords = next; // 성공했을 때만 교체
   }catch(e){}
 }
 function getHwRec(dateStr, block, name){
