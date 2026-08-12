@@ -1305,7 +1305,69 @@ function emptyPagePanel(icon, title, desc){
 /* ============ 대시보드 ============ */
 async function renderDashboard(){
   renderDashSummary();
+  await renderMakeupFeed();
   await renderReasonFeed();
+}
+
+async function renderMakeupFeed(){
+  const el = document.getElementById('makeupFeed');
+  const labelEl = document.getElementById('makeupCountLabel');
+  if(!el) return;
+
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  let cursor = mondayOf(monthStart);
+  const weeks = [];
+  while(cursor <= today){
+    weeks.push(new Date(cursor));
+    cursor = addDays(cursor, 7);
+  }
+
+  const items = [];
+  for(const ws of weeks){
+    try{
+      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
+      rows.forEach(rec=>{
+        if(rec.status !== 'absent') return;
+        if(rec.makeupDone) return;
+        if(rec.date < toDateStr(monthStart) || rec.date > toDateStr(today)) return;
+        const dayName = dayNameForDate(rec.date);
+        const names = roster[dayName] ? roster[dayName][rec.block] : null;
+        const slotIdx = (parseInt(rec.slot)||1)-1;
+        const rawName = (names && names[slotIdx]) ? names[slotIdx] : '';
+        if(!rawName) return;
+        items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName });
+      });
+    }catch(e){}
+  }
+
+  items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
+
+  if(labelEl) labelEl.textContent = items.length ? `(${items.length}건)` : '';
+
+  if(!items.length){
+    el.innerHTML = `<div class="reason-feed-empty">이번 달 보강 대기 건이 없어요.</div>`;
+    return;
+  }
+
+  const days=["일","월","화","수","목","금","토"];
+  el.innerHTML = items.map(it=>{
+    const stu = parseStudentEntry(it.name);
+    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+    const d = new Date(it.date+"T00:00:00");
+    const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days[d.getDay()]})`;
+    return `<div class="reason-item">
+      <span class="ri-badge absent">결석</span>
+      <div class="ri-body">
+        <div class="ri-top">
+          <span class="ri-name">${stu.name}</span>
+          ${meta?`<span class="ri-meta">${meta}</span>`:''}
+          <span class="ri-date">${dateLabel} · ${it.block}</span>
+        </div>
+        ${it.note ? `<div class="ri-text">사유: ${it.note}</div>` : ''}
+      </div>
+    </div>`;
+  }).join("");
 }
 
 function renderDashSummary(){
@@ -1435,6 +1497,10 @@ function switchPage(page){
   otherPage.style.display = '';
   if(page === 'dashboard'){
     otherPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>이번 달 보강 대기 <span class="sub" id="makeupCountLabel"></span></h2>
+        <div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>
       <div class="panel">
         <h2>최근 지각·결석 사유 <span class="sub">(최근 2주)</span></h2>
         <div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
