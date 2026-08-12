@@ -472,23 +472,37 @@ function emptyRoster(){
   return r;
 }
 
-async function apiGet(params){
+async function apiGetOnce(params){
   const url = SCRIPT_URL + "?" + new URLSearchParams({...params, _t: Date.now()}).toString();
   const res = await fetch(url, { cache: "no-store" });
+  if(!res.ok) throw new Error("HTTP "+res.status);
   return res.json();
 }
+async function apiGet(params){
+  // Apps Script의 리다이렉트 응답(echo)이 간헐적으로 404를 내는 경우가 있어
+  // 실패 시 짧게 기다렸다가 최대 2번 더 시도한다.
+  let lastErr;
+  for(let attempt=0; attempt<3; attempt++){
+    try{
+      return await apiGetOnce(params);
+    }catch(e){
+      lastErr = e;
+      if(attempt<2) await new Promise(r=>setTimeout(r, 800));
+    }
+  }
+  throw lastErr;
+}
 async function apiPost(body){
-  // Apps Script 배포가 "액세스 권한: 모든 사용자"로 되어 있으면 일반 fetch로도
-  // 정상적으로 응답을 받을 수 있다. no-cors를 쓰면 저장 성공 여부를 전혀 알 수 없어
-  // pendingSaveCount가 실제 저장 완료 시점을 반영하지 못하는 문제가 있었으므로 제거한다.
-  const res = await fetch(SCRIPT_URL, {
+  // Apps Script exec 엔드포인트는 CORS 헤더를 내려주지 않아 일반 fetch로는
+  // 브라우저가 응답을 차단한다(요청 자체는 서버에 도달·처리됨). 따라서 no-cors로
+  // 보내고, 저장 완료 여부는 pushRecord 쪽에서 시간을 두고 보정한다.
+  await fetch(SCRIPT_URL, {
     method:"POST",
+    mode:"no-cors",
     headers:{"Content-Type":"text/plain;charset=utf-8"},
     body: JSON.stringify(body)
   });
-  const data = await res.json();
-  if(data && data.error) throw new Error(data.error);
-  return data;
+  return {status:"ok"};
 }
 
 let saveToastTimer = null;
@@ -547,6 +561,9 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
       try{ await apiPost(body); } // 일시적 네트워크 문제일 수 있어 한 번 더 시도
       catch(e2){ showSaveFailToast('출결 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
     }
+    // no-cors라 저장 완료 여부를 알 수 없으므로, 시트 반영이 끝날 만한 시간만큼
+    // 자동 새로고침이 결과를 덮어쓰지 않도록 인위적으로 대기한다.
+    await new Promise(r=>setTimeout(r, 1500));
   }finally{
     pendingSaveCount--;
   }
@@ -578,6 +595,7 @@ async function pushHomeworkRecord(dateStr, dayName, block, name, rec){
       try{ await apiPost(body); }
       catch(e2){ showSaveFailToast('숙제 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
     }
+    await new Promise(r=>setTimeout(r, 1500));
   }finally{
     pendingSaveCount--;
   }
