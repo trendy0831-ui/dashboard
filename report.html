@@ -448,11 +448,10 @@
         const d = parseDate(r.date);
         const dateStr = d ? `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}` : r.date;
         const isDone = r.makeupDone===true || r.makeupDone==='TRUE' || r.makeupDone==='true';
-        const doneDateStr = (isDone && r.makeupDate) ? ` (${r.makeupDate})` : '';
         return `
           <div class="makeup-item">
             <div><div>${dateStr} 결석</div></div>
-            <span class="badge ${isDone?'badge-done':'badge-wait'}">${isDone ? '보강 완료'+doneDateStr : '보강 대기'}</span>
+            <span class="badge ${isDone?'badge-done':'badge-wait'}">${isDone ? '보강 완료' : '보강 대기'}</span>
           </div>
         `;
       }).join('');
