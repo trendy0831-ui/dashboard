@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>이끌림수학학원 | 학습 리포트</title>
+<style>
+  :root{
+    --teal:#018875;
+    --teal-dark:#085041;
+    --green:#AACD98;
+    --yellow:#F2DE97;
+    --blue:#027A94;
+    --bg:#F1F7F5;
+    --card:#FFFFFF;
+    --ink:#16302B;
+    --ink-soft:#5C726D;
+    --line:#E3EEEA;
+    --red:#D96C5A;
+    --amber:#C98A2C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:48px;
+  }
+
+  /* ── 헤더 ───────────────────────────────── */
+  .hero{
+    background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);
+    color:#fff;
+    padding:36px 20px 44px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:"";
+    position:absolute;
+    right:-40px; top:-60px;
+    width:220px; height:220px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.07);
+  }
+  .hero-brand{
+    font-size:13px;
+    letter-spacing:0.06em;
+    opacity:0.85;
+    margin-bottom:14px;
+  }
+  .hero-name{
+    font-size:28px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+    margin:0 0 6px;
+  }
+  .hero-meta{
+    font-size:14px;
+    opacity:0.9;
+  }
+  .hero-updated{
+    margin-top:18px;
+    font-size:12px;
+    opacity:0.75;
+  }
+
+  .wrap{
+    max-width:520px;
+    margin:0 auto;
+    padding:0 16px;
+  }
+
+  /* ── 카드 공통 ───────────────────────────── */
+  .card{
+    background:var(--card);
+    border-radius:18px;
+    padding:20px;
+    margin-top:-24px;
+    box-shadow:0 8px 24px rgba(8,80,65,0.08);
+    position:relative;
+    z-index:2;
+  }
+  .card + .card{ margin-top:16px; }
+  .section-title{
+    font-size:14px;
+    font-weight:700;
+    color:var(--teal-dark);
+    margin:28px 0 12px 4px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .section-title:first-of-type{ margin-top:0; }
+
+  /* ── 요약 그리드 (출석/숙제) ─────────────── */
+  .stat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .stat-box{
+    background:var(--bg);
+    border-radius:14px;
+    padding:16px 14px;
+    text-align:left;
+  }
+  .stat-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .stat-value{
+    font-size:24px;
+    font-weight:800;
+    color:var(--teal-dark);
+    line-height:1;
+  }
+  .stat-value small{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-left:2px;
+  }
+  .stat-sub{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+
+  /* ── 시험 D-day 카드 ─────────────────────── */
+  .exam-card{
+    background:linear-gradient(135deg,var(--teal) 0%,var(--blue) 100%);
+    color:#fff;
+    border-radius:16px;
+    padding:18px 20px;
+  }
+  .exam-school{
+    font-size:12px;
+    opacity:0.85;
+    margin-bottom:4px;
+  }
+  .exam-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+  }
+  .exam-dday{
+    font-size:26px;
+    font-weight:800;
+  }
+  .exam-date{
+    font-size:12px;
+    opacity:0.9;
+    text-align:right;
+    line-height:1.5;
+  }
+  .exam-memo{
+    margin-top:10px;
+    font-size:12px;
+    background:rgba(255,255,255,0.16);
+    padding:8px 10px;
+    border-radius:10px;
+  }
+  .exam-empty{
+    font-size:13px;
+    color:var(--ink-soft);
+    text-align:center;
+    padding:18px 0;
+  }
+
+  /* ── 보강 카드 ───────────────────────────── */
+  .makeup-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 4px;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .makeup-item:last-child{ border-bottom:none; }
+  .makeup-date{ color:var(--ink-soft); font-size:12px; }
+  .badge{
+    font-size:11px;
+    font-weight:700;
+    padding:4px 9px;
+    border-radius:99px;
+  }
+  .badge-wait{ background:#FBEBE7; color:var(--red); }
+  .badge-done{ background:#E9F3E4; color:#4C8B3A; }
+  .makeup-empty{
+    font-size:13px;
+    color:var(--ink-soft);
+    text-align:center;
+    padding:14px 0;
+  }
+
+  /* ── 최근 출결 로그 ──────────────────────── */
+  .log-item{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:13px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .log-item:last-child{ border-bottom:none; }
+  .log-date{
+    width:64px;
+    flex-shrink:0;
+    font-size:12px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    padding-top:2px;
+  }
+  .log-date b{
+    display:block;
+    font-size:14px;
+    color:var(--ink);
+    font-weight:700;
+  }
+  .log-body{ flex:1; min-width:0; }
+  .log-status-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:4px;
+  }
+  .status-pill{
+    font-size:12px;
+    font-weight:700;
+    padding:3px 10px;
+    border-radius:99px;
+  }
+  .status-present{ background:#E9F3E4; color:#4C8B3A; }
+  .status-late{ background:#FCF2DC; color:var(--amber); }
+  .status-absent{ background:#FBEBE7; color:var(--red); }
+  .hw-tag{
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .hw-tag.done{ color:var(--teal); font-weight:600; }
+  .log-reason{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .log-empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:28px 0;
+  }
+
+  .footer-note{
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:28px;
+    line-height:1.7;
+  }
+
+  /* 로딩 / 에러 상태 */
+  .state-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:10px;
+    padding:24px;
+    text-align:center;
+  }
+  .spinner{
+    width:28px;height:28px;
+    border-radius:50%;
+    border:3px solid var(--line);
+    border-top-color:var(--teal);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .state-title{ font-weight:700; color:var(--teal-dark); font-size:15px; }
+  .state-desc{ font-size:13px; color:var(--ink-soft); }
+
+  #app{ display:none; }
+</style>
+</head>
+<body>
+
+  <div id="loading" class="state-screen">
+    <div class="spinner"></div>
+    <div class="state-desc">리포트를 불러오는 중이에요…</div>
+  </div>
+
+  <div id="error" class="state-screen" style="display:none;">
+    <div class="state-title">리포트를 불러올 수 없어요</div>
+    <div class="state-desc" id="error-desc">링크를 다시 확인해주시거나 학원으로 문의해주세요.</div>
+  </div>
+
+  <div id="app">
+    <div class="hero">
+      <div class="hero-brand">이끌림수학학원 · 학습 리포트</div>
+      <div class="hero-name" id="s-name">-</div>
+      <div class="hero-meta" id="s-meta">-</div>
+      <div class="hero-updated" id="s-updated"></div>
+    </div>
+
+    <div class="wrap">
+
+      <div class="card">
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">이번 달 출석</div>
+            <div class="stat-value" id="stat-attend">-<small>일</small></div>
+            <div class="stat-sub" id="stat-attend-sub">&nbsp;</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">숙제 완료율</div>
+            <div class="stat-value" id="stat-hw">-<small>%</small></div>
+            <div class="stat-sub" id="stat-hw-sub">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">📅 다가오는 시험</div>
+      <div class="card" id="exam-card">
+        <div class="exam-empty">등록된 시험 일정이 없어요</div>
+      </div>
+
+      <div class="section-title">🔁 보강 현황</div>
+      <div class="card" id="makeup-card">
+        <div class="makeup-empty">보강 대기 중인 항목이 없어요</div>
+      </div>
+
+      <div class="section-title">🗓️ 최근 출결</div>
+      <div class="card" id="log-card">
+        <div class="log-empty">출결 기록이 아직 없어요</div>
+      </div>
+
+      <div class="footer-note">
+        등원·하원 알림은 카카오톡으로 별도 발송됩니다.<br>
+        문의사항은 학원으로 연락 주세요 · 이끌림수학학원
+      </div>
+    </div>
+  </div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSVS9mzGr116jePeDPKV1lesU4hI7wIm_11yjYaYruLS38kWj32-E_QHEny3K8l00E/exec";
+
+  function getParam(name){
+    const url = new URL(window.location.href);
+    return url.searchParams.get(name);
+  }
+
+  function showError(msg){
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'flex';
+    if(msg) document.getElementById('error-desc').textContent = msg;
+  }
+
+  function statusLabel(status){
+    if(status === 'present') return { text:'출석', cls:'status-present' };
+    if(status === 'late') return { text:'지각', cls:'status-late' };
+    if(status === 'absent') return { text:'결석', cls:'status-absent' };
+    return { text: status || '-', cls:'status-present' };
+  }
+
+  function parseDate(v){
+    if(!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function fmtMD(d){
+    return (d.getMonth()+1) + '/' + d.getDate();
+  }
+  const DOW = ['일','월','화','수','목','금','토'];
+
+  function render(data){
+    document.getElementById('loading').style.display = 'none';
+
+    if(data.error){
+      showError(data.error === 'student not found' ? '학생 정보를 찾을 수 없어요. 링크를 다시 확인해주세요.' : null);
+      return;
+    }
+
+    const student = data.student;
+    const records = (data.records || []).slice();
+    const exam = data.exam;
+
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('s-name').textContent = student.name;
+    document.getElementById('s-meta').textContent = [student.school, student.grade].filter(Boolean).join(' · ');
+
+    const now = new Date();
+    document.getElementById('s-updated').textContent =
+      now.getFullYear() + '.' + String(now.getMonth()+1).padStart(2,'0') + '.' + String(now.getDate()).padStart(2,'0') + ' 기준';
+
+    // ── 이번 달 출석 통계 ──
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const monthRecords = records.filter(r=>{
+      const d = parseDate(r.date);
+      return d && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+    const presentCnt = monthRecords.filter(r=>r.status==='present').length;
+    const lateCnt = monthRecords.filter(r=>r.status==='late').length;
+    const absentCnt = monthRecords.filter(r=>r.status==='absent').length;
+
+    document.getElementById('stat-attend').innerHTML = (presentCnt+lateCnt) + '<small>일</small>';
+    document.getElementById('stat-attend-sub').textContent =
+      absentCnt > 0 ? `지각 ${lateCnt}일 · 결석 ${absentCnt}일` : (lateCnt>0 ? `지각 ${lateCnt}일` : '결석 없이 잘 다니고 있어요');
+
+    // ── 숙제 완료율 ──
+    if(monthRecords.length > 0){
+      const hwDone = monthRecords.filter(r=>r.homeworkDone===true||r.homeworkDone==='TRUE'||r.homeworkDone==='true').length;
+      const rate = Math.round((hwDone / monthRecords.length) * 100);
+      document.getElementById('stat-hw').innerHTML = rate + '<small>%</small>';
+      document.getElementById('stat-hw-sub').textContent = `${monthRecords.length}회 중 ${hwDone}회 완료`;
+    } else {
+      document.getElementById('stat-hw').innerHTML = '-';
+      document.getElementById('stat-hw-sub').textContent = '이번 달 기록 없음';
+    }
+
+    // ── 다가오는 시험 ──
+    const examCard = document.getElementById('exam-card');
+    if(exam && exam.mathExamDate){
+      const mathDate = parseDate(exam.mathExamDate);
+      let ddayText = '';
+      if(mathDate){
+        const diff = Math.ceil((mathDate.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+        ddayText = diff === 0 ? 'D-DAY' : (diff > 0 ? `D-${diff}` : '시험 종료');
+      }
+      examCard.innerHTML = `
+        <div class="exam-school">${exam.school || ''} ${exam.memo ? '· '+exam.memo : ''}</div>
+        <div class="exam-row">
+          <div class="exam-dday">${ddayText}</div>
+          <div class="exam-date">수학 시험일<br><b>${mathDate ? mathDate.getFullYear()+'.'+String(mathDate.getMonth()+1).padStart(2,'0')+'.'+String(mathDate.getDate()).padStart(2,'0') : '-'}</b></div>
+        </div>
+      `;
+    }
+
+    // ── 보강 현황 ──
+    const makeupCard = document.getElementById('makeup-card');
+    const makeupItems = records.filter(r => r.status === 'absent');
+    if(makeupItems.length > 0){
+      makeupCard.innerHTML = makeupItems.slice(0,5).map(r=>{
+        const d = parseDate(r.date);
+        const dateStr = d ? `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}` : r.date;
+        const isDone = r.makeupDone===true || r.makeupDone==='TRUE' || r.makeupDone==='true';
+        const doneDateStr = (isDone && r.makeupDate) ? ` (${r.makeupDate})` : '';
+        return `
+          <div class="makeup-item">
+            <div><div>${dateStr} 결석</div></div>
+            <span class="badge ${isDone?'badge-done':'badge-wait'}">${isDone ? '보강 완료'+doneDateStr : '보강 대기'}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── 최근 출결 로그 (최대 10건, checkIn/checkOut 완전 제외) ──
+    const logCard = document.getElementById('log-card');
+    if(records.length > 0){
+      logCard.innerHTML = records.slice(0,10).map(r=>{
+        const d = parseDate(r.date);
+        const st = statusLabel(r.status);
+        const hwDone = r.homeworkDone===true || r.homeworkDone==='TRUE' || r.homeworkDone==='true';
+        const reason = r.statusMemo || r.attitudeMemo || '';
+        return `
+          <div class="log-item">
+            <div class="log-date">
+              <b>${d ? fmtMD(d) : '-'}</b>
+              ${d ? DOW[d.getDay()]+'요일' : ''}
+            </div>
+            <div class="log-body">
+              <div class="log-status-row">
+                <span class="status-pill ${st.cls}">${st.text}</span>
+                <span class="hw-tag ${hwDone?'done':''}">${hwDone ? '숙제 완료' : '숙제 미완료'}</span>
+              </div>
+              ${reason ? `<div class="log-reason">${reason}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  function init(){
+    const id = getParam('id');
+    if(!id){
+      showError('리포트 링크가 올바르지 않아요.');
+      return;
+    }
+    fetch(`${SCRIPT_URL}?action=studentReport&id=${encodeURIComponent(id)}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => render(data))
+      .catch(() => showError('네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.'));
+  }
+
+  init();
+</script>
+</body>
+</html>
