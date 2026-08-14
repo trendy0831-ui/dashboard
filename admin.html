@@ -159,21 +159,6 @@
     color:var(--amber);cursor:pointer;text-align:center;}
   .makeup-toggle.done{border-style:solid;border-color:#6FA05A;background:#EAF3E5;color:#3D6B2E;}
 
-  /* ===================== 등원/하원 시간 ===================== */
-  .time-row{display:flex;gap:8px;margin-top:10px;}
-  .time-field{flex:1;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
-    border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;}
-  .time-field svg{width:13px;height:13px;flex-shrink:0;opacity:.7;}
-  .time-field .tf-label{font-weight:600;white-space:nowrap;}
-  .time-field .tf-val{flex:1;text-align:right;font-weight:700;color:var(--ink);}
-  .time-field .tf-val.empty{color:var(--ink-soft);font-weight:400;}
-  .time-field.editing{padding:5px 7px;}
-  .time-field input[type=time]{border:none;background:none;font-family:inherit;font-size:12.5px;
-    font-weight:700;color:var(--ink);width:100%;text-align:right;}
-  .time-field.checkout-btn{justify-content:center;color:var(--blue);
-    border-color:var(--blue);font-weight:700;}
-  .time-field.checkout-btn:hover{background:#EAF5F7;}
-
   /* ===================== 숙제 카드 ===================== */
   .hw-status-btn{width:100%;display:flex;align-items:flex-start;justify-content:space-between;
     background:#fff;border:1px solid var(--line);border-radius:9px;padding:11px 13px;
@@ -330,8 +315,6 @@
     .slot-name{font-size:14px;}
     .slot-meta{font-size:10.5px;}
     .status-btn{font-size:11.5px;padding:8px 0;}
-    .time-field{font-size:11px;padding:6px 8px;}
-    .time-field .tf-label{font-size:11px;}
     .hw-name{font-size:13.5px;}
     .hw-status-label{font-size:11px;}
     .bottom-grid{gap:14px;margin-top:18px;}
@@ -475,7 +458,6 @@ let homeworkRecords = {}; // 이번 주 숙제 기록
 let monthRecords = {};  // 학생별 캘린더용 (월 단위)
 let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
-let openTimeKey = null; // "date|block|slot|in" or "...|out" — 현재 편집중인 시간 필드
 let calMonth = new Date(); calMonth.setDate(1);
 let selectedStudent = '';
 let activeSection = 'attendance'; // 'attendance' | 'homework'
@@ -555,7 +537,6 @@ async function loadRecordsForWeek(){
       const slotIdx = (parseInt(rec.slot) || 1) - 1;
       const key = rec.date+"|"+rec.block+"|"+slotIdx;
       next[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
-        checkIn: rec.checkIn||"", checkOut: rec.checkOut||"",
         makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"" };
     });
     records = next; // 성공했을 때만 교체 — 실패 시 기존 records(방금 클릭한 로컬 반영 포함)를 그대로 둔다
@@ -566,7 +547,7 @@ async function loadRecordsForWeek(){
 
 function getRec(dateStr, block, slot){
   const key = dateStr+"|"+block+"|"+slot;
-  return records[key] || {status:"normal", statusNote:"", attNote:"", checkIn:"", checkOut:"", makeupDone:false, makeupDate:""};
+  return records[key] || {status:"normal", statusNote:"", attNote:"", makeupDone:false, makeupDate:""};
 }
 function setRecLocal(dateStr, block, slot, rec){ records[dateStr+"|"+block+"|"+slot] = rec; }
 
@@ -574,7 +555,6 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   const body = { action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
     status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
     statusNote:rec.statusNote||"", attNote:rec.attNote||"",
-    checkIn:rec.checkIn||"", checkOut:rec.checkOut||"",
     makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"" } };
   pendingSaveCount++;
   try{
@@ -674,7 +654,7 @@ setInterval(syncStatusTick, 5000);
 // 지금 무언가 입력/편집 중인지 — 이때는 자동 새로고침으로 화면을 덮어쓰지 않는다
 let pendingSaveCount = 0; // 진행 중인 저장(POST) 요청 수 — 0보다 크면 자동 새로고침이 결과를 덮어쓸 수 있어 건너뜀
 function isUserEditing(){
-  return editMode || !!openTimeKey || !!openAttKey || !!openStatusKey || !!openHwMemoKey || pendingSaveCount > 0;
+  return editMode || !!openAttKey || !!openStatusKey || !!openHwMemoKey || pendingSaveCount > 0;
 }
 
 async function refreshData(auto){
@@ -760,21 +740,21 @@ datePick.onchange = async ()=>{
   weekStart = mondayOf(selectedDate);
   activeDayIdx = (selectedDate.getDay()+6)%7;
   if(activeDayIdx>5) activeDayIdx = 0;
-  openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
   await loadWeekData();
   renderAll();
 };
 
 document.getElementById('prevWeek').onclick = async ()=>{
   weekStart = addDays(weekStart, -7);
-  openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
   renderCardView();
   await loadWeekData();
   renderCardView();
 };
 document.getElementById('nextWeek').onclick = async ()=>{
   weekStart = addDays(weekStart, 7);
-  openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
   renderCardView();
   await loadWeekData();
   renderCardView();
@@ -800,7 +780,7 @@ function renderCardView(){
       activeDayIdx = parseInt(el.getAttribute('data-idx'));
       selectedDate = addDays(weekStart, activeDayIdx);
       datePick.value = toDateStr(selectedDate);
-      openTimeKey = null; openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+      openAttKey = null; openStatusKey = null; openHwMemoKey = null;
       renderCardView();
     };
   });
@@ -869,7 +849,6 @@ function renderAttendanceDayContent(){
         </button>`;
       }
 
-      html += renderTimeRow(mk, rec);
       html += `</div>`;
     }
     html += `</div>`;
@@ -920,39 +899,6 @@ function renderHomeworkDayContent(){
   return html;
 }
 
-function renderTimeRow(mk, rec){
-  const inEditing = openTimeKey === mk+"|in";
-  const outEditing = openTimeKey === mk+"|out";
-  const inVal = rec.checkIn || "";
-  const outVal = rec.checkOut || "";
-  const clockIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
-
-  const inField = `<div class="time-field ${inEditing?'editing':''}" data-key="${mk}" data-kind="in">
-    ${inEditing
-      ? `<input type="time" class="time-input" data-key="${mk}" data-kind="in" value="${inVal}">`
-      : `${clockIcon}<span class="tf-label">등원</span><span class="tf-val ${inVal?'':'empty'}">${inVal||'--:--'}</span>`}
-  </div>`;
-
-  let outField;
-  if(!outVal && !outEditing){
-    // 하원 전: 버튼으로 표시, 누르면 현재 시각 자동 기록
-    outField = `<button class="time-field checkout-btn" data-key="${mk}">${clockIcon}<span class="tf-label">하원 체크</span></button>`;
-  } else {
-    outField = `<div class="time-field ${outEditing?'editing':''}" data-key="${mk}" data-kind="out">
-      ${outEditing
-        ? `<input type="time" class="time-input" data-key="${mk}" data-kind="out" value="${outVal}">`
-        : `${clockIcon}<span class="tf-label">하원</span><span class="tf-val">${outVal}</span>`}
-    </div>`;
-  }
-
-  return `<div class="time-row">${inField}${outField}</div>`;
-}
-
-function nowHHMM(){
-  const d = new Date();
-  return pad(d.getHours())+":"+pad(d.getMinutes());
-}
-
 function attachCardHandlers(){
   document.querySelectorAll('#dayPanel .status-btn').forEach(el=>{
     el.onclick = async ()=>{
@@ -962,56 +908,10 @@ function attachCardHandlers(){
       const rec = getRec(dateStr, block, slot);
       const turningOn = rec.status !== status;
       rec.status = turningOn ? status : "normal";
-      // 출석/지각으로 처음 표시할 때, 등원 시간이 비어있으면 현재 시각으로 자동 기록
-      if(turningOn && (status==='present' || status==='late') && !rec.checkIn){
-        rec.checkIn = nowHHMM();
-      }
       setRecLocal(dateStr, block, slot, rec);
       renderCardView();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
-  });
-
-  document.querySelectorAll('#dayPanel .checkout-btn').forEach(el=>{
-    el.onclick = async ()=>{
-      const [dateStr, block, slotStr] = el.getAttribute('data-key').split("|");
-      const slot = parseInt(slotStr);
-      const rec = getRec(dateStr, block, slot);
-      if(!rec.checkOut) rec.checkOut = nowHHMM();
-      setRecLocal(dateStr, block, slot, rec);
-      renderCardView();
-      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
-    };
-  });
-
-  document.querySelectorAll('#dayPanel .time-field:not(.checkout-btn)').forEach(el=>{
-    el.onclick = (e)=>{
-      if(e.target.closest('.time-input')) return; // 이미 편집중인 input 클릭은 무시
-      const mk = el.getAttribute('data-key');
-      const kind = el.getAttribute('data-kind');
-      openTimeKey = mk+"|"+kind;
-      renderCardView();
-      // 렌더 직후 해당 input에 포커스
-      const input = document.querySelector(`.time-input[data-key="${mk}"][data-kind="${kind}"]`);
-      if(input) input.focus();
-    };
-  });
-
-  document.querySelectorAll('#dayPanel .time-input').forEach(el=>{
-    const commit = async ()=>{
-      const mk = el.getAttribute('data-key');
-      const kind = el.getAttribute('data-kind');
-      const [dateStr, block, slotStr] = mk.split("|");
-      const slot = parseInt(slotStr);
-      const rec = getRec(dateStr, block, slot);
-      if(kind==='in') rec.checkIn = el.value; else rec.checkOut = el.value;
-      setRecLocal(dateStr, block, slot, rec);
-      openTimeKey = null;
-      renderCardView();
-      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
-    };
-    el.onblur = commit;
-    el.onkeydown = (e)=>{ if(e.key==='Enter') el.blur(); };
   });
 
   // 태도 메모 열기/닫기
@@ -1457,7 +1357,7 @@ function renderDashSummary(){
   const dayName = dayNameForDate(todayStr);
   const sameWeek = toDateStr(mondayOf(today)) === toDateStr(weekStart);
 
-  let totalStudents=0, uncheckedCount=0, checkedInCount=0, checkedOutCount=0;
+  let totalStudents=0, uncheckedCount=0;
   let hwDone=0, hwTotal=0;
 
   if(dayName && roster[dayName]){
@@ -1469,8 +1369,6 @@ function renderDashSummary(){
         totalStudents++;
         const rec = sameWeek ? getRec(todayStr, block, s) : {status:"normal"};
         if(rec.status === "normal" || !rec.status) uncheckedCount++;
-        if(rec.checkIn) checkedInCount++;
-        if(rec.checkOut) checkedOutCount++;
 
         hwTotal++;
         const hw = sameWeek ? getHwRec(todayStr, block, name) : {completed:"미확인"};
@@ -1482,9 +1380,7 @@ function renderDashSummary(){
   const hwRate = hwTotal ? Math.round((hwDone/hwTotal)*100) : 0;
   const cards = [
     { label:"오늘 미체크 학생", value: sameWeek ? uncheckedCount : '-', unit:"명", accent:"accent-red" },
-    { label:"오늘 등원 완료", value: sameWeek ? checkedInCount : '-', unit:`/ ${totalStudents}명`, accent:"accent-teal" },
-    { label:"오늘 하원 완료", value: sameWeek ? checkedOutCount : '-', unit:`/ ${totalStudents}명`, accent:"accent-blue" },
-    { label:"오늘 숙제 완료율", value: sameWeek ? hwRate : '-', unit:"%", accent:"" }
+    { label:"오늘 숙제 완료율", value: sameWeek ? hwRate : '-', unit:"%", accent:"accent-teal" }
   ];
 
   el.innerHTML = cards.map(c=>
