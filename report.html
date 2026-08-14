@@ -78,12 +78,11 @@
     background:var(--card);
     border-radius:18px;
     padding:20px;
-    margin-top:-24px;
     box-shadow:0 8px 24px rgba(8,80,65,0.08);
     position:relative;
     z-index:2;
   }
-  .card + .card{ margin-top:16px; }
+  .card.hero-overlap{ margin-top:-24px; }
   .section-title{
     font-size:14px;
     font-weight:700;
@@ -308,7 +307,7 @@
 
     <div class="wrap">
 
-      <div class="card">
+      <div class="card hero-overlap">
         <div class="stat-grid">
           <div class="stat-box">
             <div class="stat-label">이번 달 출석</div>
