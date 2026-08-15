@@ -33,7 +33,7 @@
   .hero{
     background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);
     color:#fff;
-    padding:36px 20px 44px;
+    padding:36px 20px 28px;
     position:relative;
     overflow:hidden;
   }
@@ -73,6 +73,60 @@
     padding:0 16px;
   }
 
+  /* ── 탭바 ───────────────────────────────── */
+  .tabbar{
+    position:relative;
+    z-index:3;
+    max-width:520px;
+    margin:0 auto;
+    padding:0 16px;
+    background:var(--bg);
+  }
+  .tabbar-inner{
+    display:flex;
+    background:var(--card);
+    border-radius:16px;
+    box-shadow:0 8px 24px rgba(8,80,65,0.08);
+    padding:6px;
+    gap:2px;
+    margin-top:-20px;
+  }
+  .tab-btn{
+    flex:1;
+    background:none;
+    border:none;
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    padding:10px 4px;
+    border-radius:11px;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    position:relative;
+    white-space:nowrap;
+  }
+  .tab-btn.active{
+    background:var(--teal-dark);
+    color:#fff;
+  }
+  .tab-new-dot{
+    position:absolute;
+    top:2px;
+    right:14%;
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--red);
+    border:1.5px solid var(--card);
+  }
+
+  .tab-panel{ display:none; padding-top:16px; }
+  .tab-panel.active{ display:block; }
+
   /* ── 카드 공통 ───────────────────────────── */
   .card{
     background:var(--card);
@@ -82,18 +136,17 @@
     position:relative;
     z-index:2;
   }
-  .card.hero-overlap{ margin-top:-24px; }
   .card + .card{ margin-top:16px; }
   .section-title{
     font-size:14px;
     font-weight:700;
     color:var(--teal-dark);
-    margin:28px 0 12px 4px;
+    margin:0 0 12px 4px;
     display:flex;
     align-items:center;
     gap:6px;
   }
-  .section-title:first-of-type{ margin-top:0; }
+  .section-title.spaced{ margin-top:24px; }
 
   /* ── 요약 그리드 (출석/숙제) ─────────────── */
   .stat-grid{
@@ -266,59 +319,36 @@
     font-size:12px;
   }
 
-  /* ── 공지사항 카드 ───────────────────────── */
+  /* ── 공지사항 카드 (탭 내부) ─────────────── */
   .notice-card{
     background:linear-gradient(135deg,#FBF2DD 0%,#F6E6C4 100%);
     border:1px solid #F0DBA6;
     border-radius:16px;
     padding:16px 18px;
-    cursor:pointer;
-    position:relative;
   }
-  .notice-top{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    margin-bottom:6px;
-  }
-  .notice-icon{ font-size:15px; }
   .notice-title{
-    font-size:14px;
+    font-size:15px;
     font-weight:700;
     color:var(--teal-dark);
-    flex:1;
-    min-width:0;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
-  .notice-new-badge{
-    font-size:10px;
-    font-weight:800;
-    color:#fff;
-    background:var(--red);
-    padding:2px 7px;
-    border-radius:99px;
-    flex-shrink:0;
+    margin-bottom:8px;
   }
   .notice-body{
-    font-size:12.5px;
+    font-size:13px;
     color:var(--ink-soft);
-    line-height:1.5;
+    line-height:1.6;
     white-space:pre-wrap;
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 0.25s ease;
   }
-  .notice-card.open .notice-body{
-    max-height:400px;
-    margin-top:4px;
+  .notice-period{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:12px;
+    opacity:0.8;
   }
-  .notice-card:not(.open) .notice-body{
-    display:-webkit-box;
-    -webkit-line-clamp:1;
-    -webkit-box-orient:vertical;
-    max-height:18px;
+  .notice-empty{
+    font-size:13px;
+    color:var(--ink-soft);
+    text-align:center;
+    padding:28px 0;
   }
 
   /* 로딩 / 에러 상태 */
@@ -366,45 +396,62 @@
       <div class="hero-updated" id="s-updated"></div>
     </div>
 
+    <div class="tabbar">
+      <div class="tabbar-inner">
+        <button class="tab-btn" data-tab="notice">
+          📢 공지사항
+          <span class="tab-new-dot" id="tab-notice-dot" style="display:none;"></span>
+        </button>
+        <button class="tab-btn active" data-tab="attend">✅ 출결·숙제</button>
+        <button class="tab-btn" data-tab="exam">📅 시험</button>
+        <button class="tab-btn" data-tab="makeup">🔁 보강</button>
+      </div>
+    </div>
+
     <div class="wrap">
 
-      <div class="notice-card" id="notice-card" style="display:none;">
-        <div class="notice-top">
-          <span class="notice-icon">📢</span>
-          <span class="notice-title" id="notice-title"></span>
-          <span class="notice-new-badge" id="notice-new-badge" style="display:none;">NEW</span>
-        </div>
-        <div class="notice-body" id="notice-body"></div>
-      </div>
-
-      <div class="card hero-overlap">
-        <div class="stat-grid">
-          <div class="stat-box">
-            <div class="stat-label">이번 달 출석</div>
-            <div class="stat-value" id="stat-attend">-<small>일</small></div>
-            <div class="stat-sub" id="stat-attend-sub">&nbsp;</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">숙제 완료율</div>
-            <div class="stat-value" id="stat-hw">-<small>%</small></div>
-            <div class="stat-sub" id="stat-hw-sub">&nbsp;</div>
-          </div>
+      <!-- 공지사항 탭 -->
+      <div class="tab-panel" id="panel-notice">
+        <div class="card notice-card" id="notice-card">
+          <div class="notice-empty">등록된 공지사항이 없어요</div>
         </div>
       </div>
 
-      <div class="section-title">📅 다가오는 시험</div>
-      <div class="card" id="exam-card">
-        <div class="exam-empty">등록된 시험 일정이 없어요</div>
+      <!-- 출결·숙제 탭 (기본 화면) -->
+      <div class="tab-panel active" id="panel-attend">
+        <div class="card">
+          <div class="stat-grid">
+            <div class="stat-box">
+              <div class="stat-label">이번 달 출석</div>
+              <div class="stat-value" id="stat-attend">-<small>일</small></div>
+              <div class="stat-sub" id="stat-attend-sub">&nbsp;</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">숙제 완료율</div>
+              <div class="stat-value" id="stat-hw">-<small>%</small></div>
+              <div class="stat-sub" id="stat-hw-sub">&nbsp;</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title spaced">🗓️ 최근 출결</div>
+        <div class="card" id="log-card">
+          <div class="log-empty">출결 기록이 아직 없어요</div>
+        </div>
       </div>
 
-      <div class="section-title">🔁 보강 현황</div>
-      <div class="card" id="makeup-card">
-        <div class="makeup-empty">보강 대기 중인 항목이 없어요</div>
+      <!-- 시험 탭 -->
+      <div class="tab-panel" id="panel-exam">
+        <div class="card exam-card" id="exam-card">
+          <div class="exam-empty" style="color:#fff;opacity:.85;">등록된 시험 일정이 없어요</div>
+        </div>
       </div>
 
-      <div class="section-title">🗓️ 최근 출결</div>
-      <div class="card" id="log-card">
-        <div class="log-empty">출결 기록이 아직 없어요</div>
+      <!-- 보강 탭 -->
+      <div class="tab-panel" id="panel-makeup">
+        <div class="card" id="makeup-card">
+          <div class="makeup-empty">보강 대기 중인 항목이 없어요</div>
+        </div>
       </div>
 
       <div class="footer-note">
@@ -446,6 +493,21 @@
     return (d.getMonth()+1) + '/' + d.getDate();
   }
   const DOW = ['일','월','화','수','목','금','토'];
+
+  /* ── 탭 전환 ── */
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.getAttribute('data-tab')).classList.add('active');
+      if(btn.getAttribute('data-tab') === 'notice'){
+        markNoticeRead();
+      }
+    });
+  });
+
+  let currentNotice = null;
 
   function render(data){
     document.getElementById('loading').style.display = 'none';
@@ -559,30 +621,37 @@
     }
   }
 
-  // 공지사항 카드 렌더링 — 읽음 여부는 이 학생(id)의 브라우저 localStorage에 저장
+  // 공지사항 탭 콘텐츠 + 탭 라벨 NEW 점 표시. 읽음 여부는 이 학생(id)의 브라우저 localStorage에 저장
   function renderNotice(notice){
+    currentNotice = notice;
     const card = document.getElementById('notice-card');
+    const dot = document.getElementById('tab-notice-dot');
+
     if(!notice){
-      card.style.display = 'none';
+      card.innerHTML = '<div class="notice-empty">등록된 공지사항이 없어요</div>';
+      dot.style.display = 'none';
       return;
     }
+
+    card.innerHTML = `
+      <div class="notice-title">${notice.title}</div>
+      ${notice.content ? `<div class="notice-body">${notice.content}</div>` : ''}
+      <div class="notice-period">노출 기간: ${notice.startDate} ~ ${notice.endDate}</div>
+    `;
+
     const id = getParam('id');
     const readKey = 'noticeRead_' + id;
     const lastRead = localStorage.getItem(readKey);
     const isNew = lastRead !== notice.id;
+    dot.style.display = isNew ? 'block' : 'none';
+  }
 
-    card.style.display = 'block';
-    document.getElementById('notice-title').textContent = notice.title;
-    document.getElementById('notice-body').textContent = notice.content || '';
-    document.getElementById('notice-new-badge').style.display = isNew ? 'inline-block' : 'none';
-
-    card.onclick = () => {
-      card.classList.toggle('open');
-      if(isNew){
-        localStorage.setItem(readKey, notice.id);
-        document.getElementById('notice-new-badge').style.display = 'none';
-      }
-    };
+  function markNoticeRead(){
+    if(!currentNotice) return;
+    const id = getParam('id');
+    const readKey = 'noticeRead_' + id;
+    localStorage.setItem(readKey, currentNotice.id);
+    document.getElementById('tab-notice-dot').style.display = 'none';
   }
 
   function init(){
