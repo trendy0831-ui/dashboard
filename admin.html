@@ -286,6 +286,37 @@
   .notice-preview-card .np-body{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.5;}
   .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
 
+  /* ===================== 성적 관리(초등 테스트 기록) ===================== */
+  .grades-layout{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;}
+  @media (max-width: 900px){ .grades-layout{grid-template-columns:1fr;} }
+  .grades-stu-list{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;max-height:640px;overflow-y:auto;}
+  .grades-stu-item{padding:11px 12px;border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;
+    color:var(--ink);margin-bottom:2px;}
+  .grades-stu-item .gs-meta{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
+  .grades-stu-item:hover{background:var(--paper);}
+  .grades-stu-item.active{background:var(--deep);color:#fff;}
+  .grades-stu-item.active .gs-meta{color:#CFE6DE;}
+  .grades-stu-empty{color:var(--ink-soft);font-size:13.5px;text-align:center;padding:30px 10px;}
+
+  .grades-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px;margin-bottom:20px;}
+  .grades-form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+  @media (max-width: 600px){ .grades-form-grid{grid-template-columns:1fr;} }
+  .grades-form-grid input{font-size:13.5px;border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;font-family:inherit;color:var(--ink);}
+  .grades-form-memo{width:100%;font-size:13.5px;border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;font-family:inherit;color:var(--ink);margin-bottom:12px;}
+  .grades-save-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;
+    padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;}
+
+  .grades-test-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 4px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .grades-test-item:last-child{border-bottom:none;}
+  .gt-title{font-weight:700;}
+  .gt-date{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .gt-score{font-size:16px;font-weight:800;color:var(--teal-dark);white-space:nowrap;}
+
   /* ===================== 반응형: 아이패드 세로 / 좁은 화면 ===================== */
   @media (max-width: 1000px){
     .bottom-grid{grid-template-columns:1fr;}
@@ -1627,6 +1658,129 @@ async function renderNoticePreview(){
   }
 }
 
+/* ============ 성적 관리 (초등부 주간테스트/단원평가 기록) ============ */
+let gradesSelectedName = '';
+
+// roster의 "이름/학교/학년" 문자열 중 학교명이 "~초"(초등학교)로 끝나는 학생만 골라 이름 목록을 만든다
+function elementaryStudents(){
+  const names = allStudentNames();
+  return names
+    .map(raw => ({ raw, stu: parseStudentEntry(raw) }))
+    .filter(item => /초$/.test((item.stu.school || '').trim()));
+}
+
+function renderGradesPage(){
+  const el = document.getElementById('otherPage');
+  el.innerHTML = `
+    <div class="grades-layout">
+      <div class="grades-stu-list" id="gradesStuList"></div>
+      <div id="gradesMain">
+        <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div>
+        <div>왼쪽 목록에서 초등부 학생을 선택하면 주간테스트·단원평가 점수를 기록할 수 있어요.</div></div>
+      </div>
+    </div>
+  `;
+  renderGradesStuList();
+}
+
+function renderGradesStuList(){
+  const el = document.getElementById('gradesStuList');
+  const students = elementaryStudents();
+  if(!students.length){
+    el.innerHTML = `<div class="grades-stu-empty">초등부로 등록된 학생이 없어요.<br>학생 관리 &gt; 명단 편집에서 학년에 "초등"을 포함해 입력해주세요.</div>`;
+    return;
+  }
+  el.innerHTML = students.map(({raw, stu})=>{
+    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+    return `<div class="grades-stu-item ${gradesSelectedName===stu.name?'active':''}" data-name="${stu.name}">
+      ${stu.name}
+      ${meta ? `<div class="gs-meta">${meta}</div>` : ''}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.grades-stu-item').forEach(item=>{
+    item.onclick = ()=>{
+      gradesSelectedName = item.getAttribute('data-name');
+      renderGradesStuList();
+      renderGradesMain();
+    };
+  });
+}
+
+async function renderGradesMain(){
+  const el = document.getElementById('gradesMain');
+  el.innerHTML = `
+    <div class="grades-form">
+      <div class="grades-form-grid">
+        <input type="text" id="gtTitle" placeholder="테스트명 (예: 8월 3주 주간테스트)">
+        <input type="date" id="gtDate">
+        <input type="text" id="gtScore" placeholder="점수 (예: 92)">
+      </div>
+      <input type="text" class="grades-form-memo" id="gtMemo" placeholder="메모 (선택, 예: 분수 단원 취약)">
+      <button class="grades-save-btn" id="gtSaveBtn">기록 추가</button>
+      <div class="notice-status-msg" id="gtStatusMsg"></div>
+    </div>
+    <div class="panel">
+      <h2>${gradesSelectedName} 테스트 기록</h2>
+      <div id="gtList"><div class="reason-feed-empty">불러오는 중...</div></div>
+    </div>
+  `;
+
+  document.getElementById('gtSaveBtn').onclick = async ()=>{
+    const title = document.getElementById('gtTitle').value.trim();
+    const date = document.getElementById('gtDate').value;
+    const score = document.getElementById('gtScore').value.trim();
+    const memo = document.getElementById('gtMemo').value.trim();
+    const msgEl = document.getElementById('gtStatusMsg');
+
+    if(!title || !date || !score){
+      msgEl.textContent = '테스트명, 날짜, 점수는 꼭 입력해주세요.';
+      msgEl.classList.remove('ok');
+      return;
+    }
+
+    msgEl.textContent = '저장 중...';
+    msgEl.classList.remove('ok');
+    try{
+      await apiPost({ action:'saveElemTest', test:{ name: gradesSelectedName, title, date, score, memo } });
+      await new Promise(r=>setTimeout(r, 1200));
+      msgEl.textContent = '저장했어요.';
+      msgEl.classList.add('ok');
+      document.getElementById('gtTitle').value = '';
+      document.getElementById('gtScore').value = '';
+      document.getElementById('gtMemo').value = '';
+      await renderGradesTestList();
+    }catch(e){
+      msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
+      msgEl.classList.remove('ok');
+    }
+  };
+
+  await renderGradesTestList();
+}
+
+async function renderGradesTestList(){
+  const listEl = document.getElementById('gtList');
+  if(!listEl) return;
+  try{
+    const rows = await apiGet({action:'elemTests', name: gradesSelectedName});
+    if(!rows || !rows.length){
+      listEl.innerHTML = `<div class="reason-feed-empty">아직 기록된 테스트가 없어요.</div>`;
+      return;
+    }
+    listEl.innerHTML = rows.map(r=>`
+      <div class="grades-test-item">
+        <div>
+          <div class="gt-title">${r.title}</div>
+          <div class="gt-date">${r.date}${r.memo ? ' · '+r.memo : ''}</div>
+        </div>
+        <div class="gt-score">${r.score}</div>
+      </div>
+    `).join('');
+  }catch(e){
+    listEl.innerHTML = `<div class="reason-feed-empty">불러오지 못했어요.</div>`;
+  }
+}
+
 
 function switchPage(page){
   currentPage = page;
@@ -1668,7 +1822,7 @@ function switchPage(page){
     otherPage.innerHTML = `<div class="student-grid" id="studentGrid"></div>`;
     renderStudentGrid();
   } else if(page === 'grades'){
-    otherPage.innerHTML = emptyPagePanel('📝','성적 관리는 준비 중이에요','시험 성적과 진도 기록을 관리하는 화면이 이곳에 들어올 예정이에요.');
+    renderGradesPage();
   } else if(page === 'notice'){
     renderNoticePage();
   }
