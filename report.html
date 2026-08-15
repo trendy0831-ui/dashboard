@@ -360,10 +360,18 @@
 
   /* ── 공지사항 카드 (탭 내부) ─────────────── */
   .notice-card{
-    background:linear-gradient(135deg,#FBF2DD 0%,#F6E6C4 100%);
-    border:1px solid #F0DBA6;
+    background:#FFFFFF;
+    border:1px solid var(--line);
     border-radius:16px;
-    padding:16px 18px;
+    padding:16px 18px 16px 22px;
+    box-shadow:0 8px 24px rgba(8,80,65,0.08);
+    position:relative;
+  }
+  .notice-card::before{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0;
+    width:4px; border-radius:16px 0 0 16px;
+    background:var(--teal);
   }
   .notice-title{
     font-size:15px;
