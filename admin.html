@@ -1713,7 +1713,7 @@ async function renderGradesMain(){
       <div class="grades-form-grid">
         <input type="text" id="gtTitle" placeholder="테스트명 (예: 8월 3주 주간테스트)">
         <input type="date" id="gtDate">
-        <input type="text" id="gtScore" placeholder="점수 (예: 92)">
+        <input type="text" id="gtScore" placeholder="점수 (92 또는 8/10)">
       </div>
       <input type="text" class="grades-form-memo" id="gtMemo" placeholder="메모 (선택, 예: 분수 단원 취약)">
       <button class="grades-save-btn" id="gtSaveBtn">기록 추가</button>
@@ -1758,6 +1758,16 @@ async function renderGradesMain(){
   await renderGradesTestList();
 }
 
+// 점수 표시 형식 결정 — "8/10"처럼 분수 형태로 입력하면 그대로 두고,
+// "80"처럼 숫자만 입력하면 100점 만점 점수로 보고 "점"을 붙인다.
+function fmtScore(score){
+  const s = String(score == null ? '' : score).trim();
+  if(!s) return '';
+  if(s.indexOf('/') !== -1) return s;
+  if(/^\d+(\.\d+)?$/.test(s)) return s + '점';
+  return s;
+}
+
 async function renderGradesTestList(){
   const listEl = document.getElementById('gtList');
   if(!listEl) return;
@@ -1773,7 +1783,7 @@ async function renderGradesTestList(){
           <div class="gt-title">${r.title}</div>
           <div class="gt-date">${r.date}${r.memo ? ' · '+r.memo : ''}</div>
         </div>
-        <div class="gt-score">${r.score}</div>
+        <div class="gt-score">${fmtScore(r.score)}</div>
       </div>
     `).join('');
   }catch(e){
