@@ -457,7 +457,7 @@
           <span class="tab-new-dot" id="tab-attend-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn" data-tab="exam" id="tab-exam-btn">
-          📅 시험
+          <span id="tab-exam-label">📅 시험</span>
           <span class="tab-new-dot" id="tab-exam-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn" data-tab="makeup">
@@ -681,7 +681,7 @@
     // ── 다가오는 시험 (중등 이상: 학교 D-day / 초등: 개인별 테스트 기록) ──
     // 개인별 테스트 기록은 초등·중등 공통으로 표시 — 중등은 D-day 카드 아래에 이어서 보여준다.
     if(isElementary){
-      document.getElementById('tab-exam-btn').textContent = '📝 테스트';
+      document.getElementById('tab-exam-label').textContent = '📝 테스트';
       document.getElementById('exam-secondary').style.display = 'none';
       document.getElementById('elem-test-title').style.display = 'none';
     } else {
