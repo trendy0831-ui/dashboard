@@ -216,6 +216,33 @@
     padding:18px 0;
   }
 
+  /* ── 초등부 테스트 기록 ──────────────────── */
+  .elem-test-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:13px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .elem-test-item:last-child{ border-bottom:none; }
+  .et-title{
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .et-date{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .et-score{
+    font-size:19px;
+    font-weight:800;
+    color:var(--teal-dark);
+    white-space:nowrap;
+  }
+
   /* ── 보강 카드 ───────────────────────────── */
   .makeup-item{
     display:flex;
@@ -395,7 +422,7 @@
           <span class="tab-new-dot" id="tab-notice-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn active" data-tab="attend">✅ 출결·숙제</button>
-        <button class="tab-btn" data-tab="exam">📅 시험</button>
+        <button class="tab-btn" data-tab="exam" id="tab-exam-btn">📅 시험</button>
         <button class="tab-btn" data-tab="makeup">🔁 보강</button>
       </div>
     </div>
@@ -434,8 +461,15 @@
 
       <!-- 시험 탭 -->
       <div class="tab-panel" id="panel-exam">
-        <div class="card exam-card" id="exam-card">
-          <div class="exam-empty" style="color:#fff;opacity:.85;">등록된 시험 일정이 없어요</div>
+        <div id="exam-secondary">
+          <div class="card exam-card" id="exam-card">
+            <div class="exam-empty" style="color:#fff;opacity:.85;">등록된 시험 일정이 없어요</div>
+          </div>
+        </div>
+        <div id="exam-elementary" style="display:none;">
+          <div class="card" id="elem-test-card">
+            <div class="log-empty">기록된 테스트가 없어요</div>
+          </div>
         </div>
       </div>
 
@@ -513,6 +547,8 @@
     const records = (data.records || []).slice();
     const exam = data.exam;
     const notice = data.notice;
+    const isElementary = !!data.isElementary;
+    const elemTests = data.elemTests || [];
 
     document.getElementById('app').style.display = 'block';
     document.getElementById('s-name').textContent = student.name;
@@ -551,22 +587,44 @@
     // ── 공지사항 ──
     renderNotice(notice);
 
-    // ── 다가오는 시험 ──
-    const examCard = document.getElementById('exam-card');
-    if(exam && exam.mathExamDate){
-      const mathDate = parseDate(exam.mathExamDate);
-      let ddayText = '';
-      if(mathDate){
-        const diff = Math.ceil((mathDate.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
-        ddayText = diff === 0 ? 'D-DAY' : (diff > 0 ? `D-${diff}` : '시험 종료');
+    // ── 다가오는 시험 (중등 이상: 학교 D-day / 초등: 개인별 테스트 기록) ──
+    if(isElementary){
+      document.getElementById('tab-exam-btn').textContent = '📝 테스트';
+      document.getElementById('exam-secondary').style.display = 'none';
+      document.getElementById('exam-elementary').style.display = 'block';
+      const elemCard = document.getElementById('elem-test-card');
+      if(elemTests.length > 0){
+        elemCard.innerHTML = elemTests.map(t=>`
+          <div class="elem-test-item">
+            <div>
+              <div class="et-title">${t.title}</div>
+              <div class="et-date">${t.date}${t.memo ? ' · '+t.memo : ''}</div>
+            </div>
+            <div class="et-score">${t.score}</div>
+          </div>
+        `).join('');
+      } else {
+        elemCard.innerHTML = '<div class="log-empty">기록된 테스트가 없어요</div>';
       }
-      examCard.innerHTML = `
-        <div class="exam-school">${exam.school || ''} ${exam.memo ? '· '+exam.memo : ''}</div>
-        <div class="exam-row">
-          <div class="exam-dday">${ddayText}</div>
-          <div class="exam-date">수학 시험일<br><b>${mathDate ? mathDate.getFullYear()+'.'+String(mathDate.getMonth()+1).padStart(2,'0')+'.'+String(mathDate.getDate()).padStart(2,'0') : '-'}</b></div>
-        </div>
-      `;
+    } else {
+      document.getElementById('exam-secondary').style.display = 'block';
+      document.getElementById('exam-elementary').style.display = 'none';
+      const examCard = document.getElementById('exam-card');
+      if(exam && exam.mathExamDate){
+        const mathDate = parseDate(exam.mathExamDate);
+        let ddayText = '';
+        if(mathDate){
+          const diff = Math.ceil((mathDate.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+          ddayText = diff === 0 ? 'D-DAY' : (diff > 0 ? `D-${diff}` : '시험 종료');
+        }
+        examCard.innerHTML = `
+          <div class="exam-school">${exam.school || ''} ${exam.memo ? '· '+exam.memo : ''}</div>
+          <div class="exam-row">
+            <div class="exam-dday">${ddayText}</div>
+            <div class="exam-date">수학 시험일<br><b>${mathDate ? mathDate.getFullYear()+'.'+String(mathDate.getMonth()+1).padStart(2,'0')+'.'+String(mathDate.getDate()).padStart(2,'0') : '-'}</b></div>
+          </div>
+        `;
+      }
     }
 
     // ── 보강 현황 ──
