@@ -172,8 +172,8 @@
   .hw-status-label{font-size:12.5px;font-weight:700;color:var(--ink-soft);}
   .hw-status-btn.done{background:var(--teal);border-color:var(--teal);}
   .hw-status-btn.done .hw-name,.hw-status-btn.done .hw-status-label{color:#fff;}
-  .hw-status-btn.missing{border:2px solid var(--amber);}
-  .hw-status-btn.missing .hw-status-label{color:var(--amber);}
+  .hw-status-btn.missing{background:var(--red);border-color:var(--red);}
+  .hw-status-btn.missing .hw-name,.hw-status-btn.missing .hw-status-label{color:#fff;}
   .hw-status-btn.unchecked{border-style:dashed;}
 
   /* ===================== 명단 편집 ===================== */
@@ -1728,36 +1728,77 @@ async function renderNoticePreview(){
   }
 }
 
-/* ============ 성적 관리 (초등부 주간테스트/단원평가 기록) ============ */
+/* ============ 성적 관리 (초등 주간테스트/단원평가 + 중등 내신·쪽지시험 기록) ============ */
 let gradesSelectedName = '';
+let gradesActiveGroup = 'elem'; // 'elem' | 'secondary'
 
-// roster의 "이름/학교/학년" 문자열 중 학교명이 "~초"(초등학교)로 끝나는 학생만 골라 이름 목록을 만든다
+// 학년순 정렬을 위한 보조 함수 — 학교명 끝글자(초/중/고)로 급을, "학년" 텍스트에서 숫자를 뽑아
+// (급, 학년숫자) 순으로 비교한다. 초등부 안에서는 1~6학년 순, 중고등부 안에서는 중1~고3 순으로 정렬된다.
+function gradeSortKey(stu){
+  const school = (stu.school || '').trim();
+  const levelRank = school.endsWith('초') ? 0 : school.endsWith('중') ? 1 : school.endsWith('고') ? 2 : 3;
+  const m = (stu.grade || '').match(/\d+/);
+  const gradeNum = m ? parseInt(m[0], 10) : 99;
+  return levelRank * 100 + gradeNum;
+}
+function byGrade(a, b){
+  return gradeSortKey(a.stu) - gradeSortKey(b.stu) || a.stu.name.localeCompare(b.stu.name, 'ko');
+}
+
+// roster의 "이름/학교/학년" 문자열 중 학교명이 "~초"(초등학교)로 끝나는 학생만 골라 학년순으로 정렬한다
 function elementaryStudents(){
   const names = allStudentNames();
   return names
     .map(raw => ({ raw, stu: parseStudentEntry(raw) }))
-    .filter(item => /초$/.test((item.stu.school || '').trim()));
+    .filter(item => /초$/.test((item.stu.school || '').trim()))
+    .sort(byGrade);
+}
+
+// 학교명이 "~초"로 끝나지 않는(중·고등부) 학생 목록을 학년순으로 정렬한다
+function secondaryStudents(){
+  const names = allStudentNames();
+  return names
+    .map(raw => ({ raw, stu: parseStudentEntry(raw) }))
+    .filter(item => !/초$/.test((item.stu.school || '').trim()))
+    .sort(byGrade);
 }
 
 function renderGradesPage(){
   const el = document.getElementById('otherPage');
   el.innerHTML = `
+    <div class="section-tabs">
+      <button class="section-tab ${gradesActiveGroup==='elem'?'active':''}" id="gradesTabElem">초등부</button>
+      <button class="section-tab ${gradesActiveGroup==='secondary'?'active':''}" id="gradesTabSecondary">중·고등부</button>
+    </div>
     <div class="grades-layout">
       <div class="grades-stu-list" id="gradesStuList"></div>
       <div id="gradesMain">
         <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div>
-        <div>왼쪽 목록에서 초등부 학생을 선택하면 주간테스트·단원평가 점수를 기록할 수 있어요.</div></div>
+        <div>왼쪽 목록에서 학생을 선택하면 테스트·시험 점수를 기록할 수 있어요.</div></div>
       </div>
     </div>
   `;
+  document.getElementById('gradesTabElem').onclick = ()=>{
+    gradesActiveGroup = 'elem';
+    gradesSelectedName = '';
+    renderGradesPage();
+  };
+  document.getElementById('gradesTabSecondary').onclick = ()=>{
+    gradesActiveGroup = 'secondary';
+    gradesSelectedName = '';
+    renderGradesPage();
+  };
   renderGradesStuList();
 }
 
 function renderGradesStuList(){
   const el = document.getElementById('gradesStuList');
-  const students = elementaryStudents();
+  const students = gradesActiveGroup === 'elem' ? elementaryStudents() : secondaryStudents();
   if(!students.length){
-    el.innerHTML = `<div class="grades-stu-empty">초등부로 등록된 학생이 없어요.<br>학생 관리 &gt; 명단 편집에서 학년에 "초등"을 포함해 입력해주세요.</div>`;
+    const emptyMsg = gradesActiveGroup === 'elem'
+      ? '초등부로 등록된 학생이 없어요.<br>학생 관리 &gt; 명단 편집에서 학교명을 "~초"로 입력해주세요.'
+      : '중·고등부로 등록된 학생이 없어요.';
+    el.innerHTML = `<div class="grades-stu-empty">${emptyMsg}</div>`;
     return;
   }
   el.innerHTML = students.map(({raw, stu})=>{
@@ -1781,7 +1822,7 @@ async function renderGradesMain(){
   el.innerHTML = `
     <div class="grades-form">
       <div class="grades-form-grid">
-        <input type="text" id="gtTitle" placeholder="테스트명 (예: 8월 3주 주간테스트)">
+        <input type="text" id="gtTitle" placeholder="테스트명 (예: 8월 3주 주간테스트, 중간고사)">
         <input type="date" id="gtDate">
         <input type="text" id="gtScore" placeholder="점수 (92 또는 8/10)">
       </div>
