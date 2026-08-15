@@ -261,6 +261,31 @@
   .cal-cell.absent{background:#FBEAE7;}
   .cal-cell.absent .mark{background:var(--red);}
 
+  /* ===================== 공지사항 편집 ===================== */
+  .notice-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px;max-width:560px;}
+  .notice-field{margin-bottom:16px;}
+  .notice-field label{display:block;font-size:13px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
+  .notice-field input[type=text],.notice-field textarea{width:100%;border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);
+    background:var(--paper);}
+  .notice-field textarea{min-height:110px;resize:vertical;line-height:1.5;}
+  .notice-daterow{display:flex;gap:10px;}
+  .notice-daterow .notice-field{flex:1;}
+  .notice-field input[type=date]{width:100%;border:1px solid var(--line);border-radius:9px;
+    padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--paper);}
+  .notice-save-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;
+    padding:12px 24px;font-size:14.5px;font-weight:700;cursor:pointer;}
+  .notice-status-msg{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
+  .notice-status-msg.ok{color:#3D6B2E;font-weight:700;}
+  .notice-preview{margin-top:22px;padding-top:20px;border-top:1px solid var(--line);}
+  .notice-preview .lbl{font-size:12px;color:var(--ink-soft);font-weight:700;margin-bottom:8px;}
+  .notice-preview-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;}
+  .notice-preview-card .np-title{font-size:14.5px;font-weight:700;margin-bottom:4px;}
+  .notice-preview-card .np-body{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.5;}
+  .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
+
   /* ===================== 반응형: 아이패드 세로 / 좁은 화면 ===================== */
   @media (max-width: 1000px){
     .bottom-grid{grid-template-columns:1fr;}
@@ -331,6 +356,7 @@
     .edit-grid input{font-size:13px;padding:7px 8px;}
     .cal-grid{gap:3px;}
     .cal-cell{font-size:11px;}
+    .notice-form{padding:18px;}
   }
   /* ===================== 저장 실패 알림 토스트 ===================== */
   #saveToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -368,6 +394,10 @@
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
         성적 관리
+      </button>
+      <button class="nav-item" data-page="notice">
+        <span class="nav-emoji" aria-hidden="true">📢</span>
+        공지사항
       </button>
     </nav>
     <div class="side-foot">모든 데이터는 Google Sheets에<br>자동 저장됩니다.</div>
@@ -1209,7 +1239,8 @@ const PAGE_TITLES = {
   dashboard:  "대시보드",
   students:   "학생 관리",
   attendance: "출결 관리",
-  grades:     "성적 관리"
+  grades:     "성적 관리",
+  notice:     "공지사항"
 };
 let currentPage = 'attendance';
 
@@ -1494,6 +1525,108 @@ function renderStudentGrid(){
   });
 }
 
+/* ============ 공지사항 (관리자 작성 화면) ============ */
+async function renderNoticePage(){
+  const el = document.getElementById('otherPage');
+  el.innerHTML = `
+    <div class="notice-form">
+      <div class="notice-field">
+        <label>제목</label>
+        <input type="text" id="noticeTitle" placeholder="예: 8월 넷째 주 휴강 안내">
+      </div>
+      <div class="notice-field">
+        <label>내용</label>
+        <textarea id="noticeContent" placeholder="공지 내용을 입력하세요"></textarea>
+      </div>
+      <div class="notice-daterow">
+        <div class="notice-field">
+          <label>시작일</label>
+          <input type="date" id="noticeStart">
+        </div>
+        <div class="notice-field">
+          <label>종료일</label>
+          <input type="date" id="noticeEnd">
+        </div>
+      </div>
+      <button class="notice-save-btn" id="noticeSaveBtn">저장</button>
+      <div class="notice-status-msg" id="noticeStatusMsg"></div>
+
+      <div class="notice-preview">
+        <div class="lbl">현재 학부모 리포트에 노출 중인 공지</div>
+        <div class="notice-preview-card" id="noticePreviewCard">불러오는 중...</div>
+      </div>
+    </div>
+  `;
+
+  await loadNoticeIntoForm();
+
+  document.getElementById('noticeSaveBtn').onclick = async ()=>{
+    const title = document.getElementById('noticeTitle').value.trim();
+    const content = document.getElementById('noticeContent').value.trim();
+    const startDate = document.getElementById('noticeStart').value;
+    const endDate = document.getElementById('noticeEnd').value;
+    const msgEl = document.getElementById('noticeStatusMsg');
+
+    if(!title || !startDate || !endDate){
+      msgEl.textContent = '제목, 시작일, 종료일은 꼭 입력해주세요.';
+      msgEl.classList.remove('ok');
+      return;
+    }
+    if(startDate > endDate){
+      msgEl.textContent = '종료일이 시작일보다 빠를 수 없어요.';
+      msgEl.classList.remove('ok');
+      return;
+    }
+
+    msgEl.textContent = '저장 중...';
+    msgEl.classList.remove('ok');
+    try{
+      await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
+      await new Promise(r=>setTimeout(r, 1200)); // no-cors라 완료 신호가 없어 약간 대기
+      msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
+      msgEl.classList.add('ok');
+      await renderNoticePreview();
+    }catch(e){
+      msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
+      msgEl.classList.remove('ok');
+    }
+  };
+}
+
+async function loadNoticeIntoForm(){
+  try{
+    const data = await apiGet({action:'notice'});
+    const n = data.notice;
+    if(n){
+      document.getElementById('noticeTitle').value = n.title || '';
+      document.getElementById('noticeContent').value = n.content || '';
+      document.getElementById('noticeStart').value = n.startDate || '';
+      document.getElementById('noticeEnd').value = n.endDate || '';
+    }
+  }catch(e){}
+  await renderNoticePreview();
+}
+
+async function renderNoticePreview(){
+  const el = document.getElementById('noticePreviewCard');
+  if(!el) return;
+  try{
+    const data = await apiGet({action:'notice'});
+    const n = data.notice;
+    if(!n){
+      el.innerHTML = '현재 노출 기간에 해당하는 공지가 없어요.';
+      return;
+    }
+    el.innerHTML = `
+      <div class="np-title">${n.title}</div>
+      ${n.content ? `<div class="np-body">${n.content}</div>` : ''}
+      <div class="np-period">노출 기간: ${n.startDate} ~ ${n.endDate}</div>
+    `;
+  }catch(e){
+    el.innerHTML = '불러오지 못했어요.';
+  }
+}
+
 
 function switchPage(page){
   currentPage = page;
@@ -1536,6 +1669,8 @@ function switchPage(page){
     renderStudentGrid();
   } else if(page === 'grades'){
     otherPage.innerHTML = emptyPagePanel('📝','성적 관리는 준비 중이에요','시험 성적과 진도 기록을 관리하는 화면이 이곳에 들어올 예정이에요.');
+  } else if(page === 'notice'){
+    renderNoticePage();
   }
 }
 
