@@ -45,11 +45,24 @@
     border-radius:50%;
     background:rgba(255,255,255,0.07);
   }
+  .hero-brand-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .hero-logo{
+    width:28px;
+    height:28px;
+    border-radius:8px;
+    object-fit:contain;
+    background:rgba(255,255,255,0.15);
+    flex-shrink:0;
+  }
   .hero-brand{
     font-size:13px;
     letter-spacing:0.06em;
     opacity:0.85;
-    margin-bottom:14px;
   }
   .hero-name{
     font-size:28px;
@@ -409,7 +422,10 @@
 
   <div id="app">
     <div class="hero">
-      <div class="hero-brand">이끌림수학학원 · 학습 리포트</div>
+      <div class="hero-brand-row">
+        <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고" class="hero-logo" onerror="this.style.display='none'">
+        <div class="hero-brand">이끌림수학학원 · 학습 리포트</div>
+      </div>
       <div class="hero-name" id="s-name">-</div>
       <div class="hero-meta" id="s-meta">-</div>
       <div class="hero-updated" id="s-updated"></div>
