@@ -316,10 +316,15 @@
   .gt-title{font-weight:700;}
   .gt-date{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .gt-score{font-size:16px;font-weight:800;color:var(--teal-dark);white-space:nowrap;}
+  .gt-edit-btn{background:none;border:none;color:var(--ink-soft);font-size:14px;
+    cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;}
+  .gt-edit-btn:hover{background:#EAF3EF;color:var(--teal-dark);}
   .gt-delete-btn{background:none;border:none;color:var(--ink-soft);font-size:14px;
     cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;}
   .gt-delete-btn:hover{background:#FBEAE7;color:var(--red);}
   .gt-delete-btn:disabled{opacity:.4;cursor:default;}
+  .grades-cancel-btn{background:none;border:1px solid var(--line);color:var(--ink-soft);
+    border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;}
 
   /* ===================== 반응형: 아이패드 세로 / 좁은 화면 ===================== */
   @media (max-width: 1000px){
@@ -1720,7 +1725,10 @@ async function renderGradesMain(){
         <input type="text" id="gtScore" placeholder="점수 (92 또는 8/10)">
       </div>
       <input type="text" class="grades-form-memo" id="gtMemo" placeholder="메모 (선택, 예: 분수 단원 취약)">
-      <button class="grades-save-btn" id="gtSaveBtn">기록 추가</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="grades-save-btn" id="gtSaveBtn">기록 추가</button>
+        <button class="grades-cancel-btn" id="gtCancelBtn" style="display:none;">취소</button>
+      </div>
       <div class="notice-status-msg" id="gtStatusMsg"></div>
     </div>
     <div class="panel">
@@ -1728,6 +1736,34 @@ async function renderGradesMain(){
       <div id="gtList"><div class="reason-feed-empty">불러오는 중...</div></div>
     </div>
   `;
+
+  let editingRowNum = null; // null이면 신규 추가, 값이 있으면 그 행을 수정 중
+
+  function resetForm(){
+    editingRowNum = null;
+    document.getElementById('gtTitle').value = '';
+    document.getElementById('gtDate').value = '';
+    document.getElementById('gtScore').value = '';
+    document.getElementById('gtMemo').value = '';
+    document.getElementById('gtSaveBtn').textContent = '기록 추가';
+    document.getElementById('gtCancelBtn').style.display = 'none';
+  }
+
+  window.startEditElemTest = (row)=>{
+    editingRowNum = row.rowNum;
+    document.getElementById('gtTitle').value = row.title;
+    document.getElementById('gtDate').value = row.date;
+    document.getElementById('gtScore').value = row.score;
+    document.getElementById('gtMemo').value = row.memo || '';
+    document.getElementById('gtSaveBtn').textContent = '수정 완료';
+    document.getElementById('gtCancelBtn').style.display = '';
+    document.getElementById('gtTitle').scrollIntoView({behavior:'smooth', block:'center'});
+  };
+
+  document.getElementById('gtCancelBtn').onclick = ()=>{
+    resetForm();
+    document.getElementById('gtStatusMsg').textContent = '';
+  };
 
   document.getElementById('gtSaveBtn').onclick = async ()=>{
     const btn = document.getElementById('gtSaveBtn');
@@ -1748,13 +1784,13 @@ async function renderGradesMain(){
     msgEl.textContent = '저장 중...';
     msgEl.classList.remove('ok');
     try{
-      await apiPost({ action:'saveElemTest', test:{ name: gradesSelectedName, title, date, score, memo } });
+      const test = { name: gradesSelectedName, title, date, score, memo };
+      if(editingRowNum) test.rowNum = editingRowNum;
+      await apiPost({ action:'saveElemTest', test });
       await new Promise(r=>setTimeout(r, 1200));
-      msgEl.textContent = '저장했어요.';
+      msgEl.textContent = editingRowNum ? '수정했어요.' : '저장했어요.';
       msgEl.classList.add('ok');
-      document.getElementById('gtTitle').value = '';
-      document.getElementById('gtScore').value = '';
-      document.getElementById('gtMemo').value = '';
+      resetForm();
       await renderGradesTestList();
     }catch(e){
       msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
@@ -1794,10 +1830,19 @@ async function renderGradesTestList(){
         </div>
         <div style="display:flex;align-items:center;gap:12px;">
           <div class="gt-score">${fmtScore(r.score)}</div>
+          <button class="gt-edit-btn" data-rownum="${r.rowNum}" aria-label="수정">✎</button>
           <button class="gt-delete-btn" data-rownum="${r.rowNum}" aria-label="삭제">✕</button>
         </div>
       </div>
     `).join('');
+    const rowsByNum = {};
+    rows.forEach(r => { rowsByNum[r.rowNum] = r; });
+    listEl.querySelectorAll('.gt-edit-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        const row = rowsByNum[parseInt(btn.getAttribute('data-rownum'), 10)];
+        if(row && window.startEditElemTest) window.startEditElemTest(row);
+      };
+    });
     listEl.querySelectorAll('.gt-delete-btn').forEach(btn=>{
       btn.onclick = async ()=>{
         if(!confirm('이 테스트 기록을 삭제할까요?')) return;
