@@ -489,7 +489,8 @@
             <div class="exam-empty" style="color:#fff;opacity:.85;">등록된 시험 일정이 없어요</div>
           </div>
         </div>
-        <div id="exam-elementary" style="display:none;">
+        <div id="elem-test-section" style="display:none;">
+          <div class="section-title spaced" id="elem-test-title">📝 테스트 기록</div>
           <div class="card" id="elem-test-card">
             <div class="log-empty">기록된 테스트가 없어요</div>
           </div>
@@ -621,27 +622,14 @@
     renderNotice(notice);
 
     // ── 다가오는 시험 (중등 이상: 학교 D-day / 초등: 개인별 테스트 기록) ──
+    // 개인별 테스트 기록은 초등·중등 공통으로 표시 — 중등은 D-day 카드 아래에 이어서 보여준다.
     if(isElementary){
       document.getElementById('tab-exam-btn').textContent = '📝 테스트';
       document.getElementById('exam-secondary').style.display = 'none';
-      document.getElementById('exam-elementary').style.display = 'block';
-      const elemCard = document.getElementById('elem-test-card');
-      if(elemTests.length > 0){
-        elemCard.innerHTML = elemTests.map(t=>`
-          <div class="elem-test-item">
-            <div>
-              <div class="et-title">${t.title}</div>
-              <div class="et-date">${t.date}${t.memo ? ' · '+t.memo : ''}</div>
-            </div>
-            <div class="et-score">${fmtScore(t.score)}</div>
-          </div>
-        `).join('');
-      } else {
-        elemCard.innerHTML = '<div class="log-empty">기록된 테스트가 없어요</div>';
-      }
+      document.getElementById('elem-test-title').style.display = 'none';
     } else {
       document.getElementById('exam-secondary').style.display = 'block';
-      document.getElementById('exam-elementary').style.display = 'none';
+      document.getElementById('elem-test-title').style.display = '';
       const examCard = document.getElementById('exam-card');
       if(exam && exam.mathExamDate){
         const mathDate = parseDate(exam.mathExamDate);
@@ -658,6 +646,22 @@
           </div>
         `;
       }
+    }
+
+    document.getElementById('elem-test-section').style.display = 'block';
+    const elemCard = document.getElementById('elem-test-card');
+    if(elemTests.length > 0){
+      elemCard.innerHTML = elemTests.map(t=>`
+        <div class="elem-test-item">
+          <div>
+            <div class="et-title">${t.title}</div>
+            <div class="et-date">${t.date}${t.memo ? ' · '+t.memo : ''}</div>
+          </div>
+          <div class="et-score">${fmtScore(t.score)}</div>
+        </div>
+      `).join('');
+    } else {
+      elemCard.innerHTML = '<div class="log-empty">기록된 테스트가 없어요</div>';
     }
 
     // ── 보강 현황 ──
