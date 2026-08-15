@@ -316,6 +316,10 @@
   .gt-title{font-weight:700;}
   .gt-date{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .gt-score{font-size:16px;font-weight:800;color:var(--teal-dark);white-space:nowrap;}
+  .gt-delete-btn{background:none;border:none;color:var(--ink-soft);font-size:14px;
+    cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;}
+  .gt-delete-btn:hover{background:#FBEAE7;color:var(--red);}
+  .gt-delete-btn:disabled{opacity:.4;cursor:default;}
 
   /* ===================== 반응형: 아이패드 세로 / 좁은 화면 ===================== */
   @media (max-width: 1000px){
@@ -1726,6 +1730,8 @@ async function renderGradesMain(){
   `;
 
   document.getElementById('gtSaveBtn').onclick = async ()=>{
+    const btn = document.getElementById('gtSaveBtn');
+    if(btn.disabled) return; // 저장 진행 중 중복 클릭 방지
     const title = document.getElementById('gtTitle').value.trim();
     const date = document.getElementById('gtDate').value;
     const score = document.getElementById('gtScore').value.trim();
@@ -1738,6 +1744,7 @@ async function renderGradesMain(){
       return;
     }
 
+    btn.disabled = true;
     msgEl.textContent = '저장 중...';
     msgEl.classList.remove('ok');
     try{
@@ -1752,6 +1759,8 @@ async function renderGradesMain(){
     }catch(e){
       msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
       msgEl.classList.remove('ok');
+    }finally{
+      btn.disabled = false;
     }
   };
 
@@ -1783,9 +1792,25 @@ async function renderGradesTestList(){
           <div class="gt-title">${r.title}</div>
           <div class="gt-date">${r.date}${r.memo ? ' · '+r.memo : ''}</div>
         </div>
-        <div class="gt-score">${fmtScore(r.score)}</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="gt-score">${fmtScore(r.score)}</div>
+          <button class="gt-delete-btn" data-rownum="${r.rowNum}" aria-label="삭제">✕</button>
+        </div>
       </div>
     `).join('');
+    listEl.querySelectorAll('.gt-delete-btn').forEach(btn=>{
+      btn.onclick = async ()=>{
+        if(!confirm('이 테스트 기록을 삭제할까요?')) return;
+        btn.disabled = true;
+        try{
+          await apiPost({ action:'deleteElemTest', rowNum: parseInt(btn.getAttribute('data-rownum'), 10) });
+          await new Promise(r=>setTimeout(r, 800));
+          await renderGradesTestList();
+        }catch(e){
+          btn.disabled = false;
+        }
+      };
+    });
   }catch(e){
     listEl.innerHTML = `<div class="reason-feed-empty">불러오지 못했어요.</div>`;
   }
