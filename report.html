@@ -266,6 +266,61 @@
     font-size:12px;
   }
 
+  /* ── 공지사항 카드 ───────────────────────── */
+  .notice-card{
+    background:linear-gradient(135deg,#FBF2DD 0%,#F6E6C4 100%);
+    border:1px solid #F0DBA6;
+    border-radius:16px;
+    padding:16px 18px;
+    cursor:pointer;
+    position:relative;
+  }
+  .notice-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .notice-icon{ font-size:15px; }
+  .notice-title{
+    font-size:14px;
+    font-weight:700;
+    color:var(--teal-dark);
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .notice-new-badge{
+    font-size:10px;
+    font-weight:800;
+    color:#fff;
+    background:var(--red);
+    padding:2px 7px;
+    border-radius:99px;
+    flex-shrink:0;
+  }
+  .notice-body{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    white-space:pre-wrap;
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.25s ease;
+  }
+  .notice-card.open .notice-body{
+    max-height:400px;
+    margin-top:4px;
+  }
+  .notice-card:not(.open) .notice-body{
+    display:-webkit-box;
+    -webkit-line-clamp:1;
+    -webkit-box-orient:vertical;
+    max-height:18px;
+  }
+
   /* 로딩 / 에러 상태 */
   .state-screen{
     min-height:100vh;
@@ -312,6 +367,15 @@
     </div>
 
     <div class="wrap">
+
+      <div class="notice-card" id="notice-card" style="display:none;">
+        <div class="notice-top">
+          <span class="notice-icon">📢</span>
+          <span class="notice-title" id="notice-title"></span>
+          <span class="notice-new-badge" id="notice-new-badge" style="display:none;">NEW</span>
+        </div>
+        <div class="notice-body" id="notice-body"></div>
+      </div>
 
       <div class="card hero-overlap">
         <div class="stat-grid">
@@ -394,6 +458,7 @@
     const student = data.student;
     const records = (data.records || []).slice();
     const exam = data.exam;
+    const notice = data.notice;
 
     document.getElementById('app').style.display = 'block';
     document.getElementById('s-name').textContent = student.name;
@@ -428,6 +493,9 @@
       document.getElementById('stat-hw').innerHTML = '-';
       document.getElementById('stat-hw-sub').textContent = '이번 달 기록 없음';
     }
+
+    // ── 공지사항 ──
+    renderNotice(notice);
 
     // ── 다가오는 시험 ──
     const examCard = document.getElementById('exam-card');
@@ -489,6 +557,32 @@
         `;
       }).join('');
     }
+  }
+
+  // 공지사항 카드 렌더링 — 읽음 여부는 이 학생(id)의 브라우저 localStorage에 저장
+  function renderNotice(notice){
+    const card = document.getElementById('notice-card');
+    if(!notice){
+      card.style.display = 'none';
+      return;
+    }
+    const id = getParam('id');
+    const readKey = 'noticeRead_' + id;
+    const lastRead = localStorage.getItem(readKey);
+    const isNew = lastRead !== notice.id;
+
+    card.style.display = 'block';
+    document.getElementById('notice-title').textContent = notice.title;
+    document.getElementById('notice-body').textContent = notice.content || '';
+    document.getElementById('notice-new-badge').style.display = isNew ? 'inline-block' : 'none';
+
+    card.onclick = () => {
+      card.classList.toggle('open');
+      if(isNew){
+        localStorage.setItem(readKey, notice.id);
+        document.getElementById('notice-new-badge').style.display = 'none';
+      }
+    };
   }
 
   function init(){
