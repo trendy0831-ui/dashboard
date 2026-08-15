@@ -5,26 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>이끌림 오답노트 · 취약 개념 분석기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --deep-green:#204234;
-    --deep-green-light:#2C5744;
-    --deep-green-dark:#152C22;
-    --cream:#F5F2EB;
-    --cream-dark:#EAE4D6;
+    --deep-green:#018875;
+    --deep-green-light:#02A390;
+    --deep-green-dark:#016358;
+    --cream:#F4F9F6;
+    --cream-dark:#E4EFE8;
     --white:#FFFFFF;
-    --ink:#20241F;
-    --ink-soft:#6B6B60;
-    --line:#DEDACB;
+    --ink:#1D2A26;
+    --ink-soft:#6B7A74;
+    --line:#DCE7E1;
     --red:#C1443A;
     --red-soft:#F7DFDC;
     --amber:#B8863B;
     --amber-soft:#F2E4C8;
-    --blue:#2E5C8A;
-    --blue-soft:#DCE7F1;
-    --shadow:0 10px 28px rgba(32,66,52,0.10);
-    --shadow-sm:0 3px 10px rgba(32,66,52,0.08);
+    --blue:#027A94;
+    --blue-soft:#DCEEF1;
+    --shadow:0 10px 28px rgba(1,136,117,0.12);
+    --shadow-sm:0 3px 10px rgba(1,136,117,0.08);
     --radius:14px;
   }
 
@@ -38,7 +38,7 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  .mono{ font-family:'Gaegu', sans-serif; font-weight:700; }
+  .mono{ font-family:'Noto Sans KR', sans-serif; font-weight:700; }
 
   .app{
     max-width:1220px;
@@ -64,25 +64,22 @@
     width:60px; height:60px;
     border-radius:50%;
     background:var(--cream);
-    color:var(--deep-green);
     display:flex; align-items:center; justify-content:center;
-    font-family:'Noto Sans KR', sans-serif;
-    font-weight:800;
-    font-size:11px;
-    letter-spacing:-0.5px;
-    line-height:1.15;
-    text-align:center;
     flex-shrink:0;
     border:2px solid rgba(255,255,255,0.5);
-    padding:4px;
-    white-space:nowrap;
+    overflow:hidden;
+  }
+  .logo-mark img{
+    width:100%; height:100%;
+    object-fit:contain;
+    padding:6px;
   }
   .masthead h1{
-    font-family:'Jua', sans-serif;
-    font-size:24px;
-    font-weight:400;
+    font-family:'Noto Sans KR', sans-serif;
+    font-size:23px;
+    font-weight:700;
     color:var(--white);
-    letter-spacing:0.2px;
+    letter-spacing:-0.3px;
   }
   .masthead .subtitle{
     font-size:12.5px;
@@ -97,7 +94,7 @@
 
   /* ===== 버튼 ===== */
   .btn{
-    font-family:'Gaegu', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     font-weight:700;
     font-size:15px;
     padding:11px 18px;
@@ -143,7 +140,7 @@
     border-bottom:2px solid var(--line);
   }
   .tab-btn{
-    font-family:'Gaegu', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     font-size:17px;
     font-weight:700;
     color:var(--ink-soft);
@@ -184,7 +181,7 @@
     border:1px solid var(--line);
   }
   .card-title{
-    font-family:'Jua', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     font-size:17px;
     font-weight:700;
     color:var(--deep-green);
@@ -256,7 +253,7 @@
   .summary-card.c3::before{ background:var(--amber); }
   .summary-card.c4::before{ background:var(--blue); }
   .summary-label{ font-size:12px; color:var(--ink-soft); font-weight:600; margin-bottom:8px; }
-  .summary-value{ font-family:'Jua', sans-serif; font-size:26px; font-weight:700; color:var(--ink); }
+  .summary-value{ font-family:'Noto Sans KR', sans-serif; font-size:26px; font-weight:700; color:var(--ink); }
   .summary-sub{ font-size:11px; color:var(--ink-soft); margin-top:4px; }
 
   /* ===== 필터 바 ===== */
@@ -344,7 +341,7 @@
     position:relative;
   }
   .weak-rank{
-    font-family:'Jua', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     font-size:20px;
     font-weight:700;
     color:var(--deep-green);
@@ -413,7 +410,7 @@
     font-weight:700;
     padding:4px 14px;
     border-radius:20px;
-    font-family:'Jua', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     letter-spacing:0.3px;
   }
   .report-header-row{
@@ -427,7 +424,7 @@
     gap:8px;
   }
   .report-student-name{
-    font-family:'Jua', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     font-size:20px;
     font-weight:700;
     color:var(--deep-green);
@@ -447,7 +444,7 @@
     padding:12px 14px;
   }
   .report-stat .r-label{ font-size:11px; color:var(--ink-soft); font-weight:600; margin-bottom:4px; }
-  .report-stat .r-value{ font-family:'Jua', sans-serif; font-size:17px; font-weight:700; color:var(--ink); }
+  .report-stat .r-value{ font-family:'Noto Sans KR', sans-serif; font-size:17px; font-weight:700; color:var(--ink); }
 
   .report-textbox{
     background:var(--white);
@@ -460,7 +457,7 @@
     position:relative;
   }
   .report-textbox .quote-mark{
-    font-family:'Jua', sans-serif;
+    font-family:'Noto Sans KR', sans-serif;
     font-size:36px;
     color:var(--deep-green);
     opacity:0.25;
@@ -492,7 +489,7 @@
     text-align:center;
   }
   .backup-box .icon{ font-size:30px; margin-bottom:10px; }
-  .backup-box h4{ font-family:'Jua', sans-serif; font-size:15px; color:var(--deep-green); margin-bottom:6px; }
+  .backup-box h4{ font-family:'Noto Sans KR', sans-serif; font-size:15px; color:var(--deep-green); margin-bottom:6px; }
   .backup-box p{ font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:14px; }
 
   .file-status{
@@ -542,7 +539,7 @@
     box-shadow:0 20px 50px rgba(0,0,0,0.25);
     text-align:center;
   }
-  .modal-box h3{ font-family:'Jua', sans-serif; font-size:18px; margin-bottom:10px; color:var(--ink); }
+  .modal-box h3{ font-family:'Noto Sans KR', sans-serif; font-size:18px; margin-bottom:10px; color:var(--ink); }
   .modal-box p{ font-size:13.5px; color:var(--ink-soft); margin-bottom:20px; line-height:1.6; }
   .modal-actions{ display:flex; gap:10px; }
   .modal-actions .btn{ flex:1; justify-content:center; }
@@ -573,7 +570,7 @@
   <!-- ===== 헤더 ===== -->
   <div class="masthead">
     <div class="masthead-left">
-      <div class="logo-mark">이끌림</div>
+      <div class="logo-mark"><img src="https://raw.githubusercontent.com/trendy0831-ui/dashboard/main/assets/logo-rounded.png" alt="이끌림 수학학원 로고"></div>
       <div>
         <h1>이끌림 오답 노트 &amp; 취약 개념 분석기</h1>
         <div class="subtitle">이끌림 수학학원 · 오답을 기록하고, 취약 단원을 진단하고, 데이터를 안전하게 관리하세요</div>
