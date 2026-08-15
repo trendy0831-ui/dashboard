@@ -444,9 +444,18 @@
           📢 공지사항
           <span class="tab-new-dot" id="tab-notice-dot" style="display:none;"></span>
         </button>
-        <button class="tab-btn active" data-tab="attend">✅ 출결·숙제</button>
-        <button class="tab-btn" data-tab="exam" id="tab-exam-btn">📅 시험</button>
-        <button class="tab-btn" data-tab="makeup">🔁 보강</button>
+        <button class="tab-btn active" data-tab="attend">
+          ✅ 출결·숙제
+          <span class="tab-new-dot" id="tab-attend-dot" style="display:none;"></span>
+        </button>
+        <button class="tab-btn" data-tab="exam" id="tab-exam-btn">
+          📅 시험
+          <span class="tab-new-dot" id="tab-exam-dot" style="display:none;"></span>
+        </button>
+        <button class="tab-btn" data-tab="makeup">
+          🔁 보강
+          <span class="tab-new-dot" id="tab-makeup-dot" style="display:none;"></span>
+        </button>
       </div>
     </div>
 
@@ -544,6 +553,10 @@
   }
   const DOW = ['일','월','화','수','목','금','토'];
 
+  function toDateStrLocal(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
   // 점수 표시 형식 결정 — "8/10"처럼 분수 형태로 입력하면 그대로 두고,
   // "80"처럼 숫자만 입력하면 100점 만점 점수로 보고 "점"을 붙인다.
   function fmtScore(score){
@@ -560,12 +573,36 @@
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('panel-'+btn.getAttribute('data-tab')).classList.add('active');
-      if(btn.getAttribute('data-tab') === 'notice'){
-        markNoticeRead();
-      }
+      const tab = btn.getAttribute('data-tab');
+      document.getElementById('panel-'+tab).classList.add('active');
+      if(tab === 'notice') markNoticeRead();
+      if(tab === 'attend') hideDot('tab-attend-dot'); // 오늘 기록은 열람 즉시 확인된 것으로 처리
+      if(tab === 'exam') markSeenRead('exam', latestExamSeenId);
+      if(tab === 'makeup') markSeenRead('makeup', latestMakeupSeenId);
     });
   });
+
+  function hideDot(id){
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  }
+
+  // 시험/보강 탭 공용 "새 항목" 처리 — 공지사항과 동일하게 학생(id)별 localStorage에
+  // "마지막으로 확인한 항목 식별자"를 저장해두고, 그 값과 다르면 새 항목으로 본다.
+  function markSeenRead(kind, latestId){
+    if(!latestId) return;
+    const id = getParam('id');
+    localStorage.setItem('seen_' + kind + '_' + id, latestId);
+    hideDot('tab-' + kind + '-dot');
+  }
+  function isUnseen(kind, latestId){
+    if(!latestId) return false;
+    const id = getParam('id');
+    const lastSeen = localStorage.getItem('seen_' + kind + '_' + id);
+    return lastSeen !== latestId;
+  }
+  let latestExamSeenId = null;
+  let latestMakeupSeenId = null;
 
   let currentNotice = null;
 
@@ -618,6 +655,11 @@
       document.getElementById('stat-hw-sub').textContent = '이번 달 기록 없음';
     }
 
+    // ── 출결·숙제 탭 NEW 표시: 오늘 새로 기록된 출결이 있으면 점 표시 ──
+    const todayStr = toDateStrLocal(now);
+    const hasTodayRecord = records.some(r => r.date === todayStr);
+    document.getElementById('tab-attend-dot').style.display = hasTodayRecord ? 'block' : 'none';
+
     // ── 공지사항 ──
     renderNotice(notice);
 
@@ -663,6 +705,9 @@
     } else {
       elemCard.innerHTML = '<div class="log-empty">기록된 테스트가 없어요</div>';
     }
+    // 시험 탭 NEW 표시: 가장 최근 테스트의 rowNum을 식별자로 사용 — 새 기록이 추가되면 rowNum이 달라진다
+    latestExamSeenId = elemTests.length > 0 ? String(elemTests[0].rowNum) : null;
+    document.getElementById('tab-exam-dot').style.display = isUnseen('exam', latestExamSeenId) ? 'block' : 'none';
 
     // ── 보강 현황 ──
     const makeupCard = document.getElementById('makeup-card');
@@ -680,6 +725,12 @@
         `;
       }).join('');
     }
+    // 보강 탭 NEW 표시: 가장 최근 결석 항목의 날짜+보강완료여부를 식별자로 사용 —
+    // 새 결석이 생기거나 기존 항목의 보강 완료 상태가 바뀌면 식별자가 달라진다
+    latestMakeupSeenId = makeupItems.length > 0
+      ? makeupItems[0].date + '|' + (makeupItems[0].makeupDone ? '1' : '0')
+      : null;
+    document.getElementById('tab-makeup-dot').style.display = isUnseen('makeup', latestMakeupSeenId) ? 'block' : 'none';
 
     // ── 최근 출결 로그 (최대 10건, checkIn/checkOut 완전 제외) ──
     const logCard = document.getElementById('log-card');
