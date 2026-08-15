@@ -83,6 +83,7 @@
     z-index:2;
   }
   .card.hero-overlap{ margin-top:-24px; }
+  .card + .card{ margin-top:16px; }
   .section-title{
     font-size:14px;
     font-weight:700;
@@ -259,6 +260,11 @@
     margin-top:28px;
     line-height:1.7;
   }
+  .footer-phone{
+    font-weight:700;
+    color:var(--teal-dark);
+    font-size:12px;
+  }
 
   /* 로딩 / 에러 상태 */
   .state-screen{
@@ -339,7 +345,8 @@
 
       <div class="footer-note">
         등원·하원 알림은 카카오톡으로 별도 발송됩니다.<br>
-        문의사항은 학원으로 연락 주세요 · 이끌림수학학원
+        문의사항은 학원으로 연락 주세요<br>
+        이끌림수학학원 · <span class="footer-phone">053-759-1020</span>
       </div>
     </div>
   </div>
