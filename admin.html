@@ -164,7 +164,7 @@
     color:var(--amber);cursor:pointer;text-align:center;}
   .makeup-toggle.done{border-style:solid;border-color:#6FA05A;background:#EAF3E5;color:#3D6B2E;}
 
-  /* ===================== 숙제 카드 ===================== */
+  /* ===================== 숙제 카드 (레거시 - 미사용) ===================== */
   .hw-status-btn{width:100%;display:flex;align-items:flex-start;justify-content:space-between;
     background:#fff;border:1px solid var(--line);border-radius:9px;padding:11px 13px;
     cursor:pointer;text-align:left;margin-bottom:8px;}
@@ -175,6 +175,36 @@
   .hw-status-btn.missing{background:var(--red);border-color:var(--red);}
   .hw-status-btn.missing .hw-name,.hw-status-btn.missing .hw-status-label{color:#fff;}
   .hw-status-btn.unchecked{border-style:dashed;}
+
+  /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) ===================== */
+  .quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
+  .quad-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    border-radius:9px;padding:10px 4px;cursor:pointer;border:1px solid var(--line);background:#fff;
+    font-family:inherit;position:relative;}
+  .quad-btn .qi{font-size:17px;line-height:1;}
+  .quad-btn .ql{font-size:11px;font-weight:700;}
+  .quad-btn.memo{color:var(--ink-soft);}
+  .quad-btn.memo svg{width:17px;height:17px;}
+  .quad-btn.memo.on{color:var(--red);}
+  .quad-btn[disabled]{opacity:.4;cursor:default;}
+  .quad-btn.chev::after{content:"";position:absolute;bottom:3px;right:5px;width:5px;height:5px;
+    border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+    transform:rotate(45deg);opacity:.6;}
+  /* 출석: 딥틸 채움 */
+  .quad-btn.att-present{background:var(--deep);border-color:var(--deep);color:#fff;}
+  /* 지각: 연틸 채움 + 진틸 테두리 */
+  .quad-btn.att-late{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  /* 결석: 연민트 채움 + 진틸 테두리 */
+  .quad-btn.att-absent{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  /* 숙제: 출결 상태에 색을 맞춤 */
+  .quad-btn.hw-done{background:var(--deep);border-color:var(--deep);color:#fff;}
+  .quad-btn.hw-partial{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  .quad-btn.hw-missing{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  .quad-btn.hw-unchecked{background:var(--paper);border-style:dashed;color:var(--ink-soft);}
+  .quad-btn.hw-off{background:var(--paper);color:var(--ink-soft);opacity:.45;cursor:default;}
+  .quad-sub{font-size:12px;color:var(--ink-soft);padding-top:10px;margin-top:2px;
+    border-top:1px solid var(--line);}
+  .quad-sub.muted{color:var(--ink-soft);opacity:.7;}
 
   /* ===================== 명단 편집 ===================== */
   #editView{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
@@ -875,14 +905,45 @@ function renderDayContent(){
       const noteIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
       const hwStatusClass = hw.completed==="완료" ? "done" : hw.completed==="미완료" ? "missing" : "unchecked";
 
+      // 출결 그리드 버튼: 상태별 클래스/아이콘/라벨
+      const attCls = rec.status==="present" ? "att-present" : rec.status==="late" ? "att-late chev"
+                   : rec.status==="absent" ? "att-absent chev" : "att-present";
+      // 기본(normal) 상태는 출석과 동일 톤으로 시작(딥틸) — 실제 출석 처리와는 별개로 아직 미체크임을 옅게 표시
+      const attIcon = rec.status==="late" ? "🕒" : rec.status==="absent" ? "✕" : "●";
+      const attLabel = STATUS_LABEL[rec.status] || "출석";
+      const isAbsent = rec.status === "absent";
+
+      // 숙제 그리드 버튼: done/missing/unchecked, 결석이면 비활성
+      let hwCls, hwIcon, hwLabel;
+      if(isAbsent){ hwCls="hw-off"; hwIcon="–"; hwLabel="숙제"; }
+      else if(hw.completed==="완료"){ hwCls="hw-done"; hwIcon="✓"; hwLabel="숙제"; }
+      else if(hw.completed==="미완료"){ hwCls="hw-missing"; hwIcon="–"; hwLabel="숙제"; }
+      else { hwCls="hw-unchecked"; hwIcon="?"; hwLabel="숙제"; }
+
       html += `<div class="slot-card">
         <div class="slot-top">
           <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
-          ${!rec.attNote ? `<button class="icon-btn attBtn" data-key="${mk}" aria-label="메모">${noteIconSvg}</button>` : ''}
+        </div>
+
+        <div class="quad-grid">
+          <button class="quad-btn ${attCls}" data-key="${mk}" data-role="att" aria-label="출결 상태 변경 (현재 ${attLabel})">
+            <span class="qi">${attIcon}</span><span class="ql">${attLabel}</span>
+          </button>
+          <button class="quad-btn ${hwCls}" data-key="${hwMk}" data-role="hw" ${isAbsent?'disabled':''} aria-label="숙제 상태 변경 (현재 ${hwLabel})">
+            <span class="qi">${hwIcon}</span><span class="ql">${hwLabel}</span>
+          </button>
+          <button class="quad-btn memo ${rec.attNote?'on':''}" data-key="${mk}" data-role="attMemo" aria-label="수업태도 메모">
+            ${noteIconSvg}<span class="ql">태도메모</span>
+          </button>
+          <button class="quad-btn memo ${hw.memo?'on':''}" data-key="${hwMk}" data-role="hwMemo" ${isAbsent?'disabled':''} aria-label="숙제 메모">
+            ${noteIconSvg}<span class="ql">숙제메모</span>
+          </button>
         </div>`;
+
+      // 수업태도 메모 (이름줄 대신 그리드 아래 표시/편집)
       if(rec.attNote && !attOpen){
         html += `<div class="memo-box att">
-          <span>${rec.attNote}</span>
+          <span>태도: ${rec.attNote}</span>
           <span class="memo-actions">
             <button class="attEditBtn" data-key="${mk}" aria-label="수정">✎</button>
             <button class="attDeleteBtn" data-key="${mk}" aria-label="삭제">✕</button>
@@ -896,12 +957,6 @@ function renderDayContent(){
         </div>`;
       }
 
-      // 출결 상태
-      html += `<div class="status-row">`;
-      ["present","late","absent"].forEach(st=>{
-        html += `<button class="status-btn ${st} ${rec.status===st?'active':''}" data-key="${mk}" data-status="${st}">${STATUS_LABEL[st]}</button>`;
-      });
-      html += `</div>`;
       const needsReason = (rec.status==="late" || rec.status==="absent");
       if(needsReason && rec.statusNote && !statusOpen){
         html += `<div class="memo-box reason">
@@ -926,20 +981,18 @@ function renderDayContent(){
         </button>`;
       }
 
-      // 숙제 상태 (같은 카드 안에 이어서 표시)
-      html += `<div style="height:1px;background:var(--line);margin:12px 0;"></div>`;
-      html += `<button class="hw-status-btn ${hwStatusClass}" data-key="${hwMk}" style="margin-bottom:${hw.memo && !hwMemoOpen ? '8px' : '0'};">
-          <span class="hw-name">숙제</span>
-          <span class="hw-status-label">${hw.completed}</span>
-        </button>`;
-      if(hw.memo && !hwMemoOpen) html += `<div class="memo-box">${hw.memo}</div>`;
+      // 숙제 메모 표시/편집
+      if(hw.memo && !hwMemoOpen){
+        html += `<div class="quad-sub">${hw.memo}</div>`;
+      }
       if(hwMemoOpen){
         html += `<div class="memo-edit">
           <input type="text" class="hwMemoInput" data-key="${hwMk}" value="${(hw.memo||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p">
           <button class="hwMemoSave" data-key="${hwMk}">저장</button>
         </div>`;
-      } else {
-        html += `<button class="icon-btn hwMemoBtn ${hw.memo?'on':''}" data-key="${hwMk}" aria-label="숙제 메모" style="margin-top:6px;">${noteIconSvg} <span style="font-size:11px;margin-left:4px;">숙제 메모</span></button>`;
+      }
+      if(isAbsent && !hw.memo){
+        html += `<div class="quad-sub muted">결석으로 숙제 확인 불가</div>`;
       }
 
       html += `</div>`;
@@ -950,27 +1003,51 @@ function renderDayContent(){
   return html;
 }
 
+const ATT_CYCLE = {present:"late", late:"absent", absent:"present", normal:"present"};
+
 function attachCardHandlers(){
-  document.querySelectorAll('#dayPanel .status-btn').forEach(el=>{
+  // 출결 그리드 버튼: 탭할 때마다 출석→지각→결석 순환
+  document.querySelectorAll('#dayPanel .quad-btn[data-role="att"]').forEach(el=>{
     el.onclick = async ()=>{
       const [dateStr, block, slotStr] = el.getAttribute('data-key').split("|");
       const slot = parseInt(slotStr);
-      const status = el.getAttribute('data-status');
       const rec = getRec(dateStr, block, slot);
-      const turningOn = rec.status !== status;
-      rec.status = turningOn ? status : "normal";
+      rec.status = ATT_CYCLE[rec.status] || "present";
       setRecLocal(dateStr, block, slot, rec);
       renderCardView();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
   });
 
-  // 메모(특이사항) 열기/닫기
-  document.querySelectorAll('#dayPanel .attBtn').forEach(el=>{
+  // 숙제 그리드 버튼: 완료→미완료→미확인 순환 (결석이면 비활성이라 클릭 안 됨)
+  document.querySelectorAll('#dayPanel .quad-btn[data-role="hw"]').forEach(el=>{
+    el.onclick = async ()=>{
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, name] = key.split("|");
+      const rec = getHwRec(dateStr, block, name);
+      rec.completed = HW_CYCLE[rec.completed] || "완료";
+      setHwRecLocal(dateStr, block, name, rec);
+      renderCardView();
+      await pushHomeworkRecord(dateStr, dayNameForDate(dateStr), block, name, rec);
+    };
+  });
+
+  // 수업태도 메모 열기/닫기
+  document.querySelectorAll('#dayPanel .quad-btn[data-role="attMemo"]').forEach(el=>{
     el.onclick = (e)=>{
       e.stopPropagation();
       const key = el.getAttribute('data-key');
       openAttKey = (openAttKey===key) ? null : key;
+      renderCardView();
+    };
+  });
+
+  // 숙제 메모 열기/닫기
+  document.querySelectorAll('#dayPanel .quad-btn[data-role="hwMemo"]').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      openHwMemoKey = (openHwMemoKey===key) ? null : key;
       renderCardView();
     };
   });
@@ -1078,25 +1155,7 @@ function attachCardHandlers(){
     };
   });
 
-  // 숙제 상태 버튼 (완료→미완료→미확인 순환)
-  document.querySelectorAll('#dayPanel .hw-status-btn').forEach(el=>{
-    el.onclick = async ()=>{
-      const key = el.getAttribute('data-key');
-      const [dateStr, block, name] = key.split("|");
-      const rec = getHwRec(dateStr, block, name);
-      rec.completed = HW_CYCLE[rec.completed] || "완료";
-      setHwRecLocal(dateStr, block, name, rec);
-      renderCardView();
-      await pushHomeworkRecord(dateStr, dayNameForDate(dateStr), block, name, rec);
-    };
-  });
-  document.querySelectorAll('#dayPanel .hwMemoBtn').forEach(el=>{
-    el.onclick = (e)=>{
-      e.stopPropagation();
-      openHwMemoKey = el.getAttribute('data-key');
-      renderCardView();
-    };
-  });
+  // (숙제 상태/메모 버튼 핸들러는 attachCardHandlers 상단의 quad-btn 핸들러로 이동됨)
   document.querySelectorAll('#dayPanel .hwMemoSave').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
