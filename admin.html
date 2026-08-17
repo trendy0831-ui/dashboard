@@ -182,6 +182,7 @@
     border-radius:9px;padding:10px 4px;cursor:pointer;border:1px solid var(--line);background:#fff;
     font-family:inherit;position:relative;}
   .quad-btn .qi{font-size:17px;line-height:1;}
+  .quad-btn .qi svg{width:18px;height:18px;display:block;}
   .quad-btn .ql{font-size:11px;font-weight:700;}
   .quad-btn.memo{color:var(--ink-soft);}
   .quad-btn.memo svg{width:17px;height:17px;}
@@ -912,10 +913,11 @@ function renderDayContent(){
                    : rec.status==="late" ? "att-late chev"
                    : rec.status==="absent" ? "att-absent chev"
                    : "att-unchecked chev";
-      const attIcon = rec.status==="present" ? "●"
+      const userCheckSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M6 21v-2a4 4 0 0 1 4-4h1.5"/><path d="M15.5 15.5l1.5 1.5 3-3.5"/></svg>';
+      const attIcon = rec.status==="present" ? userCheckSvg
                      : rec.status==="late" ? "🕒"
                      : rec.status==="absent" ? "✕"
-                     : "?";
+                     : "";
       const attLabel = rec.status==="normal" || !rec.status ? "미체크" : (STATUS_LABEL[rec.status] || "미체크");
       const isAbsent = rec.status === "absent";
 
@@ -924,7 +926,7 @@ function renderDayContent(){
       if(isAbsent){ hwCls="hw-off"; hwIcon="–"; hwLabel="숙제"; }
       else if(hw.completed==="완료"){ hwCls="hw-done"; hwIcon="✓"; hwLabel="숙제"; }
       else if(hw.completed==="미완료"){ hwCls="hw-missing"; hwIcon="–"; hwLabel="숙제"; }
-      else { hwCls="hw-unchecked"; hwIcon="?"; hwLabel="숙제"; }
+      else { hwCls="hw-unchecked"; hwIcon=""; hwLabel="숙제"; }
 
       html += `<div class="slot-card">
         <div class="slot-top">
@@ -933,10 +935,10 @@ function renderDayContent(){
 
         <div class="quad-grid">
           <button class="quad-btn ${attCls}" data-key="${mk}" data-role="att" aria-label="출결 상태 변경 (현재 ${attLabel})">
-            <span class="qi">${attIcon}</span><span class="ql">${attLabel}</span>
+            ${attIcon ? `<span class="qi">${attIcon}</span>` : ''}<span class="ql">${attLabel}</span>
           </button>
           <button class="quad-btn ${hwCls}" data-key="${hwMk}" data-role="hw" ${isAbsent?'disabled':''} aria-label="숙제 상태 변경 (현재 ${hwLabel})">
-            <span class="qi">${hwIcon}</span><span class="ql">${hwLabel}</span>
+            ${hwIcon ? `<span class="qi">${hwIcon}</span>` : ''}<span class="ql">${hwLabel}</span>
           </button>
           <button class="quad-btn memo ${rec.attNote?'on':''}" data-key="${mk}" data-role="attMemo" aria-label="수업태도 메모">
             ${noteIconSvg}<span class="ql">태도메모</span>
