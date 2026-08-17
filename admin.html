@@ -468,11 +468,6 @@
     <div id="pageContent">
 
       <div id="attendancePage">
-        <div class="section-tabs">
-          <button class="section-tab active" id="tabAttendance" data-section="attendance">출결</button>
-          <button class="section-tab" id="tabHomework" data-section="homework">숙제</button>
-        </div>
-
         <div id="cardView">
           <div class="weekbar">
             <button id="prevWeek">‹</button>
@@ -535,7 +530,6 @@ let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
 let calMonth = new Date(); calMonth.setDate(1);
 let selectedStudent = '';
-let activeSection = 'attendance'; // 'attendance' | 'homework'
 let editMode = false;
 let openAttKey = null;    // 메모(특이사항) 편집중인 카드 키
 let openStatusKey = null; // 지각/결석 사유 메모 편집중인 카드 키
@@ -556,8 +550,6 @@ async function apiGetOnce(params){
   return res.json();
 }
 async function apiGet(params){
-  // Apps Script의 리다이렉트 응답(echo)이 간헐적으로 404를 내는 경우가 있어
-  // 실패 시 짧게 기다렸다가 최대 2번 더 시도한다.
   let lastErr;
   for(let attempt=0; attempt<3; attempt++){
     try{
@@ -570,9 +562,6 @@ async function apiGet(params){
   throw lastErr;
 }
 async function apiPost(body){
-  // Apps Script exec 엔드포인트는 CORS 헤더를 내려주지 않아 일반 fetch로는
-  // 브라우저가 응답을 차단한다(요청 자체는 서버에 도달·처리됨). 따라서 no-cors로
-  // 보내고, 저장 완료 여부는 pushRecord 쪽에서 시간을 두고 보정한다.
   await fetch(SCRIPT_URL, {
     method:"POST",
     mode:"no-cors",
@@ -597,9 +586,9 @@ async function loadRoster(){
     const rows = await apiGet({action:"roster"});
     const r = emptyRoster();
     rows.forEach(item=>{ if(r[item.day] && r[item.day][item.block]) r[item.day][item.block][item.slot-1] = item.name || ""; });
-    roster = r; // 성공했을 때만 교체 — 실패 시 기존 roster를 그대로 유지해 화면이 비지 않게 한다
+    roster = r;
   }catch(e){
-    if(!roster || !Object.keys(roster).length) roster = emptyRoster(); // 최초 로드 실패 시에만 빈 값으로 초기화
+    if(!roster || !Object.keys(roster).length) roster = emptyRoster();
     showSaveFailToast('명단을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
   }
 }
@@ -614,7 +603,7 @@ async function loadRecordsForWeek(){
       next[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
         makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"" };
     });
-    records = next; // 성공했을 때만 교체 — 실패 시 기존 records(방금 클릭한 로컬 반영 포함)를 그대로 둔다
+    records = next;
   }catch(e){
     showSaveFailToast('출결 기록을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
   }
@@ -636,11 +625,9 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
     try{
       await apiPost(body);
     }catch(e){
-      try{ await apiPost(body); } // 일시적 네트워크 문제일 수 있어 한 번 더 시도
+      try{ await apiPost(body); }
       catch(e2){ showSaveFailToast('출결 저장에 실패했어요. 인터넷 연결을 확인하고 다시 체크해주세요.'); }
     }
-    // no-cors라 저장 완료 여부를 알 수 없으므로, 시트 반영이 끝날 만한 시간만큼
-    // 자동 새로고침이 결과를 덮어쓰지 않도록 인위적으로 대기한다.
     await new Promise(r=>setTimeout(r, 3000));
   }finally{
     pendingSaveCount--;
@@ -655,7 +642,7 @@ async function loadHomeworkForWeek(){
       const key = rec.date+"|"+rec.block+"|"+rec.name;
       next[key] = { completed: rec.completed||"미확인", memo: rec.memo||"" };
     });
-    homeworkRecords = next; // 성공했을 때만 교체
+    homeworkRecords = next;
   }catch(e){}
 }
 function getHwRec(dateStr, block, name){
@@ -726,15 +713,13 @@ function syncStatusTick(){
 }
 setInterval(syncStatusTick, 5000);
 
-// 지금 무언가 입력/편집 중인지 — 이때는 자동 새로고침으로 화면을 덮어쓰지 않는다
-let pendingSaveCount = 0; // 진행 중인 저장(POST) 요청 수 — 0보다 크면 자동 새로고침이 결과를 덮어쓸 수 있어 건너뜀
+let pendingSaveCount = 0;
 function isUserEditing(){
   return editMode || !!openAttKey || !!openStatusKey || !!openHwMemoKey || pendingSaveCount > 0;
 }
 
 async function refreshData(auto){
-  if(auto && isUserEditing()) return; // 편집 중이면 자동 새로고침은 건너뜀
-  // 저장이 진행 중이면 그 저장이 끝날 때까지 잠깐 기다렸다가 새로고침 (최대 3초)
+  if(auto && isUserEditing()) return;
   let waited = 0;
   while(pendingSaveCount > 0 && waited < 3000){
     await new Promise(r=>setTimeout(r, 150));
@@ -766,7 +751,6 @@ function startAutoRefresh(){
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
   autoRefreshTimer = setInterval(()=> refreshData(true), AUTO_REFRESH_INTERVAL);
 }
-// 화면이 다시 보일 때(예: 탭을 잠깐 나갔다 돌아왔을 때)도 한 번 갱신
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible') refreshData(true);
 });
@@ -800,8 +784,6 @@ function allStudentNames(){
   return Array.from(set).sort((a,b)=>a.localeCompare(b,'ko'));
 }
 
-// roster에는 "이름/학교/학년" 형식의 원본 문자열이 그대로 저장됨(예: 김휘은/동부고/중1).
-// 표시할 때만 이 함수로 분해해서 쓴다 — 저장 키(name)는 항상 원본 문자열을 그대로 사용.
 function parseStudentEntry(raw){
   const parts = (raw||"").split("/").map(s=>s.trim());
   return { name: parts[0]||"", school: parts[1]||"", grade: parts[2]||"" };
@@ -835,7 +817,7 @@ document.getElementById('nextWeek').onclick = async ()=>{
   renderCardView();
 };
 
-/* ============ 카드형 렌더링 ============ */
+/* ============ 카드형 렌더링 (출결 + 숙제 통합) ============ */
 function renderCardView(){
   const weekEnd = addDays(weekStart,5);
   document.getElementById('weekRange').textContent = fmtMD(weekStart)+" ~ "+fmtMD(weekEnd);
@@ -860,15 +842,15 @@ function renderCardView(){
     };
   });
 
-  document.getElementById('bottomGrid').style.display = activeSection==='attendance' ? '' : 'none';
+  document.getElementById('bottomGrid').style.display = '';
 
   const panel = document.getElementById('dayPanel');
-  panel.innerHTML = activeSection==='attendance' ? renderAttendanceDayContent() : renderHomeworkDayContent();
+  panel.innerHTML = renderDayContent();
   attachCardHandlers();
-  if(activeSection==='attendance') renderUnchecked();
+  renderUnchecked();
 }
 
-function renderAttendanceDayContent(){
+function renderDayContent(){
   const d = addDays(weekStart, activeDayIdx);
   const dateStr = toDateStr(d);
   const dayName = DAYS[activeDayIdx];
@@ -884,10 +866,15 @@ function renderAttendanceDayContent(){
       const stu = parseStudentEntry(name);
       const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
       const rec = getRec(dateStr, block, s);
+      const hw = getHwRec(dateStr, block, name);
       const mk = dateStr+"|"+block+"|"+s;
+      const hwMk = dateStr+"|"+block+"|"+name;
       const attOpen = openAttKey===mk;
       const statusOpen = openStatusKey===mk;
+      const hwMemoOpen = openHwMemoKey===hwMk;
       const noteIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+      const hwStatusClass = hw.completed==="완료" ? "done" : hw.completed==="미완료" ? "missing" : "unchecked";
+
       html += `<div class="slot-card">
         <div class="slot-top">
           <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
@@ -908,6 +895,8 @@ function renderAttendanceDayContent(){
           <button class="attSave" data-key="${mk}">저장</button>
         </div>`;
       }
+
+      // 출결 상태
       html += `<div class="status-row">`;
       ["present","late","absent"].forEach(st=>{
         html += `<button class="status-btn ${st} ${rec.status===st?'active':''}" data-key="${mk}" data-status="${st}">${STATUS_LABEL[st]}</button>`;
@@ -931,55 +920,28 @@ function renderAttendanceDayContent(){
       }
       if(needsReason && !rec.statusNote && !statusOpen) html += `<button class="reason-add" data-key="${mk}">+ 사유 입력</button>`;
 
-      // 보강 토글 — 결석일 때만 표시
       if(rec.status === 'absent'){
         html += `<button class="makeup-toggle ${rec.makeupDone?'done':''}" data-key="${mk}">
           ${rec.makeupDone ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''}` : '보강 대기 중 — 완료로 표시'}
         </button>`;
       }
 
-      html += `</div>`;
-    }
-    html += `</div>`;
-  });
-  if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.</div>`;
-  return html;
-}
-
-function renderHomeworkDayContent(){
-  const d = addDays(weekStart, activeDayIdx);
-  const dateStr = toDateStr(d);
-  const dayName = DAYS[activeDayIdx];
-  let html = "";
-  BLOCKS.forEach(block=>{
-    const names = roster[dayName][block];
-    const hasAny = names.some(n=>n && n.trim());
-    if(!hasAny) return;
-    html += `<div class="time-label">${block}</div><div class="slot-group">`;
-    for(let s=0;s<SUB;s++){
-      const name = names[s];
-      if(!name || !name.trim()) continue;
-      const stu = parseStudentEntry(name);
-      const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
-      const rec = getHwRec(dateStr, block, name);
-      const mk = dateStr+"|"+block+"|"+name;
-      const memoOpen = openHwMemoKey===mk;
-      const statusClass = rec.completed==="완료" ? "done" : rec.completed==="미완료" ? "missing" : "unchecked";
-      const noteIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v13l-4 4H5z"/><path d="M9 9h6M9 13h4"/></svg>';
-      html += `<div class="slot-card">
-        <button class="hw-status-btn ${statusClass}" data-key="${mk}">
-          <span><span class="hw-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
-          <span class="hw-status-label">${rec.completed}</span>
+      // 숙제 상태 (같은 카드 안에 이어서 표시)
+      html += `<div style="height:1px;background:var(--line);margin:12px 0;"></div>`;
+      html += `<button class="hw-status-btn ${hwStatusClass}" data-key="${hwMk}" style="margin-bottom:${hw.memo && !hwMemoOpen ? '8px' : '0'};">
+          <span class="hw-name">숙제</span>
+          <span class="hw-status-label">${hw.completed}</span>
         </button>`;
-      if(rec.memo && !memoOpen) html += `<div class="memo-box">${rec.memo}</div>`;
-      if(memoOpen){
+      if(hw.memo && !hwMemoOpen) html += `<div class="memo-box">${hw.memo}</div>`;
+      if(hwMemoOpen){
         html += `<div class="memo-edit">
-          <input type="text" class="hwMemoInput" data-key="${mk}" value="${(rec.memo||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p">
-          <button class="hwMemoSave" data-key="${mk}">저장</button>
+          <input type="text" class="hwMemoInput" data-key="${hwMk}" value="${(hw.memo||"").replace(/"/g,'&quot;')}" placeholder="예: 워크북 32~35p">
+          <button class="hwMemoSave" data-key="${hwMk}">저장</button>
         </div>`;
       } else {
-        html += `<button class="icon-btn hwMemoBtn ${rec.memo?'on':''}" data-key="${mk}" aria-label="숙제 메모" style="margin-top:4px;">${noteIcon} <span style="font-size:11px;margin-left:4px;">메모</span></button>`;
+        html += `<button class="icon-btn hwMemoBtn ${hw.memo?'on':''}" data-key="${hwMk}" aria-label="숙제 메모" style="margin-top:6px;">${noteIconSvg} <span style="font-size:11px;margin-left:4px;">숙제 메모</span></button>`;
       }
+
       html += `</div>`;
     }
     html += `</div>`;
@@ -1163,7 +1125,6 @@ function renderUnchecked(){
   labelEl.textContent = `(${today.getMonth()+1}월 ${today.getDate()}일 ${days[today.getDay()]})`;
 
   const todayWeekStart = mondayOf(today);
-  // 현재 표시중인 주가 오늘이 속한 주가 아니면, records에 오늘 데이터가 없을 수 있음을 감안
   const dayName = dayNameForDate(todayStr);
   const sameWeek = toDateStr(todayWeekStart) === toDateStr(weekStart);
 
@@ -1226,7 +1187,6 @@ document.getElementById('calNext').onclick = async ()=>{
   renderCalendar();
 };
 
-// 월 전체 기록을 주 단위로 나눠 불러와 monthRecords에 채운다 (기존 records API 재사용)
 async function loadMonthRecords(){
   monthRecords = {};
   if(!selectedStudent) return;
@@ -1242,7 +1202,6 @@ async function loadMonthRecords(){
     try{
       const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
       rows.forEach(rec=>{
-        // 학생 이름은 records에 직접 없으므로 roster로 block+slot -> 이름 매칭
         const dayName = dayNameForDate(rec.date);
         const names = roster[dayName] ? roster[dayName][rec.block] : null;
         if(!names) return;
@@ -1299,7 +1258,7 @@ function setEditMode(on){
   editMode = on;
   document.getElementById('cardView').style.display = on ? 'none' : '';
   document.getElementById('editView').style.display = on ? 'block' : 'none';
-  document.getElementById('bottomGrid').style.display = (!on && activeSection==='attendance') ? '' : 'none';
+  document.getElementById('bottomGrid').style.display = on ? 'none' : '';
   const btn = document.getElementById('toggleEdit');
   btn.textContent = on ? '편집 종료' : '명단 편집';
   btn.classList.toggle('active', on);
@@ -1317,22 +1276,6 @@ document.getElementById('toggleEdit').onclick = async ()=>{
   } else {
     setEditMode(true);
   }
-};
-
-/* ============ 섹션 탭 (출결/숙제) ============ */
-document.getElementById('tabAttendance').onclick = ()=>{
-  activeSection = 'attendance';
-  document.getElementById('tabAttendance').classList.add('active');
-  document.getElementById('tabHomework').classList.remove('active');
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
-  renderCardView();
-};
-document.getElementById('tabHomework').onclick = ()=>{
-  activeSection = 'homework';
-  document.getElementById('tabHomework').classList.add('active');
-  document.getElementById('tabAttendance').classList.remove('active');
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
-  renderCardView();
 };
 
 /* ============ 사이드바 페이지 전환 ============ */
@@ -1372,7 +1315,7 @@ async function renderUpcomingExams(){
 
   const today = new Date();
   const todayStr = toDateStr(today);
-  const horizon = toDateStr(addDays(today, 28)); // 오늘부터 4주 이내
+  const horizon = toDateStr(addDays(today, 28));
 
   const items = (rows || [])
     .filter(r => r.school && r.examStart)
@@ -1383,7 +1326,6 @@ async function renderUpcomingExams(){
         const diffMs = new Date(r.mathExamDate+"T00:00:00") - new Date(todayStr+"T00:00:00");
         dday = Math.round(diffMs / 86400000);
       }
-      // 내신 대비 시작일: 시험시작일 한 달(30일) 전
       const prepStart = toDateStr(addDays(new Date(r.examStart+"T00:00:00"), -30));
       return { ...r, dday, prepStart };
     })
@@ -1525,7 +1467,7 @@ async function renderReasonFeed(){
   if(!el) return;
 
   const today = new Date();
-  const start = addDays(today, -13); // 오늘 포함 최근 14일
+  const start = addDays(today, -13);
   let cursor = mondayOf(start);
   const weeks = [];
   while(cursor <= today){
@@ -1580,7 +1522,6 @@ async function renderReasonFeed(){
 }
 
 
-// roster 전체를 훑어 학생 이름(원본 문자열) -> [{day, block}] 배정 목록을 만든다
 function slotsByStudent(){
   const map = {};
   DAYS.forEach(day=>{
@@ -1621,7 +1562,7 @@ function renderStudentGrid(){
   el.querySelectorAll('.student-card').forEach(card=>{
     card.onclick = ()=>{
       const name = card.getAttribute('data-name');
-      console.log('학생 카드 클릭:', name); // 상세 패널은 다음 단계에서 연결
+      console.log('학생 카드 클릭:', name);
     };
   });
 }
@@ -1683,7 +1624,7 @@ async function renderNoticePage(){
     msgEl.classList.remove('ok');
     try{
       await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
-      await new Promise(r=>setTimeout(r, 1200)); // no-cors라 완료 신호가 없어 약간 대기
+      await new Promise(r=>setTimeout(r, 1200));
       msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
       msgEl.classList.add('ok');
       await renderNoticePreview();
@@ -1730,10 +1671,8 @@ async function renderNoticePreview(){
 
 /* ============ 성적 관리 (초등 주간테스트/단원평가 + 중등 내신·쪽지시험 기록) ============ */
 let gradesSelectedName = '';
-let gradesActiveGroup = 'elem'; // 'elem' | 'secondary'
+let gradesActiveGroup = 'elem';
 
-// 학년순 정렬을 위한 보조 함수 — 학교명 끝글자(초/중/고)로 급을, "학년" 텍스트에서 숫자를 뽑아
-// (급, 학년숫자) 순으로 비교한다. 초등부 안에서는 1~6학년 순, 중고등부 안에서는 중1~고3 순으로 정렬된다.
 function gradeSortKey(stu){
   const school = (stu.school || '').trim();
   const levelRank = school.endsWith('초') ? 0 : school.endsWith('중') ? 1 : school.endsWith('고') ? 2 : 3;
@@ -1745,7 +1684,6 @@ function byGrade(a, b){
   return gradeSortKey(a.stu) - gradeSortKey(b.stu) || a.stu.name.localeCompare(b.stu.name, 'ko');
 }
 
-// roster의 "이름/학교/학년" 문자열 중 학교명이 "~초"(초등학교)로 끝나는 학생만 골라 학년순으로 정렬한다
 function elementaryStudents(){
   const names = allStudentNames();
   return names
@@ -1754,7 +1692,6 @@ function elementaryStudents(){
     .sort(byGrade);
 }
 
-// 학교명이 "~초"로 끝나지 않는(중·고등부) 학생 목록을 학년순으로 정렬한다
 function secondaryStudents(){
   const names = allStudentNames();
   return names
@@ -1839,7 +1776,7 @@ async function renderGradesMain(){
     </div>
   `;
 
-  let editingRowNum = null; // null이면 신규 추가, 값이 있으면 그 행을 수정 중
+  let editingRowNum = null;
 
   function resetForm(){
     editingRowNum = null;
@@ -1869,7 +1806,7 @@ async function renderGradesMain(){
 
   document.getElementById('gtSaveBtn').onclick = async ()=>{
     const btn = document.getElementById('gtSaveBtn');
-    if(btn.disabled) return; // 저장 진행 중 중복 클릭 방지
+    if(btn.disabled) return;
     const title = document.getElementById('gtTitle').value.trim();
     const date = document.getElementById('gtDate').value;
     const score = document.getElementById('gtScore').value.trim();
@@ -1905,8 +1842,6 @@ async function renderGradesMain(){
   await renderGradesTestList();
 }
 
-// 점수 표시 형식 결정 — "8/10"처럼 분수 형태로 입력하면 그대로 두고,
-// "80"처럼 숫자만 입력하면 100점 만점 점수로 보고 "점"을 붙인다.
 function fmtScore(score){
   const s = String(score == null ? '' : score).trim();
   if(!s) return '';
@@ -2027,7 +1962,7 @@ function renderAll(){
   renderCalendar();
   setSyncStatus('ok');
   startAutoRefresh();
-  loadHolidays().then(()=>{ if(activeSection==='attendance' && !editMode) renderCardView(); }); // 공휴일은 백그라운드 로드 후 재렌더
+  loadHolidays().then(()=>{ if(!editMode) renderCardView(); });
 })();
 </script>
 </body>
