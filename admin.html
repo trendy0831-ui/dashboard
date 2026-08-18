@@ -932,11 +932,11 @@ function renderDayContent(){
       const isAbsent = rec.status === "absent";
 
       // 숙제 그리드 버튼: done/missing/unchecked, 결석이면 비활성
-      let hwCls, hwIcon, hwLabel;
-      if(isAbsent){ hwCls="hw-off"; hwIcon="–"; hwLabel="숙제"; }
-      else if(hw.completed==="완료"){ hwCls="hw-done"; hwIcon="✓"; hwLabel="숙제"; }
-      else if(hw.completed==="미완료"){ hwCls="hw-missing"; hwIcon="–"; hwLabel="숙제"; }
-      else { hwCls="hw-unchecked"; hwIcon=""; hwLabel="숙제"; }
+      let hwCls, hwLabel;
+      if(isAbsent){ hwCls="hw-off"; hwLabel="숙제"; }
+      else if(hw.completed==="완료"){ hwCls="hw-done"; hwLabel="숙제 완료"; }
+      else if(hw.completed==="미완료"){ hwCls="hw-missing"; hwLabel="숙제 미흡"; }
+      else { hwCls="hw-unchecked"; hwLabel="숙제"; }
 
       html += `<div class="slot-card">
         <div class="slot-top">
@@ -948,7 +948,7 @@ function renderDayContent(){
             ${attIcon ? `<span class="qi">${attIcon}</span>` : ''}<span class="ql">${attLabel}</span>
           </button>
           <button class="quad-btn ${hwCls}" data-key="${hwMk}" data-role="hw" ${isAbsent?'disabled':''} aria-label="숙제 상태 변경 (현재 ${hwLabel})">
-            ${hwIcon ? `<span class="qi">${hwIcon}</span>` : ''}<span class="ql">${hwLabel}</span>
+            <span class="ql">${hwLabel}</span>
           </button>
           <button class="quad-btn memo ${rec.attNote?'on':''}" data-key="${mk}" data-role="attMemo" aria-label="수업태도 메모">
             <span class="ql">메모</span>
