@@ -164,6 +164,7 @@
     font-weight:700;border-radius:8px;border:1px dashed var(--amber);background:#FBF2DD;
     color:var(--amber);cursor:pointer;text-align:center;}
   .makeup-toggle.done{border-style:solid;border-color:#6FA05A;background:#EAF3E5;color:#3D6B2E;}
+  .makeup-toggle.waived{border-style:solid;border-color:var(--line);background:var(--paper);color:var(--ink-soft);}
   /* 결석해도 보강이 자동으로 잡히지 않음 — 필요할 때만 이 버튼을 눌러서 보강 대기 상태로 전환 */
   .makeup-add{display:block;width:100%;margin-top:8px;padding:6px 10px;font-size:11.5px;
     border-radius:8px;border:none;background:none;color:var(--ink-soft);cursor:pointer;
@@ -1001,8 +1002,9 @@ function renderDayContent(){
         if(ms === 'none'){
           html += `<button class="makeup-add" data-key="${mk}">+ 보강 필요 표시</button>`;
         } else {
-          const msCls = ms === 'done' ? 'done' : '';
-          const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 완료 해제`
+          const msCls = ms === 'done' ? 'done' : ms === 'waived' ? 'waived' : '';
+          const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 다음 단계로`
+                        : ms === 'waived' ? '보강 없음 — 탭하면 처음으로'
                         : '보강 대기 중 — 탭하면 완료로';
           html += `<button class="makeup-toggle ${msCls}" data-key="${mk}">${msLabel}</button>`;
         }
@@ -1175,8 +1177,11 @@ function attachCardHandlers(){
     };
   });
 
-  // 보강 상태 토글: 대기 ↔ 완료 (한 번 보강 필요로 표시한 뒤에만 나타남)
-  const MAKEUP_CYCLE = {wait:"done", done:"wait"};
+  // 보강 상태 토글: 대기 → 완료 → 없음 → (처음, 버튼 사라짐) 순환
+  // 한 번 "+ 보강 필요 표시"를 눌러 대기 상태로 들어온 뒤에만 이 순환 버튼이 나타난다.
+  // 마지막 "없음" 단계에서 한 번 더 누르면 makeupStatus가 'none'이 되어
+  // 버튼 자체가 사라지고 다시 "+ 보강 필요 표시"부터 시작할 수 있다(되돌리기).
+  const MAKEUP_CYCLE = {wait:"done", done:"waived", waived:"none"};
   document.querySelectorAll('#dayPanel .makeup-toggle').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
