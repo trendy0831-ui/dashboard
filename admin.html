@@ -135,7 +135,8 @@
   .memo-box{font-size:12px;color:var(--ink-soft);background:#fff;border-radius:7px;
     padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .memo-box span:first-child{flex:1;min-width:0;}
-  .memo-box.att{color:var(--red);background:#FBEAE7;}
+  /* 태도메모 표시: 숙제메모(.quad-sub)와 같은 색 톤으로 통일 */
+  .memo-box.att{color:var(--teal-dark);background:#EAF3EF;}
   .memo-box.reason{color:var(--amber);background:#FBF2DD;margin-top:8px;}
   .memo-actions{display:flex;gap:2px;flex-shrink:0;}
   .memo-actions button{background:none;border:none;font-size:12px;cursor:pointer;
@@ -176,17 +177,20 @@
   .hw-status-btn.missing .hw-name,.hw-status-btn.missing .hw-status-label{color:#fff;}
   .hw-status-btn.unchecked{border-style:dashed;}
 
-  /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) ===================== */
-  .quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
-  .quad-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-    border-radius:9px;padding:10px 4px;cursor:pointer;border:1px solid var(--line);background:#fff;
-    font-family:inherit;position:relative;}
-  .quad-btn .qi{font-size:17px;line-height:1;}
-  .quad-btn .qi svg{width:18px;height:18px;display:block;}
-  .quad-btn .ql{font-size:11px;font-weight:700;}
-  .quad-btn.memo{color:var(--ink-soft);}
-  .quad-btn.memo svg{width:17px;height:17px;}
-  .quad-btn.memo.on{color:var(--red);}
+  /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) =====================
+     [수정] 카드 높이 축소 + 아이콘 제거 (텍스트 라벨만 표시)
+     - 기존: flex-direction:column, 아이콘(.qi) + 라벨(.ql) 2줄 구성, padding 10px 4px
+     - 변경: 가로 중앙정렬 1줄, 아이콘 숨김, padding 7px 2px로 축소
+  ===================================================================== */
+  .quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px;}
+  .quad-btn{display:flex;align-items:center;justify-content:center;
+    border-radius:7px;padding:6px 2px;cursor:pointer;border:1px solid var(--line);background:#fff;
+    font-family:inherit;position:relative;min-height:0;}
+  .quad-btn .qi{display:none;}                 /* 아이콘(이모지/SVG) 숨김 */
+  .quad-btn .ql{font-size:13px;font-weight:400;line-height:1.2;}
+  /* 태도메모 · 숙제메모 버튼: 메모 유무와 무관하게 항상 같은 색상 톤으로 통일 */
+  .quad-btn.memo{color:var(--ink-soft);border-color:var(--line);background:#fff;}
+  .quad-btn.memo.on{color:var(--teal-dark);border-color:var(--teal);background:#EAF3EF;}
   .quad-btn[disabled]{opacity:.4;cursor:default;}
   .quad-btn.chev::after{content:"";position:absolute;bottom:3px;right:5px;width:5px;height:5px;
     border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
@@ -196,18 +200,19 @@
   /* 출석: 딥틸 채움 */
   .quad-btn.att-present{background:#5DCAA5;border-color:#5DCAA5;color:#04342C;}
   /* 지각: 연틸 채움 + 진틸 테두리 */
-  .quad-btn.att-late{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  .quad-btn.att-late{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);}
   /* 결석: 연민트 채움 + 진틸 테두리 */
-  .quad-btn.att-absent{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  .quad-btn.att-absent{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);}
   /* 숙제: 출결 상태에 색을 맞춤 */
   .quad-btn.hw-done{background:#5DCAA5;border-color:#5DCAA5;color:#04342C;}
-  .quad-btn.hw-partial{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
-  .quad-btn.hw-missing{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);padding:9px 4px;}
+  .quad-btn.hw-partial{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);}
+  .quad-btn.hw-missing{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);}
   .quad-btn.hw-unchecked{background:var(--paper);border-style:dashed;color:var(--ink-soft);}
   .quad-btn.hw-off{background:var(--paper);color:var(--ink-soft);opacity:.45;cursor:default;}
-  .quad-sub{font-size:12px;color:var(--ink-soft);padding-top:10px;margin-top:2px;
-    border-top:1px solid var(--line);}
-  .quad-sub.muted{color:var(--ink-soft);opacity:.7;}
+  /* 숙제메모 표시: 태도메모(.memo-box.att)와 같은 색 톤의 박스 형태로 통일 */
+  .quad-sub{font-size:12px;color:var(--teal-dark);background:#EAF3EF;border-radius:7px;
+    padding:6px 10px;margin-top:2px;margin-bottom:8px;}
+  .quad-sub.muted{color:var(--ink-soft);background:none;padding:2px 0;}
 
   /* ===================== 명단 편집 ===================== */
   #editView{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
@@ -420,6 +425,8 @@
     .status-btn{font-size:11.5px;padding:8px 0;}
     .hw-name{font-size:13.5px;}
     .hw-status-label{font-size:11px;}
+    .quad-btn .ql{font-size:12px;}
+    .quad-btn{padding:4px 2px;}
     .bottom-grid{gap:14px;margin-top:18px;}
     .dash-summary{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
     .dash-card{padding:14px 16px;}
@@ -941,10 +948,10 @@ function renderDayContent(){
             ${hwIcon ? `<span class="qi">${hwIcon}</span>` : ''}<span class="ql">${hwLabel}</span>
           </button>
           <button class="quad-btn memo ${rec.attNote?'on':''}" data-key="${mk}" data-role="attMemo" aria-label="수업태도 메모">
-            ${noteIconSvg}<span class="ql">태도메모</span>
+            <span class="ql">태도메모</span>
           </button>
           <button class="quad-btn memo ${hw.memo?'on':''}" data-key="${hwMk}" data-role="hwMemo" ${isAbsent?'disabled':''} aria-label="숙제 메모">
-            ${noteIconSvg}<span class="ql">숙제메모</span>
+            <span class="ql">숙제메모</span>
           </button>
         </div>`;
 
