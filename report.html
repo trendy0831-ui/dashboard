@@ -275,6 +275,7 @@
   }
   .badge-wait{ background:#FBEBE7; color:var(--red); }
   .badge-done{ background:#E9F3E4; color:#4C8B3A; }
+  .badge-waived{ background:#EEF1F0; color:var(--ink-soft); }
   .makeup-empty{
     font-size:13px;
     color:var(--ink-soft);
@@ -739,19 +740,21 @@
       makeupCard.innerHTML = makeupItems.slice(0,5).map(r=>{
         const d = parseDate(r.date);
         const dateStr = d ? `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}` : r.date;
-        const isDone = r.makeupDone===true || r.makeupDone==='TRUE' || r.makeupDone==='true';
+        const ms = r.makeupStatus || (r.makeupDone ? 'done' : 'wait');
+        const badgeCls = ms === 'done' ? 'badge-done' : ms === 'waived' ? 'badge-waived' : 'badge-wait';
+        const badgeText = ms === 'done' ? '보강 완료' : ms === 'waived' ? '보강 없음' : '보강 대기';
         return `
           <div class="makeup-item">
             <div><div>${dateStr} 결석</div></div>
-            <span class="badge ${isDone?'badge-done':'badge-wait'}">${isDone ? '보강 완료' : '보강 대기'}</span>
+            <span class="badge ${badgeCls}">${badgeText}</span>
           </div>
         `;
       }).join('');
     }
-    // 보강 탭 NEW 표시: 가장 최근 결석 항목의 날짜+보강완료여부를 식별자로 사용 —
-    // 새 결석이 생기거나 기존 항목의 보강 완료 상태가 바뀌면 식별자가 달라진다
+    // 보강 탭 NEW 표시: 가장 최근 결석 항목의 날짜+보강상태를 식별자로 사용 —
+    // 새 결석이 생기거나 기존 항목의 보강 상태(대기/완료/없음)가 바뀌면 식별자가 달라진다
     latestMakeupSeenId = makeupItems.length > 0
-      ? makeupItems[0].date + '|' + (makeupItems[0].makeupDone ? '1' : '0')
+      ? makeupItems[0].date + '|' + (makeupItems[0].makeupStatus || (makeupItems[0].makeupDone ? 'done' : 'wait'))
       : null;
     document.getElementById('tab-makeup-dot').style.display = isUnseen('makeup', latestMakeupSeenId) ? 'block' : 'none';
 
