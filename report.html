@@ -333,6 +333,13 @@
     padding:2px 8px;
     border-radius:99px;
   }
+  /* 결석한 날은 숙제 미완료(경고)가 아니라 중립적인 미확인으로 표시 */
+  .hw-tag.unchecked{
+    color:var(--ink-soft);
+    background:var(--bg);
+    padding:2px 8px;
+    border-radius:99px;
+  }
   .log-hw-memo{
     font-size:12.5px;
     color:var(--ink-soft);
@@ -667,12 +674,13 @@
     document.getElementById('stat-attend-sub').textContent =
       absentCnt > 0 ? `지각 ${lateCnt}일 · 결석 ${absentCnt}일` : (lateCnt>0 ? `지각 ${lateCnt}일` : '결석 없이 잘 다니고 있어요');
 
-    // ── 숙제 완료율 ──
-    if(monthRecords.length > 0){
-      const hwDone = monthRecords.filter(r=>r.homeworkDone===true||r.homeworkDone==='TRUE'||r.homeworkDone==='true').length;
-      const rate = Math.round((hwDone / monthRecords.length) * 100);
+    // ── 숙제 완료율 (결석한 날은 숙제 확인 대상이 아니므로 분모에서 제외) ──
+    const hwEligibleRecords = monthRecords.filter(r => r.status !== 'absent');
+    if(hwEligibleRecords.length > 0){
+      const hwDone = hwEligibleRecords.filter(r=>r.homeworkDone===true||r.homeworkDone==='TRUE'||r.homeworkDone==='true').length;
+      const rate = Math.round((hwDone / hwEligibleRecords.length) * 100);
       document.getElementById('stat-hw').innerHTML = rate + '<small>%</small>';
-      document.getElementById('stat-hw-sub').textContent = `${monthRecords.length}회 중 ${hwDone}회 완료`;
+      document.getElementById('stat-hw-sub').textContent = `${hwEligibleRecords.length}회 중 ${hwDone}회 완료`;
     } else {
       document.getElementById('stat-hw').innerHTML = '-';
       document.getElementById('stat-hw-sub').textContent = '이번 달 기록 없음';
@@ -771,6 +779,10 @@
         const hwDone = r.homeworkDone===true || r.homeworkDone==='TRUE' || r.homeworkDone==='true';
         const hwMemo = r.homeworkContent || '';
         const reason = r.statusMemo || r.attitudeMemo || '';
+        // 결석한 날은 숙제 확인 자체가 이뤄지지 않으므로 "미완료"가 아니라 "미확인"으로 표시
+        const isAbsent = r.status === 'absent';
+        const hwTagCls = isAbsent ? 'unchecked' : (hwDone ? 'done' : 'missing');
+        const hwTagText = isAbsent ? '숙제 미확인' : (hwDone ? '숙제 완료' : '숙제 미완료');
         return `
           <div class="log-item">
             <div class="log-date">
@@ -780,7 +792,7 @@
             <div class="log-body">
               <div class="log-status-row">
                 <span class="status-pill ${st.cls}">${st.text}</span>
-                <span class="hw-tag ${hwDone?'done':'missing'}">${hwDone ? '숙제 완료' : '숙제 미완료'}</span>
+                <span class="hw-tag ${hwTagCls}">${hwTagText}</span>
               </div>
               ${hwMemo ? `<div class="log-hw-memo">${hwMemo}</div>` : ''}
               ${reason ? `<div class="log-reason">${reason}</div>` : ''}
