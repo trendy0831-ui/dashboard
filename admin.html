@@ -948,7 +948,7 @@ function renderDayContent(){
             ${hwIcon ? `<span class="qi">${hwIcon}</span>` : ''}<span class="ql">${hwLabel}</span>
           </button>
           <button class="quad-btn memo ${rec.attNote?'on':''}" data-key="${mk}" data-role="attMemo" aria-label="수업태도 메모">
-            <span class="ql">태도메모</span>
+            <span class="ql">메모</span>
           </button>
           <button class="quad-btn memo ${hw.memo?'on':''}" data-key="${hwMk}" data-role="hwMemo" ${isAbsent?'disabled':''} aria-label="숙제 메모">
             <span class="ql">숙제메모</span>
@@ -958,7 +958,7 @@ function renderDayContent(){
       // 수업태도 메모 (이름줄 대신 그리드 아래 표시/편집)
       if(rec.attNote && !attOpen){
         html += `<div class="memo-box att">
-          <span>태도: ${rec.attNote}</span>
+          <span>${rec.attNote}</span>
           <span class="memo-actions">
             <button class="attEditBtn" data-key="${mk}" aria-label="수정">✎</button>
             <button class="attDeleteBtn" data-key="${mk}" aria-label="삭제">✕</button>
