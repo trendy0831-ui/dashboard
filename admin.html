@@ -164,6 +164,7 @@
     font-weight:700;border-radius:8px;border:1px dashed var(--amber);background:#FBF2DD;
     color:var(--amber);cursor:pointer;text-align:center;}
   .makeup-toggle.done{border-style:solid;border-color:#6FA05A;background:#EAF3E5;color:#3D6B2E;}
+  .makeup-toggle.waived{border-style:solid;border-color:var(--line);background:var(--paper);color:var(--ink-soft);}
 
   /* ===================== 숙제 카드 (레거시 - 미사용) ===================== */
   .hw-status-btn{width:100%;display:flex;align-items:flex-start;justify-content:space-between;
@@ -641,7 +642,8 @@ async function loadRecordsForWeek(){
       const slotIdx = (parseInt(rec.slot) || 1) - 1;
       const key = rec.date+"|"+rec.block+"|"+slotIdx;
       next[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
-        makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"" };
+        makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"",
+        makeupStatus: rec.makeupStatus || (rec.makeupDone ? "done" : "wait") };
     });
     records = next;
   }catch(e){
@@ -651,7 +653,7 @@ async function loadRecordsForWeek(){
 
 function getRec(dateStr, block, slot){
   const key = dateStr+"|"+block+"|"+slot;
-  return records[key] || {status:"normal", statusNote:"", attNote:"", makeupDone:false, makeupDate:""};
+  return records[key] || {status:"normal", statusNote:"", attNote:"", makeupDone:false, makeupDate:"", makeupStatus:"wait"};
 }
 function setRecLocal(dateStr, block, slot, rec){ records[dateStr+"|"+block+"|"+slot] = rec; }
 
@@ -659,7 +661,8 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   const body = { action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
     status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
     statusNote:rec.statusNote||"", attNote:rec.attNote||"",
-    makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"" } };
+    makeupDone: rec.makeupStatus === "done", makeupDate: rec.makeupDate||"",
+    makeupStatus: rec.makeupStatus || "wait" } };
   pendingSaveCount++;
   try{
     try{
@@ -991,9 +994,12 @@ function renderDayContent(){
       if(needsReason && !rec.statusNote && !statusOpen) html += `<button class="reason-add" data-key="${mk}">+ 사유 입력</button>`;
 
       if(rec.status === 'absent'){
-        html += `<button class="makeup-toggle ${rec.makeupDone?'done':''}" data-key="${mk}">
-          ${rec.makeupDone ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''}` : '보강 대기 중 — 완료로 표시'}
-        </button>`;
+        const ms = rec.makeupStatus || 'wait';
+        const msCls = ms === 'done' ? 'done' : ms === 'waived' ? 'waived' : '';
+        const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 다음 단계`
+                      : ms === 'waived' ? '보강 없음 — 탭하면 대기로'
+                      : '보강 대기 중 — 탭하면 완료로';
+        html += `<button class="makeup-toggle ${msCls}" data-key="${mk}">${msLabel}</button>`;
       }
 
       // 숙제 메모 표시/편집
@@ -1148,7 +1154,8 @@ function attachCardHandlers(){
     };
   });
 
-  // 보강 완료 토글
+  // 보강 상태 토글: 대기 → 완료 → 없음 → (다시 대기) 순환
+  const MAKEUP_CYCLE = {wait:"done", done:"waived", waived:"wait"};
   document.querySelectorAll('#dayPanel .makeup-toggle').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
@@ -1156,8 +1163,9 @@ function attachCardHandlers(){
       const [dateStr, block, slotStr] = key.split("|");
       const slot = parseInt(slotStr);
       const rec = getRec(dateStr, block, slot);
-      rec.makeupDone = !rec.makeupDone;
-      if(rec.makeupDone){
+      const cur = rec.makeupStatus || 'wait';
+      rec.makeupStatus = MAKEUP_CYCLE[cur] || 'wait';
+      if(rec.makeupStatus === 'done'){
         const d = new Date();
         const days=["일","월","화","수","목","금","토"];
         rec.makeupDate = `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -1456,6 +1464,7 @@ async function renderMakeupFeed(){
       rows.forEach(rec=>{
         if(rec.status !== 'absent') return;
         if(rec.makeupDone) return;
+        if(rec.makeupStatus === 'waived') return;
         if(rec.date < toDateStr(monthStart) || rec.date > toDateStr(today)) return;
         const dayName = dayNameForDate(rec.date);
         const names = roster[dayName] ? roster[dayName][rec.block] : null;
