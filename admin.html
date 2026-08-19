@@ -380,7 +380,7 @@
       background:var(--deep);color:#fff;padding:10px 14px;position:sticky;top:0;z-index:50;}
     #mobileTopbar .mt-brand{display:flex;align-items:center;gap:8px;min-width:0;}
     #mobileTopbar .mt-brand img{width:26px;height:26px;object-fit:contain;flex-shrink:0;border-radius:6px;}
-    #mobileTopbar .mt-brand .t1{font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    #mobileTopbar .mt-brand .t1{font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
     #mobileMenuBtn{display:flex;align-items:center;justify-content:center;
       width:34px;height:34px;border:none;background:none;color:#fff;cursor:pointer;flex-shrink:0;}
@@ -413,6 +413,7 @@
     :root{font-size:14px;}
     #mainTopbar{padding:12px 14px;gap:10px;}
     #mainTopbar h1{font-size:16px;}
+    #mobileTopbar .mt-brand .t1{font-size:16px;}
     .topbar-actions{width:100%;gap:8px;}
     .date-picker{flex:1;padding:9px 12px;font-size:13px;}
     .sync-status{font-size:11px;order:1;}
@@ -456,6 +457,14 @@
     .cal-cell{font-size:11px;}
     .notice-form{padding:18px;}
   }
+  /* ===================== 당겨서 새로고침(pull-to-refresh) ===================== */
+  #ptrIndicator{display:flex;align-items:center;justify-content:center;
+    height:0;overflow:hidden;color:var(--teal-dark);font-size:13px;font-weight:700;gap:8px;
+    transition:height .15s;}
+  #ptrIndicator svg{width:18px;height:18px;flex-shrink:0;}
+  #ptrIndicator.ready svg{transform:rotate(180deg);}
+  #ptrIndicator.loading svg{animation:refreshSpin .7s linear infinite;}
+
   /* ===================== 저장 실패 알림 토스트 ===================== */
   #saveToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
     background:var(--red);color:#fff;padding:13px 22px;border-radius:11px;font-size:14px;font-weight:700;
@@ -567,6 +576,11 @@
       </div>
     </div>
     <div id="pageContent">
+
+      <div id="ptrIndicator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        <span id="ptrIndicatorText">아래로 당겨서 새로고침</span>
+      </div>
 
       <div id="attendancePage">
         <div id="cardView">
@@ -2109,6 +2123,77 @@ function closeMobileMenu(){
 document.getElementById('mobileMenuBtn').onclick = openMobileMenu;
 document.getElementById('mobileMenuClose').onclick = closeMobileMenu;
 document.getElementById('mobileMenuBackdrop').onclick = closeMobileMenu;
+
+/* ============ 당겨서 새로고침(pull-to-refresh) ============ */
+(function setupPullToRefresh(){
+  const content = document.getElementById('pageContent');
+  const indicator = document.getElementById('ptrIndicator');
+  const indicatorText = document.getElementById('ptrIndicatorText');
+  if(!content || !indicator) return;
+
+  const THRESHOLD = 64; // 이만큼 당기면 새로고침 실행
+  const MAX_PULL = 100;
+  let startY = 0;
+  let pulling = false;
+  let dragging = false;
+  let refreshing = false;
+
+  function atTop(){
+    return window.scrollY <= 0 && content.scrollTop <= 0;
+  }
+
+  content.addEventListener('touchstart', (e)=>{
+    if(refreshing) return;
+    if(!atTop()) { pulling = false; return; }
+    startY = e.touches[0].clientY;
+    pulling = true;
+    dragging = false;
+  }, {passive:true});
+
+  content.addEventListener('touchmove', (e)=>{
+    if(!pulling || refreshing) return;
+    const dy = e.touches[0].clientY - startY;
+    if(dy <= 0){
+      indicator.style.height = '0px';
+      indicator.classList.remove('ready');
+      dragging = false;
+      return;
+    }
+    if(!atTop()) return;
+    dragging = true;
+    const pull = Math.min(dy * 0.5, MAX_PULL);
+    indicator.style.height = pull + 'px';
+    if(pull >= THRESHOLD){
+      indicator.classList.add('ready');
+      indicatorText.textContent = '놓으면 새로고침';
+    } else {
+      indicator.classList.remove('ready');
+      indicatorText.textContent = '아래로 당겨서 새로고침';
+    }
+  }, {passive:true});
+
+  content.addEventListener('touchend', async ()=>{
+    if(!pulling) return;
+    pulling = false;
+    const pullHeight = parseFloat(indicator.style.height) || 0;
+    if(dragging && pullHeight >= THRESHOLD && !refreshing){
+      refreshing = true;
+      indicator.style.height = '48px';
+      indicator.classList.remove('ready');
+      indicator.classList.add('loading');
+      indicatorText.textContent = '새로고침 중...';
+      await refreshData(false);
+      indicator.classList.remove('loading');
+      indicator.style.height = '0px';
+      indicatorText.textContent = '아래로 당겨서 새로고침';
+      refreshing = false;
+    } else {
+      indicator.style.height = '0px';
+      indicator.classList.remove('ready');
+    }
+    dragging = false;
+  });
+})();
 
 /* ============ 초기화 ============ */
 function renderAll(){
