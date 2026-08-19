@@ -135,7 +135,6 @@
   .memo-box{font-size:12px;color:var(--ink-soft);background:#fff;border-radius:7px;
     padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .memo-box span:first-child{flex:1;min-width:0;}
-  /* 태도메모 표시: 숙제메모(.quad-sub)와 같은 색 톤으로 통일 */
   .memo-box.att{color:var(--teal-dark);background:#EAF3EF;}
   .memo-box.reason{color:var(--amber);background:#FBF2DD;margin-top:8px;}
   .memo-actions{display:flex;gap:2px;flex-shrink:0;}
@@ -165,7 +164,6 @@
     color:var(--amber);cursor:pointer;text-align:center;}
   .makeup-toggle.done{border-style:solid;border-color:#6FA05A;background:#EAF3E5;color:#3D6B2E;}
   .makeup-toggle.waived{border-style:solid;border-color:var(--line);background:var(--paper);color:var(--ink-soft);}
-  /* 결석해도 보강이 자동으로 잡히지 않음 — 필요할 때만 이 버튼을 눌러서 보강 대기 상태로 전환 */
   .makeup-add{display:block;width:100%;margin-top:8px;padding:6px 10px;font-size:11.5px;
     border-radius:8px;border:none;background:none;color:var(--ink-soft);cursor:pointer;
     text-align:center;text-decoration:underline;}
@@ -182,39 +180,28 @@
   .hw-status-btn.missing .hw-name,.hw-status-btn.missing .hw-status-label{color:#fff;}
   .hw-status-btn.unchecked{border-style:dashed;}
 
-  /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) =====================
-     [수정] 카드 높이 축소 + 아이콘 제거 (텍스트 라벨만 표시)
-     - 기존: flex-direction:column, 아이콘(.qi) + 라벨(.ql) 2줄 구성, padding 10px 4px
-     - 변경: 가로 중앙정렬 1줄, 아이콘 숨김, padding 7px 2px로 축소
-  ===================================================================== */
+  /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) ===================== */
   .quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px;}
   .quad-btn{display:flex;align-items:center;justify-content:center;
     border-radius:7px;padding:6px 2px;cursor:pointer;border:1px solid var(--line);background:#fff;
     font-family:inherit;position:relative;min-height:0;}
-  .quad-btn .qi{display:none;}                 /* 아이콘(이모지/SVG) 숨김 */
+  .quad-btn .qi{display:none;}
   .quad-btn .ql{font-size:13px;font-weight:400;line-height:1.2;}
-  /* 태도메모 · 숙제메모 버튼: 메모 유무와 무관하게 항상 같은 색상 톤으로 통일 */
   .quad-btn.memo{color:var(--ink-soft);border-color:var(--line);background:#fff;}
   .quad-btn.memo.on{color:var(--teal-dark);border-color:var(--teal);background:#EAF3EF;}
   .quad-btn[disabled]{opacity:.4;cursor:default;}
   .quad-btn.chev::after{content:"";position:absolute;bottom:3px;right:5px;width:5px;height:5px;
     border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
     transform:rotate(45deg);opacity:.6;}
-  /* 미체크: 옅은 회색, 점선 테두리 */
   .quad-btn.att-unchecked{background:var(--paper);border:1px dashed var(--line);color:var(--ink-soft);}
-  /* 출석: 딥틸 채움 */
   .quad-btn.att-present{background:#5DCAA5;border-color:#5DCAA5;color:#04342C;}
-  /* 지각: 연틸 채움 + 진틸 테두리 */
   .quad-btn.att-late{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);}
-  /* 결석: 연민트 채움 + 진틸 테두리 */
   .quad-btn.att-absent{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);}
-  /* 숙제: 출결 상태에 색을 맞춤 */
   .quad-btn.hw-done{background:#5DCAA5;border-color:#5DCAA5;color:#04342C;}
   .quad-btn.hw-partial{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);}
   .quad-btn.hw-missing{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);}
   .quad-btn.hw-unchecked{background:var(--paper);border-style:dashed;color:var(--ink-soft);}
   .quad-btn.hw-off{background:var(--paper);color:var(--ink-soft);opacity:.45;cursor:default;}
-  /* 숙제메모 표시: 태도메모(.memo-box.att)와 같은 색 톤의 박스 형태로 통일 */
   .quad-sub{font-size:12px;color:var(--teal-dark);background:#EAF3EF;border-radius:7px;
     padding:6px 10px;margin-top:2px;margin-bottom:8px;}
   .quad-sub.muted{color:var(--ink-soft);background:none;padding:2px 0;}
@@ -374,6 +361,10 @@
   .grades-cancel-btn{background:none;border:1px solid var(--line);color:var(--ink-soft);
     border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;}
 
+  /* ===================== 모바일 상단바 + 오버레이 메뉴 (기본은 숨김) ===================== */
+  #mobileTopbar{display:none;}
+  #mobileMenuOverlay{display:none;}
+
   /* ===================== 반응형: 아이패드 세로 / 좁은 화면 ===================== */
   @media (max-width: 1000px){
     .bottom-grid{grid-template-columns:1fr;}
@@ -381,13 +372,35 @@
   @media (max-width: 860px){
     :root{--sidebar-w:100%;font-size:15px;}
     #shell{flex-direction:column;}
-    #sidebar{position:relative;height:auto;flex-direction:row;align-items:center;
-      overflow-x:auto;padding:0;}
-    .side-brand{border-bottom:none;border-right:1px solid rgba(255,255,255,.12);flex-shrink:0;padding:14px 16px;}
-    .side-brand img{width:46px;height:46px;}
-    .side-nav{flex-direction:row;padding:8px;flex:1;}
-    .nav-item{white-space:nowrap;padding:9px 12px;font-size:13px;}
-    .side-foot{display:none;}
+
+    /* 기존 가로 스크롤 사이드바 대신 축소된 로고 + 햄버거 버튼의 상단바를 사용 */
+    #sidebar{display:none;}
+
+    #mobileTopbar{display:flex;align-items:center;justify-content:space-between;
+      background:var(--deep);color:#fff;padding:10px 14px;position:sticky;top:0;z-index:50;}
+    #mobileTopbar .mt-brand{display:flex;align-items:center;gap:8px;min-width:0;}
+    #mobileTopbar .mt-brand img{width:26px;height:26px;object-fit:contain;flex-shrink:0;border-radius:6px;}
+    #mobileTopbar .mt-brand .t1{font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    #mobileMenuBtn{display:flex;align-items:center;justify-content:center;
+      width:34px;height:34px;border:none;background:none;color:#fff;cursor:pointer;flex-shrink:0;}
+    #mobileMenuBtn svg{width:22px;height:22px;}
+
+    #mobileMenuOverlay.open{display:block;position:fixed;inset:0;z-index:100;}
+    #mobileMenuOverlay .mmo-backdrop{position:absolute;inset:0;background:rgba(8,29,24,.45);}
+    #mobileMenuOverlay .mmo-panel{position:relative;background:var(--deep);color:#fff;
+      padding:0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.18);}
+    #mobileMenuOverlay .mmo-head{display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12);}
+    #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
+    #mobileMenuOverlay .mmo-head .t1{font-size:13.5px;font-weight:800;}
+    #mobileMenuClose{background:none;border:none;color:#fff;cursor:pointer;width:32px;height:32px;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    #mobileMenuClose svg{width:20px;height:20px;}
+    #mobileMenuOverlay .mmo-nav{padding:8px 10px;display:flex;flex-direction:column;gap:2px;}
+    #mobileMenuOverlay .nav-item{color:#CFE6DE;}
+    #mobileMenuOverlay .nav-item.active{background:#E1F5EE;color:var(--deep);}
+
     #mainTopbar{padding:16px 18px;}
     #mainTopbar h1{font-size:18px;}
     #pageContent{padding:18px;}
@@ -398,11 +411,6 @@
   /* ===================== 핸드폰 폭 ===================== */
   @media (max-width: 480px){
     :root{font-size:14px;}
-    .side-brand{padding:10px 12px;}
-    .side-brand .t1{font-size:13.5px;}
-    .side-brand .t2{font-size:10px;}
-    .nav-item{font-size:12px;padding:8px 10px;gap:6px;}
-    .nav-item .nav-emoji{font-size:14px;width:15px;}
     #mainTopbar{padding:12px 14px;gap:10px;}
     #mainTopbar h1{font-size:16px;}
     .topbar-actions{width:100%;gap:8px;}
@@ -459,6 +467,54 @@
 </head>
 <body>
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
+
+<div id="mobileTopbar">
+  <div class="mt-brand">
+    <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고">
+    <span class="t1">이끌림수학학원</span>
+  </div>
+  <button id="mobileMenuBtn" aria-label="메뉴 열기">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+</div>
+
+<div id="mobileMenuOverlay">
+  <div class="mmo-backdrop" id="mobileMenuBackdrop"></div>
+  <div class="mmo-panel">
+    <div class="mmo-head">
+      <div class="mt-brand">
+        <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고">
+        <span class="t1">이끌림수학학원</span>
+      </div>
+      <button id="mobileMenuClose" aria-label="메뉴 닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <nav class="mmo-nav" id="mobileNav">
+      <button class="nav-item" data-page="dashboard">
+        <span class="nav-emoji" aria-hidden="true">📊</span>
+        대시보드
+      </button>
+      <button class="nav-item" data-page="students">
+        <span class="nav-emoji" aria-hidden="true">👥</span>
+        학생 관리
+      </button>
+      <button class="nav-item active" data-page="attendance">
+        <span class="nav-emoji" aria-hidden="true">✅</span>
+        출결 관리
+      </button>
+      <button class="nav-item" data-page="grades">
+        <span class="nav-emoji" aria-hidden="true">📈</span>
+        성적 관리
+      </button>
+      <button class="nav-item" data-page="notice">
+        <span class="nav-emoji" aria-hidden="true">📢</span>
+        공지사항
+      </button>
+    </nav>
+  </div>
+</div>
+
 <div id="shell">
   <div id="sidebar">
     <div class="side-brand">
@@ -922,7 +978,6 @@ function renderDayContent(){
       const noteIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
       const hwStatusClass = hw.completed==="완료" ? "done" : hw.completed==="미완료" ? "missing" : "unchecked";
 
-      // 출결 그리드 버튼: 상태별 클래스/아이콘/라벨 (normal = 아직 미체크, 회색으로 구분)
       const attCls = rec.status==="present" ? "att-present"
                    : rec.status==="late" ? "att-late chev"
                    : rec.status==="absent" ? "att-absent chev"
@@ -935,7 +990,6 @@ function renderDayContent(){
       const attLabel = rec.status==="normal" || !rec.status ? "미체크" : (STATUS_LABEL[rec.status] || "미체크");
       const isAbsent = rec.status === "absent";
 
-      // 숙제 그리드 버튼: done/missing/unchecked, 결석이면 비활성
       let hwCls, hwLabel;
       if(isAbsent){ hwCls="hw-off"; hwLabel="숙제"; }
       else if(hw.completed==="완료"){ hwCls="hw-done"; hwLabel="숙제 완료"; }
@@ -962,7 +1016,6 @@ function renderDayContent(){
           </button>
         </div>`;
 
-      // 수업태도 메모 (이름줄 대신 그리드 아래 표시/편집)
       if(rec.attNote && !attOpen){
         html += `<div class="memo-box att">
           <span>${rec.attNote}</span>
@@ -1010,7 +1063,6 @@ function renderDayContent(){
         }
       }
 
-      // 숙제 메모 표시/편집
       if(hw.memo && !hwMemoOpen){
         html += `<div class="quad-sub">${hw.memo}</div>`;
       }
@@ -1035,7 +1087,6 @@ function renderDayContent(){
 const ATT_CYCLE = {present:"late", late:"absent", absent:"present", normal:"present"};
 
 function attachCardHandlers(){
-  // 출결 그리드 버튼: 탭할 때마다 출석→지각→결석 순환
   document.querySelectorAll('#dayPanel .quad-btn[data-role="att"]').forEach(el=>{
     el.onclick = async ()=>{
       const [dateStr, block, slotStr] = el.getAttribute('data-key').split("|");
@@ -1048,7 +1099,6 @@ function attachCardHandlers(){
     };
   });
 
-  // 숙제 그리드 버튼: 완료→미완료→미확인 순환 (결석이면 비활성이라 클릭 안 됨)
   document.querySelectorAll('#dayPanel .quad-btn[data-role="hw"]').forEach(el=>{
     el.onclick = async ()=>{
       const key = el.getAttribute('data-key');
@@ -1061,7 +1111,6 @@ function attachCardHandlers(){
     };
   });
 
-  // 수업태도 메모 열기/닫기
   document.querySelectorAll('#dayPanel .quad-btn[data-role="attMemo"]').forEach(el=>{
     el.onclick = (e)=>{
       e.stopPropagation();
@@ -1071,7 +1120,6 @@ function attachCardHandlers(){
     };
   });
 
-  // 숙제 메모 열기/닫기
   document.querySelectorAll('#dayPanel .quad-btn[data-role="hwMemo"]').forEach(el=>{
     el.onclick = (e)=>{
       e.stopPropagation();
@@ -1117,7 +1165,6 @@ function attachCardHandlers(){
     };
   });
 
-  // 지각/결석 사유 메모
   document.querySelectorAll('#dayPanel .reason-add').forEach(el=>{
     el.onclick = (e)=>{
       e.stopPropagation();
@@ -1162,7 +1209,6 @@ function attachCardHandlers(){
     };
   });
 
-  // "+ 보강 필요 표시" — 결석해도 평소엔 안 보이다가, 필요할 때만 눌러서 보강 대기 상태로 전환
   document.querySelectorAll('#dayPanel .makeup-add').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
@@ -1177,10 +1223,6 @@ function attachCardHandlers(){
     };
   });
 
-  // 보강 상태 토글: 대기 → 완료 → 없음 → (처음, 버튼 사라짐) 순환
-  // 한 번 "+ 보강 필요 표시"를 눌러 대기 상태로 들어온 뒤에만 이 순환 버튼이 나타난다.
-  // 마지막 "없음" 단계에서 한 번 더 누르면 makeupStatus가 'none'이 되어
-  // 버튼 자체가 사라지고 다시 "+ 보강 필요 표시"부터 시작할 수 있다(되돌리기).
   const MAKEUP_CYCLE = {wait:"done", done:"waived", waived:"none"};
   document.querySelectorAll('#dayPanel .makeup-toggle').forEach(el=>{
     el.onclick = async (e)=>{
@@ -1204,7 +1246,6 @@ function attachCardHandlers(){
     };
   });
 
-  // (숙제 상태/메모 버튼 핸들러는 attachCardHandlers 상단의 quad-btn 핸들러로 이동됨)
   document.querySelectorAll('#dayPanel .hwMemoSave').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
@@ -1386,7 +1427,7 @@ document.getElementById('toggleEdit').onclick = async ()=>{
   }
 };
 
-/* ============ 사이드바 페이지 전환 ============ */
+/* ============ 페이지 전환 (사이드바 + 모바일 오버레이 공통) ============ */
 const PAGE_TITLES = {
   dashboard:  "대시보드",
   students:   "학생 관리",
@@ -2013,6 +2054,7 @@ function switchPage(page){
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-page')===page);
   });
+  closeMobileMenu();
 
   const attPage = document.getElementById('attendancePage');
   const otherPage = document.getElementById('otherPage');
@@ -2056,6 +2098,17 @@ function switchPage(page){
 document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{
   btn.onclick = ()=> switchPage(btn.getAttribute('data-page'));
 });
+
+/* ============ 모바일 상단바 햄버거 메뉴 열기/닫기 ============ */
+function openMobileMenu(){
+  document.getElementById('mobileMenuOverlay').classList.add('open');
+}
+function closeMobileMenu(){
+  document.getElementById('mobileMenuOverlay').classList.remove('open');
+}
+document.getElementById('mobileMenuBtn').onclick = openMobileMenu;
+document.getElementById('mobileMenuClose').onclick = closeMobileMenu;
+document.getElementById('mobileMenuBackdrop').onclick = closeMobileMenu;
 
 /* ============ 초기화 ============ */
 function renderAll(){
