@@ -393,7 +393,7 @@
     #mobileMenuOverlay .mmo-head{display:flex;align-items:center;justify-content:space-between;
       padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12);}
     #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
-    #mobileMenuOverlay .mmo-head .t1{font-size:17px;font-weight:800;}
+    .mmo-brand-text{font-size:17px !important;font-weight:800;}
     #mobileMenuClose{background:none;border:none;color:#fff;cursor:pointer;width:32px;height:32px;
       display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     #mobileMenuClose svg{width:20px;height:20px;}
@@ -415,6 +415,7 @@
     #mainTopbar h1{font-size:16px;}
     #mobileTopbar .mt-brand .t1{font-size:16px;}
     #mobileMenuOverlay .mmo-head .t1{font-size:16px;}
+    .mmo-brand-text{font-size:16px !important;}
     .topbar-actions{width:100%;gap:8px;}
     .date-picker{flex:1;padding:9px 12px;font-size:13px;}
     .sync-status{font-size:11px;order:1;}
@@ -494,7 +495,7 @@
     <div class="mmo-head">
       <div class="mt-brand">
         <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고">
-        <span class="t1">이끌림수학학원</span>
+        <span class="t1 mmo-brand-text">이끌림수학학원</span>
       </div>
       <button id="mobileMenuClose" aria-label="메뉴 닫기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
