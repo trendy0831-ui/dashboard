@@ -798,9 +798,13 @@
         const ms = r.makeupStatus || (r.makeupDone ? 'done' : 'none');
         const badgeCls = ms === 'done' ? 'badge-done' : 'badge-wait';
         const badgeText = ms === 'done' ? '보강 완료' : '보강 대기';
+        const planDate = r.makeupDate || '';
         return `
           <div class="makeup-item">
-            <div><div>${dateStr} 결석</div></div>
+            <div>
+              <div>${dateStr} 결석</div>
+              ${planDate ? `<div class="makeup-date">보강 예정일: ${planDate}</div>` : ''}
+            </div>
             <span class="badge ${badgeCls}">${badgeText}</span>
           </div>
         `;
