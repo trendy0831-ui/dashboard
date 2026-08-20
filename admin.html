@@ -651,6 +651,7 @@ let editMode = false;
 let openAttKey = null;    // 메모(특이사항) 편집중인 카드 키
 let openStatusKey = null; // 지각/결석 사유 메모 편집중인 카드 키
 let openHwMemoKey = null; // 숙제 메모 편집중인 카드 키
+let openMakeupDateKey = null; // 보강 예정일 편집중인 카드 키
 let holidays = {}; // { "YYYY-MM-DD": "공휴일명" }
 const HW_CYCLE = {"완료":"미흡", "미흡":"안함", "안함":"미확인", "미확인":"완료", "미완료":"안함"};
 function hwStatusLabel(v){
@@ -923,21 +924,21 @@ datePick.onchange = async ()=>{
   weekStart = mondayOf(selectedDate);
   activeDayIdx = (selectedDate.getDay()+6)%7;
   if(activeDayIdx>5) activeDayIdx = 0;
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
   await loadWeekData();
   renderAll();
 };
 
 document.getElementById('prevWeek').onclick = async ()=>{
   weekStart = addDays(weekStart, -7);
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
   renderCardView();
   await loadWeekData();
   renderCardView();
 };
 document.getElementById('nextWeek').onclick = async ()=>{
   weekStart = addDays(weekStart, 7);
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+  openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
   renderCardView();
   await loadWeekData();
   renderCardView();
@@ -963,7 +964,7 @@ function renderCardView(){
       activeDayIdx = parseInt(el.getAttribute('data-idx'));
       selectedDate = addDays(weekStart, activeDayIdx);
       datePick.value = toDateStr(selectedDate);
-      openAttKey = null; openStatusKey = null; openHwMemoKey = null;
+      openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
       renderCardView();
     };
   });
@@ -1076,14 +1077,35 @@ function renderDayContent(){
 
       if(rec.status === 'absent'){
         const ms = rec.makeupStatus || 'none';
+        const makeupDateOpen = openMakeupDateKey === mk;
         if(ms === 'none'){
           html += `<button class="makeup-add" data-key="${mk}">+ 보강 필요 표시</button>`;
         } else {
           const msCls = ms === 'done' ? 'done' : ms === 'waived' ? 'waived' : '';
           const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 다음 단계로`
                         : ms === 'waived' ? '보강 없음 — 탭하면 처음으로'
-                        : '보강 대기 중 — 탭하면 완료로';
+                        : `보강 대기 중${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 완료로`;
           html += `<button class="makeup-toggle ${msCls}" data-key="${mk}">${msLabel}</button>`;
+
+          // 보강 예정일: 대기/완료 상태일 때 입력·수정 가능 (보강 없음일 땐 의미가 없어 숨김)
+          if(ms === 'wait' || ms === 'done'){
+            if(makeupDateOpen){
+              html += `<div class="memo-edit">
+                <input type="text" class="makeupDateInput" data-key="${mk}" value="${(rec.makeupDate||"").replace(/"/g,'&quot;')}" placeholder="예: 8/25 화">
+                <button class="makeupDateSave" data-key="${mk}">저장</button>
+              </div>`;
+            } else if(!rec.makeupDate){
+              html += `<button class="reason-add" data-key="${mk}" data-role="makeupDateAdd">+ 보강 예정일 입력</button>`;
+            } else {
+              html += `<div class="memo-box att">
+                <span>보강 예정일: ${rec.makeupDate}</span>
+                <span class="memo-actions">
+                  <button class="makeupDateEditBtn" data-key="${mk}" aria-label="수정">✎</button>
+                  <button class="makeupDateDeleteBtn" data-key="${mk}" aria-label="삭제">✕</button>
+                </span>
+              </div>`;
+            }
+          }
         }
       }
 
@@ -1192,7 +1214,11 @@ function attachCardHandlers(){
   document.querySelectorAll('#dayPanel .reason-add').forEach(el=>{
     el.onclick = (e)=>{
       e.stopPropagation();
-      openStatusKey = el.getAttribute('data-key');
+      if(el.getAttribute('data-role') === 'makeupDateAdd'){
+        openMakeupDateKey = el.getAttribute('data-key');
+      } else {
+        openStatusKey = el.getAttribute('data-key');
+      }
       renderCardView();
     };
   });
@@ -1247,6 +1273,44 @@ function attachCardHandlers(){
     };
   });
 
+  // 보강 예정일 입력/수정/삭제 — makeupDate 필드에 사용자가 직접 입력한 텍스트를 저장
+  document.querySelectorAll('#dayPanel .makeupDateEditBtn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      openMakeupDateKey = el.getAttribute('data-key');
+      renderCardView();
+    };
+  });
+  document.querySelectorAll('#dayPanel .makeupDateDeleteBtn').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      if(!confirm('보강 예정일을 삭제할까요?')) return;
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, slotStr] = key.split("|");
+      const slot = parseInt(slotStr);
+      const rec = getRec(dateStr, block, slot);
+      rec.makeupDate = '';
+      setRecLocal(dateStr, block, slot, rec);
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+  document.querySelectorAll('#dayPanel .makeupDateSave').forEach(el=>{
+    el.onclick = async (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      const [dateStr, block, slotStr] = key.split("|");
+      const slot = parseInt(slotStr);
+      const input = document.querySelector(`.makeupDateInput[data-key="${key}"]`);
+      const rec = getRec(dateStr, block, slot);
+      rec.makeupDate = input.value.trim();
+      setRecLocal(dateStr, block, slot, rec);
+      openMakeupDateKey = null;
+      renderCardView();
+      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+
   const MAKEUP_CYCLE = {wait:"done", done:"waived", waived:"none"};
   document.querySelectorAll('#dayPanel .makeup-toggle').forEach(el=>{
     el.onclick = async (e)=>{
@@ -1257,12 +1321,9 @@ function attachCardHandlers(){
       const rec = getRec(dateStr, block, slot);
       const cur = rec.makeupStatus || 'wait';
       rec.makeupStatus = MAKEUP_CYCLE[cur] || 'wait';
-      if(rec.makeupStatus === 'done'){
-        const d = new Date();
-        const days=["일","월","화","수","목","금","토"];
-        rec.makeupDate = `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      } else {
-        rec.makeupDate = "";
+      // makeupDate(보강 예정일)는 사용자가 직접 입력한 값이므로, 상태가 바뀌어도 그대로 유지한다.
+      if(rec.makeupStatus === 'none'){
+        rec.makeupDate = ""; // 처음(보강 필요 없음)으로 완전히 되돌아갈 때만 예정일도 초기화
       }
       setRecLocal(dateStr, block, slot, rec);
       renderCardView();
