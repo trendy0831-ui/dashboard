@@ -199,7 +199,7 @@
   .quad-btn.att-absent{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);}
   .quad-btn.hw-done{background:#5DCAA5;border-color:#5DCAA5;color:#04342C;}
   .quad-btn.hw-partial{background:#9FE1CB;border:1.5px solid var(--deep);color:var(--ink);}
-  .quad-btn.hw-missing{background:#E1F5EE;border:1.5px solid var(--deep);color:var(--ink);}
+  .quad-btn.hw-missing{background:#F7D9CF;border:1.5px solid var(--red);color:var(--ink);}
   .quad-btn.hw-unchecked{background:var(--paper);border-style:dashed;color:var(--ink-soft);}
   .quad-btn.hw-off{background:var(--paper);color:var(--ink-soft);opacity:.45;cursor:default;}
   .quad-sub{font-size:12px;color:var(--teal-dark);background:#EAF3EF;border-radius:7px;
@@ -652,7 +652,14 @@ let openAttKey = null;    // 메모(특이사항) 편집중인 카드 키
 let openStatusKey = null; // 지각/결석 사유 메모 편집중인 카드 키
 let openHwMemoKey = null; // 숙제 메모 편집중인 카드 키
 let holidays = {}; // { "YYYY-MM-DD": "공휴일명" }
-const HW_CYCLE = {"완료":"미완료", "미완료":"미확인", "미확인":"완료"};
+const HW_CYCLE = {"완료":"미흡", "미흡":"안함", "안함":"미확인", "미확인":"완료", "미완료":"안함"};
+function hwStatusLabel(v){
+  if(v === "완료") return "완료";
+  if(v === "미흡" || v === "미완료") return "미흡";
+  if(v === "안함") return "안함";
+  if(v === "미확인" || !v) return "미확인";
+  return "미확인";
+}
 
 function emptyRoster(){
   const r={};
@@ -992,7 +999,6 @@ function renderDayContent(){
       const statusOpen = openStatusKey===mk;
       const hwMemoOpen = openHwMemoKey===hwMk;
       const noteIconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
-      const hwStatusClass = hw.completed==="완료" ? "done" : hw.completed==="미완료" ? "missing" : "unchecked";
 
       const attCls = rec.status==="present" ? "att-present"
                    : rec.status==="late" ? "att-late chev"
@@ -1007,10 +1013,12 @@ function renderDayContent(){
       const isAbsent = rec.status === "absent";
 
       let hwCls, hwLabel;
+      const hwState = hwStatusLabel(hw.completed);
       if(isAbsent){ hwCls="hw-off"; hwLabel="숙제"; }
-      else if(hw.completed==="완료"){ hwCls="hw-done"; hwLabel="숙제 완료"; }
-      else if(hw.completed==="미완료"){ hwCls="hw-missing"; hwLabel="숙제 미흡"; }
-      else { hwCls="hw-unchecked"; hwLabel="숙제"; }
+      else if(hwState==="완료"){ hwCls="hw-done"; hwLabel="숙제 완료"; }
+      else if(hwState==="미흡"){ hwCls="hw-partial"; hwLabel="숙제 미흡"; }
+      else if(hwState==="안함"){ hwCls="hw-missing"; hwLabel="숙제 미제출"; }
+      else { hwCls="hw-unchecked"; hwLabel="숙제 미확인"; }
 
       html += `<div class="slot-card">
         <div class="slot-top">
@@ -1597,7 +1605,7 @@ function renderDashSummary(){
   const sameWeek = toDateStr(mondayOf(today)) === toDateStr(weekStart);
 
   let totalStudents=0, uncheckedCount=0;
-  let hwDone=0, hwTotal=0;
+  let hwScore=0, hwTotal=0;
 
   if(dayName && roster[dayName]){
     BLOCKS.forEach(block=>{
@@ -1608,15 +1616,21 @@ function renderDashSummary(){
         totalStudents++;
         const rec = sameWeek ? getRec(todayStr, block, s) : {status:"normal"};
         if(rec.status === "normal" || !rec.status) uncheckedCount++;
+        if(rec.status === "absent") continue; // 결석은 숙제 완료율 계산 대상에서 제외
+
+        const hw = sameWeek ? getHwRec(todayStr, block, name) : {completed:"미확인"};
+        const hwState = hwStatusLabel(hw.completed);
+        if(hwState === "미확인") continue; // 아직 체크 전이면 분모에서도 제외
 
         hwTotal++;
-        const hw = sameWeek ? getHwRec(todayStr, block, name) : {completed:"미확인"};
-        if(hw.completed === "완료") hwDone++;
+        if(hwState === "완료") hwScore += 1;
+        else if(hwState === "미흡") hwScore += 0.5;
+        // "안함"은 0점으로 분모에만 포함 (hwScore에 더하지 않음)
       }
     });
   }
 
-  const hwRate = hwTotal ? Math.round((hwDone/hwTotal)*100) : 0;
+  const hwRate = hwTotal ? Math.round((hwScore/hwTotal)*100) : 0;
   const cards = [
     { label:"오늘 미체크 학생", value: sameWeek ? uncheckedCount : '-', unit:"명", accent:"accent-red" },
     { label:"오늘 숙제 완료율", value: sameWeek ? hwRate : '-', unit:"%", accent:"accent-teal" }
