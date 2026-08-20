@@ -160,8 +160,8 @@
 
   /* ===================== 보강 토글 ===================== */
   .makeup-toggle{display:block;width:100%;margin-top:8px;padding:8px 10px;font-size:12px;
-    font-weight:700;border-radius:8px;border:1px dashed var(--amber);background:#FBF2DD;
-    color:var(--amber);cursor:pointer;text-align:center;}
+    font-weight:700;border-radius:8px;border:1px dashed var(--teal);background:#EAF3EF;
+    color:var(--teal-dark);cursor:pointer;text-align:center;}
   .makeup-toggle.done{border-style:solid;border-color:#6FA05A;background:#EAF3E5;color:#3D6B2E;}
   .makeup-toggle.waived{border-style:solid;border-color:var(--line);background:var(--paper);color:var(--ink-soft);}
   .makeup-add{display:block;width:100%;margin-top:8px;padding:6px 10px;font-size:11.5px;
@@ -1896,13 +1896,13 @@ async function renderNoticePreview(){
     const data = await apiGet({action:'notice'});
     const n = data.notice;
     if(!n){
-      el.innerHTML = '현재 노출 기간에 해당하는 공지가 없어요.';
+      el.innerHTML = '현재 게시 기간에 해당하는 공지가 없어요.';
       return;
     }
     el.innerHTML = `
       <div class="np-title">${n.title}</div>
       ${n.content ? `<div class="np-body">${n.content}</div>` : ''}
-      <div class="np-period">노출 기간: ${n.startDate} ~ ${n.endDate}</div>
+      <div class="np-period">게시 기간: ${n.startDate} ~ ${n.endDate}</div>
     `;
   }catch(e){
     el.innerHTML = '불러오지 못했어요.';
