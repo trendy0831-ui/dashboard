@@ -738,17 +738,14 @@ async function apiPost(body){
 // 그래서 파일 업로드처럼 결과값(생성된 파일 ID 등)이 꼭 필요한 요청은,
 // no-cors POST로 업로드를 요청해 서버가 CacheService에 결과를 잠시 저장하게 하고,
 // 그 결과를 CORS 문제가 없는 GET(apiGet)으로 폴링해서 가져오는 방식을 쓴다.
-async function uploadFileAndWaitResult(fileName, base64Data, mimeType){
-  const uploadToken = 'up_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
-  await apiPost({ action:'uploadNoticeAttachment', uploadToken, fileName, base64Data, mimeType });
-  const maxAttempts = 20; // 최대 약 20초 대기
-  for(let i=0; i<maxAttempts; i++){
-    await new Promise(r=>setTimeout(r, 1000));
-    const res = await apiGet({ action:'checkUpload', token: uploadToken });
-    if(res && res.status === 'done') return res;
-    if(res && res.status === 'error') throw new Error(res.message || '업로드 확인 실패');
-  }
-  throw new Error('업로드 확인 시간이 초과됐어요.');
+// Apps Script 웹앱은 doPost 응답에 CORS 헤더를 붙일 수 없어(플랫폼 자체 제약) POST는 no-cors로만
+// 보낼 수 있고, 응답을 읽으려는 시도(GET 폴링 포함)는 exec URL의 내부 리다이렉트와 맞물려 불안정했다.
+// 그래서 파일 업로드는 결과를 돌려받지 않는 fire-and-forget으로 보내고, 서버(uploadNoticeAttachment)가
+// "공지사항" 시트에 첨부 정보를 직접 기록하게 한다. 클라이언트는 업로드가 실제로 끝날 시간을 확보하기
+// 위해 잠시 대기만 한다.
+async function uploadFileAndWait(fileName, base64Data, mimeType){
+  await apiPost({ action:'uploadNoticeAttachment', fileName, base64Data, mimeType });
+  await new Promise(r=>setTimeout(r, 4000)); // 업로드+시트 기록이 끝날 시간을 확보
 }
 
 let saveToastTimer = null;
@@ -2031,9 +2028,9 @@ async function renderNoticePage(){
         reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
         reader.readAsDataURL(file);
       });
-      const result = await uploadFileAndWaitResult(file.name, base64Data, file.type);
-      currentAttachment = { fileId: result.fileId, fileName: result.fileName, fileType: result.fileType };
-      statusEl.textContent = `첨부됨: ${result.fileName} (저장을 눌러야 최종 반영돼요)`;
+      await uploadFileAndWait(file.name, base64Data, file.type);
+      currentAttachment = { fileName: file.name };
+      statusEl.textContent = `첨부됨: ${file.name}`;
     }catch(err){
       statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
       currentAttachment = null;
@@ -2062,13 +2059,9 @@ async function renderNoticePage(){
     msgEl.textContent = '저장 중...';
     msgEl.classList.remove('ok');
     try{
-      const noticeBody = { title, content, startDate, endDate };
-      if(currentAttachment){
-        noticeBody.attachmentId = currentAttachment.fileId;
-        noticeBody.attachmentName = currentAttachment.fileName;
-        noticeBody.attachmentType = currentAttachment.fileType || 'pdf';
-      }
-      await apiPost({ action:'saveNotice', notice: noticeBody });
+      // 첨부파일(F,G,H열)은 uploadNoticeAttachment가 이미 시트에 직접 기록했으므로,
+      // 여기서는 절대 건드리지 않는다 — saveNotice도 그 값들을 덮어쓰지 않도록 만들어져 있다.
+      await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
       await new Promise(r=>setTimeout(r, 1200));
       msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
       msgEl.classList.add('ok');
