@@ -322,6 +322,8 @@
   .notice-daterow .notice-field{flex:1;}
   .notice-field input[type=date]{width:100%;border:1px solid var(--line);border-radius:9px;
     padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--paper);}
+  .notice-field input[type=file]{width:100%;font-size:13px;color:var(--ink-soft);}
+  .notice-attach-status{font-size:12.5px;color:var(--teal-dark);margin-top:6px;}
   .notice-save-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;
     padding:12px 24px;font-size:14.5px;font-weight:700;cursor:pointer;}
   .notice-status-msg{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
@@ -332,6 +334,7 @@
     padding:14px 16px;}
   .notice-preview-card .np-title{font-size:14.5px;font-weight:700;margin-bottom:4px;}
   .notice-preview-card .np-body{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.5;}
+  .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-dark);margin-top:8px;}
   .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
 
   /* ===================== 성적 관리(초등 테스트 기록) ===================== */
@@ -728,6 +731,19 @@ async function apiPost(body){
     body: JSON.stringify(body)
   });
   return {status:"ok"};
+}
+
+// 파일 업로드처럼 서버가 만들어 돌려주는 값(생성된 파일 ID 등)을 실제로 읽어야 하는 요청 전용.
+// no-cors 모드는 응답 내용을 전혀 읽을 수 없으므로, 이 함수만 cors 모드로 fetch한다.
+// Apps Script 웹앱은 text/plain 요청에 한해 대체로 CORS를 허용한다.
+async function apiPostWithResponse(body){
+  const res = await fetch(SCRIPT_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  return res.json();
 }
 
 let saveToastTimer = null;
@@ -1949,6 +1965,8 @@ async function renderStudentGrid(){
 }
 
 /* ============ 공지사항 (관리자 작성 화면) ============ */
+let currentAttachment = null; // { fileId, fileName } — 이번 저장에 사용할 첨부파일 정보 (업로드 직후 또는 기존 공지에서 불러온 값)
+
 async function renderNoticePage(){
   const el = document.getElementById('otherPage');
   el.innerHTML = `
@@ -1971,6 +1989,11 @@ async function renderNoticePage(){
           <input type="date" id="noticeEnd">
         </div>
       </div>
+      <div class="notice-field">
+        <label>PDF 첨부 (선택)</label>
+        <input type="file" id="noticeAttachInput" accept="application/pdf">
+        <div id="noticeAttachStatus" class="notice-attach-status"></div>
+      </div>
       <button class="notice-save-btn" id="noticeSaveBtn">저장</button>
       <div class="notice-status-msg" id="noticeStatusMsg"></div>
 
@@ -1981,7 +2004,35 @@ async function renderNoticePage(){
     </div>
   `;
 
+  currentAttachment = null;
   await loadNoticeIntoForm();
+
+  document.getElementById('noticeAttachInput').onchange = async (e)=>{
+    const file = e.target.files[0];
+    const statusEl = document.getElementById('noticeAttachStatus');
+    if(!file) return;
+    if(file.type !== 'application/pdf'){
+      statusEl.textContent = 'PDF 파일만 첨부할 수 있어요.';
+      e.target.value = '';
+      return;
+    }
+    statusEl.textContent = `업로드 중... (${file.name})`;
+    try{
+      const base64Data = await new Promise((resolve, reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=> resolve(reader.result.split(',')[1]);
+        reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
+        reader.readAsDataURL(file);
+      });
+      const result = await apiPostWithResponse({ action:'uploadNoticeAttachment', fileName: file.name, base64Data });
+      currentAttachment = { fileId: result.fileId, fileName: result.fileName };
+      statusEl.textContent = `첨부됨: ${result.fileName} (저장을 눌러야 최종 반영돼요)`;
+    }catch(err){
+      statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
+      currentAttachment = null;
+      e.target.value = '';
+    }
+  };
 
   document.getElementById('noticeSaveBtn').onclick = async ()=>{
     const title = document.getElementById('noticeTitle').value.trim();
@@ -2004,7 +2055,12 @@ async function renderNoticePage(){
     msgEl.textContent = '저장 중...';
     msgEl.classList.remove('ok');
     try{
-      await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
+      const noticeBody = { title, content, startDate, endDate };
+      if(currentAttachment){
+        noticeBody.attachmentId = currentAttachment.fileId;
+        noticeBody.attachmentName = currentAttachment.fileName;
+      }
+      await apiPost({ action:'saveNotice', notice: noticeBody });
       await new Promise(r=>setTimeout(r, 1200));
       msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
       msgEl.classList.add('ok');
@@ -2025,6 +2081,12 @@ async function loadNoticeIntoForm(){
       document.getElementById('noticeContent').value = n.content || '';
       document.getElementById('noticeStart').value = n.startDate || '';
       document.getElementById('noticeEnd').value = n.endDate || '';
+      if(n.attachmentName){
+        // 기존 공지에 이미 첨부가 있으면, 새로 파일을 올리지 않는 한 이 정보를 그대로 유지해 저장한다.
+        currentAttachment = { fileId: n.attachmentId || '', fileName: n.attachmentName };
+        const statusEl = document.getElementById('noticeAttachStatus');
+        if(statusEl) statusEl.textContent = `현재 첨부: ${n.attachmentName}`;
+      }
     }
   }catch(e){}
   await renderNoticePreview();
@@ -2043,6 +2105,7 @@ async function renderNoticePreview(){
     el.innerHTML = `
       <div class="np-title">${n.title}</div>
       ${n.content ? `<div class="np-body">${n.content}</div>` : ''}
+      ${n.attachmentName ? `<div class="np-attachment">📎 ${n.attachmentName}</div>` : ''}
       <div class="np-period">게시 기간: ${n.startDate} ~ ${n.endDate}</div>
     `;
   }catch(e){
