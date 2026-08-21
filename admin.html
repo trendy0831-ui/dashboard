@@ -739,6 +739,10 @@ async function loadRoster(){
       day: item.day, block: item.block, slot: item.slot,
       name: item.name || "", effectiveFrom: item.effectiveFrom || ""
     }));
+    // 임시 디버그 로그 — 화요일 16:00 슬롯2 이력을 콘솔에 출력해 원인을 확인한다.
+    console.log('[DEBUG] 화 16:00 슬롯2 이력:', JSON.stringify(
+      rosterHistory.filter(it => it.day === '화' && it.block === '16:00' && String(it.slot) === '2')
+    ));
     const todayStr = toDateStr(new Date());
     const r = emptyRoster();
     DAYS.forEach(day=>{
@@ -1044,6 +1048,9 @@ function renderDayContent(){
     // 이 카드가 그리는 날짜(dateStr) 기준으로 그 시점에 유효했던 이름을 계산한다.
     // 요일/시간이 나중에 바뀌어도, 과거 날짜 카드는 그 당시 배정된 학생 이름을 그대로 보여준다.
     const names = [0,1,2,3].map(s => rosterNameAt(dayName, block, s, dateStr));
+    if(dayName === '화' && block === '16:00'){
+      console.log('[DEBUG] renderDayContent 화 16:00 dateStr=', dateStr, 'names=', JSON.stringify(names));
+    }
     const hasAny = names.some(n=>n && n.trim());
     if(!hasAny) return;
     html += `<div class="time-label">${block}</div><div class="slot-group">`;
