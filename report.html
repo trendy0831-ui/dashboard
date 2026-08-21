@@ -691,7 +691,10 @@
     document.getElementById('loading').style.display = 'none';
 
     if(data.error){
-      showError(data.error === 'student not found' ? '학생 정보를 찾을 수 없어요. 링크를 다시 확인해주세요.' : null);
+      let msg = null;
+      if(data.error === 'student not found') msg = '학생 정보를 찾을 수 없어요. 링크를 다시 확인해주세요.';
+      else if(data.error === 'student inactive') msg = '더 이상 확인할 수 없는 리포트예요. 궁금하신 점은 학원으로 문의해주세요.';
+      showError(msg);
       return;
     }
 
