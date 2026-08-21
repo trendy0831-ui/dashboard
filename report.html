@@ -469,6 +469,84 @@
     color:var(--teal-dark);
     text-decoration:underline;
   }
+  /* B안: 첨부 이미지는 작은 썸네일 카드로 보여주고, 누르면 확대 모달이 뜬다 */
+  .notice-image-thumb-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    margin-top:12px;
+    padding:8px 10px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:10px;
+    cursor:pointer;
+    font-family:inherit;
+    text-align:left;
+  }
+  .notice-image-thumb{
+    width:44px;
+    height:44px;
+    object-fit:cover;
+    border-radius:6px;
+    flex-shrink:0;
+    background:var(--card);
+  }
+  .notice-image-thumb-info{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    min-width:0;
+  }
+  .notice-image-thumb-name{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .notice-image-thumb-hint{
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .image-modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.75);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+    padding:24px 16px;
+  }
+  .image-modal-inner{
+    position:relative;
+    max-width:100%;
+    max-height:100%;
+  }
+  .image-modal-img{
+    max-width:100%;
+    max-height:85vh;
+    border-radius:10px;
+    display:block;
+  }
+  .image-modal-close{
+    position:absolute;
+    top:-14px;
+    right:-14px;
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:#fff;
+    border:none;
+    color:var(--ink);
+    font-size:16px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
   .notice-period{
     font-size:11px;
     color:var(--ink-soft);
@@ -933,8 +1011,22 @@
           <a class="notice-attachment-link" href="${notice.attachmentViewUrl}" target="_blank" rel="noopener">새 창에서 크게 보기</a>
         </div>
       ` : ''}
+      ${notice.attachmentThumbUrl ? `
+        <button type="button" class="notice-image-thumb-btn" id="noticeImageThumbBtn">
+          <img class="notice-image-thumb" src="${notice.attachmentThumbUrl}" alt="${notice.attachmentName || '첨부 이미지'}" loading="lazy">
+          <span class="notice-image-thumb-info">
+            <span class="notice-image-thumb-name">🖼️ ${notice.attachmentName || '첨부 이미지'}</span>
+            <span class="notice-image-thumb-hint">눌러서 크게 보기</span>
+          </span>
+        </button>
+      ` : ''}
       <div class="notice-period">게시 기간: ${notice.startDate} ~ ${notice.endDate}</div>
     `;
+
+    if(notice.attachmentThumbUrl){
+      const thumbBtn = document.getElementById('noticeImageThumbBtn');
+      if(thumbBtn) thumbBtn.onclick = ()=> openImageModal(notice.attachmentViewUrl, notice.attachmentName);
+    }
 
     const id = getParam('id');
     const readKey = 'noticeRead_' + id;
@@ -949,6 +1041,27 @@
     const readKey = 'noticeRead_' + id;
     localStorage.setItem(readKey, currentNotice.id);
     document.getElementById('tab-notice-dot').style.display = 'none';
+  }
+
+  // 첨부 이미지 확대 보기 — 화면 전체를 덮는 오버레이에 큰 이미지를 띄우고, 배경이나 닫기 버튼을 누르면 닫힌다.
+  function openImageModal(viewUrl, name){
+    const fileIdMatch = (viewUrl || '').match(/\/d\/([^/]+)/);
+    const fileId = fileIdMatch ? fileIdMatch[1] : '';
+    const bigSrc = fileId ? ('https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1200') : viewUrl;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'image-modal-overlay';
+    overlay.innerHTML = `
+      <div class="image-modal-inner">
+        <button type="button" class="image-modal-close" aria-label="닫기">✕</button>
+        <img class="image-modal-img" src="${bigSrc}" alt="${name || '첨부 이미지'}">
+      </div>
+    `;
+    overlay.addEventListener('click', (e)=>{
+      if(e.target === overlay) document.body.removeChild(overlay);
+    });
+    overlay.querySelector('.image-modal-close').onclick = ()=> document.body.removeChild(overlay);
+    document.body.appendChild(overlay);
   }
 
   // Apps Script의 exec 엔드포인트는 실제 응답 전에 내부적으로 리다이렉트를 거치는데,
