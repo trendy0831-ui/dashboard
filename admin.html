@@ -273,11 +273,20 @@
   /* ===================== 학생 관리: 학생 카드 그리드 ===================== */
   .student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
   .student-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;
-    padding:16px 18px;cursor:pointer;transition:border-color .15s;}
+    padding:16px 18px;transition:border-color .15s;}
   .student-card:hover{border-color:var(--teal);}
+  .student-card.student-card-withdrawn{opacity:.6;border-style:dashed;}
+  .student-card .sc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .student-card .sc-name{font-size:15.5px;font-weight:700;color:var(--ink);}
+  .student-card .sc-status-badge{font-size:11px;font-weight:700;color:#fff;background:var(--ink-soft);
+    padding:2px 9px;border-radius:99px;white-space:nowrap;}
   .student-card .sc-meta{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
   .student-card .sc-slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+  .sc-status-toggle{display:block;width:100%;margin-top:12px;padding:8px 10px;font-size:12.5px;
+    font-weight:700;border-radius:8px;border:1px solid var(--line);background:#fff;
+    color:var(--ink-soft);cursor:pointer;text-align:center;}
+  .sc-status-toggle:hover{border-color:var(--red);color:var(--red);}
+  .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-dark);}
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:#EAF3EF;
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
@@ -1882,6 +1891,21 @@ async function renderReasonFeed(){
 }
 
 
+let studentInfoList = []; // getStudentInfoList() 결과 캐시 — 재원상태 표시/토글에 사용
+
+async function loadStudentInfoList(){
+  try{
+    studentInfoList = await apiGet({action:"studentInfoList"});
+  }catch(e){
+    studentInfoList = [];
+  }
+}
+
+function studentStatusOf(name){
+  const found = studentInfoList.find(s => s.name === name);
+  return found ? found.status : '재원'; // 학생정보 시트에 아직 없는 이름은 기본 재원으로 간주
+}
+
 function slotsByStudent(){
   const map = {};
   DAYS.forEach(day=>{
@@ -1897,9 +1921,10 @@ function slotsByStudent(){
   return map;
 }
 
-function renderStudentGrid(){
+async function renderStudentGrid(){
   const el = document.getElementById('studentGrid');
   if(!el) return;
+  await loadStudentInfoList();
   const bySlot = slotsByStudent();
   const names = Object.keys(bySlot).sort((a,b)=>a.localeCompare(b,'ko'));
 
@@ -1912,17 +1937,38 @@ function renderStudentGrid(){
     const stu = parseStudentEntry(raw);
     const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
     const badges = bySlot[raw].map(s=>`<span class="slot-badge">${s.day} ${s.block}</span>`).join('');
-    return `<div class="student-card" data-name="${raw}">
-      <div class="sc-name">${stu.name}</div>
+    const status = studentStatusOf(stu.name);
+    const isWithdrawn = status === '퇴원';
+    return `<div class="student-card${isWithdrawn?' student-card-withdrawn':''}" data-name="${raw}">
+      <div class="sc-top">
+        <div class="sc-name">${stu.name}</div>
+        ${isWithdrawn ? '<span class="sc-status-badge">퇴원</span>' : ''}
+      </div>
       ${meta ? `<div class="sc-meta">${meta}</div>` : ''}
       <div class="sc-slots">${badges}</div>
+      <button class="sc-status-toggle" data-student-name="${stu.name}" data-cur-status="${status}">
+        ${isWithdrawn ? '재원으로 되돌리기' : '퇴원 처리'}
+      </button>
     </div>`;
   }).join('');
 
-  el.querySelectorAll('.student-card').forEach(card=>{
-    card.onclick = ()=>{
-      const name = card.getAttribute('data-name');
-      console.log('학생 카드 클릭:', name);
+  el.querySelectorAll('.sc-status-toggle').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const name = btn.getAttribute('data-student-name');
+      const curStatus = btn.getAttribute('data-cur-status');
+      const nextStatus = curStatus === '퇴원' ? '재원' : '퇴원';
+      const confirmMsg = nextStatus === '퇴원'
+        ? `${name} 학생을 퇴원 처리할까요?\n출결 기록은 그대로 남고, 학부모 리포트 링크만 더 이상 열리지 않아요.`
+        : `${name} 학생을 다시 재원 상태로 되돌릴까요?\n학부모 리포트 링크가 다시 열려요.`;
+      if(!confirm(confirmMsg)) return;
+      btn.disabled = true;
+      try{
+        await apiPost({ action:'setStudentStatus', name: name, status: nextStatus });
+      }catch(err){
+        showSaveFailToast('재원 상태 변경에 실패했어요. 인터넷 연결을 확인해주세요.');
+      }
+      await renderStudentGrid();
     };
   });
 }
