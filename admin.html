@@ -123,6 +123,10 @@
   .time-label:first-child{margin-top:0;}
   .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
   .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px;}
+  /* "종료된 시간대" 카드: 요일/시간이 바뀌어 더 이상 쓰지 않는 과거 슬롯을 시각적으로 옅게 구분 */
+  .slot-card-ended{opacity:.6;border-style:dashed;}
+  .slot-ended-badge{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--line);
+    padding:2px 8px;border-radius:99px;vertical-align:middle;}
 
   /* ===================== 아이콘/이름/메모 ===================== */
   .slot-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px;}
@@ -905,15 +909,30 @@ function dayNameForDate(dateStr){
 }
 
 /* ============ 학생 목록 (roster 전체에서 고유 이름 추출) ============ */
+// 같은 학생이 "종료"된 옛 슬롯과 새 슬롯에 이름/학교/학년/상태 형태로 각각 등록되어 있을 수 있으므로,
+// 이름 기준으로 중복을 제거하고 대표 항목 하나만 남긴다 (종료되지 않은 슬롯을 우선한다).
 function allStudentNames(){
-  const set = new Set();
-  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach(n=>{ if(n && n.trim()) set.add(n.trim()); }); }); });
-  return Array.from(set).sort((a,b)=>a.localeCompare(b,'ko'));
+  const byName = {};
+  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach(n=>{
+    if(!n || !n.trim()) return;
+    const raw = n.trim();
+    const stu = parseStudentEntry(raw);
+    if(!stu.name) return;
+    const prev = byName[stu.name];
+    // 활성 슬롯(종료 아님)을 종료 슬롯보다 우선 채택. 아직 없으면 무조건 채택.
+    if(!prev || (prev.status === '종료' && stu.status !== '종료')){
+      byName[stu.name] = { raw, status: stu.status };
+    }
+  }); }); });
+  return Object.values(byName).map(v=>v.raw).sort((a,b)=>a.localeCompare(b,'ko'));
 }
 
 function parseStudentEntry(raw){
   const parts = (raw||"").split("/").map(s=>s.trim());
-  return { name: parts[0]||"", school: parts[1]||"", grade: parts[2]||"" };
+  // 4번째 필드(status)는 "종료" 같은 상태 표시용 — 요일/시간을 옮긴 뒤에도
+  // 예전 슬롯의 과거 출결 기록을 그대로 보존하기 위해, 이름은 바꾸지 않고
+  // 이 필드만 붙여서 "지금은 안 쓰는 자리"라고 표시하는 용도로 쓴다.
+  return { name: parts[0]||"", school: parts[1]||"", grade: parts[2]||"", status: parts[3]||"" };
 }
 
 /* ============ 날짜 선택 ============ */
@@ -981,17 +1000,27 @@ function renderDayContent(){
   const d = addDays(weekStart, activeDayIdx);
   const dateStr = toDateStr(d);
   const dayName = DAYS[activeDayIdx];
+  const todayStr = toDateStr(new Date());
   let html = "";
   BLOCKS.forEach(block=>{
     const names = roster[dayName][block];
-    const hasAny = names.some(n=>n && n.trim());
+    // "종료" 상태인 슬롯은 오늘 이후(미래) 날짜에서는 이미 안 쓰는 자리이므로 카드 자체를 숨기고,
+    // 과거 날짜에서는 실제 그날 수업이 있었으므로 그대로 표시한다.
+    const isVisibleSlot = n => {
+      if(!n || !n.trim()) return false;
+      const st = parseStudentEntry(n).status;
+      if(st === '종료' && dateStr >= todayStr) return false;
+      return true;
+    };
+    const hasAny = names.some(isVisibleSlot);
     if(!hasAny) return;
     html += `<div class="time-label">${block}</div><div class="slot-group">`;
     for(let s=0;s<SUB;s++){
       const name = names[s];
-      if(!name || !name.trim()) continue;
+      if(!isVisibleSlot(name)) continue;
       const stu = parseStudentEntry(name);
       const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+      const isEnded = stu.status === '종료';
       const rec = getRec(dateStr, block, s);
       const hw = getHwRec(dateStr, block, name);
       const mk = dateStr+"|"+block+"|"+s;
@@ -1021,9 +1050,9 @@ function renderDayContent(){
       else if(hwState==="안함"){ hwCls="hw-missing"; hwLabel="숙제 미제출"; }
       else { hwCls="hw-unchecked"; hwLabel="숙제 미확인"; }
 
-      html += `<div class="slot-card">
+      html += `<div class="slot-card${isEnded?' slot-card-ended':''}">
         <div class="slot-top">
-          <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
+          <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}${isEnded?` <span class="slot-ended-badge">종료된 시간대</span>`:''}</span>
         </div>
 
         <div class="quad-grid">
@@ -1424,6 +1453,7 @@ document.getElementById('calNext').onclick = async ()=>{
 async function loadMonthRecords(){
   monthRecords = {};
   if(!selectedStudent) return;
+  const selectedName = parseStudentEntry(selectedStudent).name; // 종료 여부와 무관하게 이름으로만 매칭
   const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
   const last = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0);
   let cursor = mondayOf(first);
@@ -1440,7 +1470,8 @@ async function loadMonthRecords(){
         const names = roster[dayName] ? roster[dayName][rec.block] : null;
         if(!names) return;
         const slotIdx = (parseInt(rec.slot)||1)-1;
-        if(names[slotIdx] && names[slotIdx].trim()===selectedStudent){
+        const slotName = names[slotIdx] ? parseStudentEntry(names[slotIdx].trim()).name : '';
+        if(slotName && slotName === selectedName){
           monthRecords[rec.date] = rec.status;
         }
       });
@@ -1473,7 +1504,9 @@ function renderCalendar(){
 /* ============ 명단 편집 ============ */
 function renderEditView(){
   const editView = document.getElementById('editView');
-  let html = `<div class="edit-hint">요일 × 시간블록별 고정 명단을 입력하세요. "이름/학교/학년" 형식으로 입력하면 카드에 함께 표시돼요 (예: 김휘은/동부고/중1). 학교·학년은 생략 가능해요. 빈칸은 배정 가능 자리로 표시됩니다. "편집 종료"를 누르면 저장됩니다.</div>`;
+  let html = `<div class="edit-hint">요일 × 시간블록별 고정 명단을 입력하세요. "이름/학교/학년" 형식으로 입력하면 카드에 함께 표시돼요 (예: 김휘은/동부고/중1). 학교·학년은 생략 가능해요. 빈칸은 배정 가능 자리로 표시됩니다.<br>
+  <b>요일·시간을 옮길 때는</b>: 기존 자리를 바로 지우지 말고 "이름/학교/학년/종료"로 표시해두면(예: 김휘은/동부고/중1/종료), 지난 수업 기록은 그대로 보존되고 오늘 이후로는 화면에서 자동으로 숨겨져요. 새 요일·시간에는 평소처럼 "이름/학교/학년"으로 등록해주세요.<br>
+  "편집 종료"를 누르면 저장됩니다.</div>`;
   DAYS.forEach(day=>{
     html += `<div class="edit-day">${day}요일</div>`;
     BLOCKS.forEach(block=>{
