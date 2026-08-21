@@ -1153,12 +1153,14 @@ function renderDayContent(){
           html += `<button class="makeup-add" data-key="${mk}">+ 보강 필요 표시</button>`;
         } else {
           const msCls = ms === 'done' ? 'done' : ms === 'waived' ? 'waived' : '';
-          const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 다음 단계로`
+          const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` · ${rec.makeupDate}`:''}`
                         : ms === 'waived' ? '보강 없음 — 탭하면 처음으로'
-                        : `보강 대기 중${rec.makeupDate?` (${rec.makeupDate})`:''} — 탭하면 완료로`;
+                        : `보강 대기${rec.makeupDate?` · ${rec.makeupDate}`:''}`;
           html += `<button class="makeup-toggle ${msCls}" data-key="${mk}">${msLabel}</button>`;
 
           // 보강 예정일: 대기/완료 상태일 때 입력·수정 가능 (보강 없음일 땐 의미가 없어 숨김)
+          // 예정일이 이미 있으면 위 토글 버튼 안에 함께 표시되므로, 여기서는 편집용 버튼만 작게 보여준다
+          // (같은 정보를 두 번 보여주지 않도록).
           if(ms === 'wait' || ms === 'done'){
             if(makeupDateOpen){
               html += `<div class="memo-edit">
@@ -1168,13 +1170,7 @@ function renderDayContent(){
             } else if(!rec.makeupDate){
               html += `<button class="reason-add" data-key="${mk}" data-role="makeupDateAdd">+ 보강 예정일 입력</button>`;
             } else {
-              html += `<div class="memo-box att">
-                <span>보강 예정일: ${rec.makeupDate}</span>
-                <span class="memo-actions">
-                  <button class="makeupDateEditBtn" data-key="${mk}" aria-label="수정">✎</button>
-                  <button class="makeupDateDeleteBtn" data-key="${mk}" aria-label="삭제">✕</button>
-                </span>
-              </div>`;
+              html += `<button class="reason-add" data-key="${mk}" data-role="makeupDateAdd">✎ 예정일 수정</button>`;
             }
           }
         }
@@ -1344,28 +1340,7 @@ function attachCardHandlers(){
     };
   });
 
-  // 보강 예정일 입력/수정/삭제 — makeupDate 필드에 사용자가 직접 입력한 텍스트를 저장
-  document.querySelectorAll('#dayPanel .makeupDateEditBtn').forEach(el=>{
-    el.onclick = (e)=>{
-      e.stopPropagation();
-      openMakeupDateKey = el.getAttribute('data-key');
-      renderCardView();
-    };
-  });
-  document.querySelectorAll('#dayPanel .makeupDateDeleteBtn').forEach(el=>{
-    el.onclick = async (e)=>{
-      e.stopPropagation();
-      if(!confirm('보강 예정일을 삭제할까요?')) return;
-      const key = el.getAttribute('data-key');
-      const [dateStr, block, slotStr] = key.split("|");
-      const slot = parseInt(slotStr);
-      const rec = getRec(dateStr, block, slot);
-      rec.makeupDate = '';
-      setRecLocal(dateStr, block, slot, rec);
-      renderCardView();
-      await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
-    };
-  });
+  // 보강 예정일 입력/수정 — makeupDate 필드에 사용자가 직접 입력한 텍스트를 저장 (입력창을 비우고 저장하면 삭제됨)
   document.querySelectorAll('#dayPanel .makeupDateSave').forEach(el=>{
     el.onclick = async (e)=>{
       e.stopPropagation();
