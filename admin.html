@@ -1618,7 +1618,17 @@ document.getElementById('toggleEdit').onclick = async ()=>{
       btn.disabled = false;
     }
   } else {
-    setEditMode(true);
+    // 편집을 시작하기 전에 서버에서 최신 명단을 다시 불러온다 — 캐시된 오래된 값 위에서
+    // 편집을 시작하면, 그 사이 다른 곳(시트 직접 수정 등)에서 생긴 변경사항이 무시되거나
+    // 되돌려질 수 있기 때문이다.
+    const btn = document.getElementById('toggleEdit');
+    btn.disabled = true;
+    try{
+      await loadRoster();
+      setEditMode(true);
+    } finally {
+      btn.disabled = false;
+    }
   }
 };
 
