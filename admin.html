@@ -733,17 +733,22 @@ async function apiPost(body){
   return {status:"ok"};
 }
 
-// 파일 업로드처럼 서버가 만들어 돌려주는 값(생성된 파일 ID 등)을 실제로 읽어야 하는 요청 전용.
-// no-cors 모드는 응답 내용을 전혀 읽을 수 없으므로, 이 함수만 cors 모드로 fetch한다.
-// Apps Script 웹앱은 text/plain 요청에 한해 대체로 CORS를 허용한다.
-async function apiPostWithResponse(body){
-  const res = await fetch(SCRIPT_URL, {
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body: JSON.stringify(body)
-  });
-  if(!res.ok) throw new Error("HTTP "+res.status);
-  return res.json();
+// Apps Script 웹앱은 doPost 응답에 CORS 헤더를 붙일 수 없어(플랫폼 자체 제약),
+// POST는 no-cors로만 보낼 수 있고 브라우저가 응답 내용을 절대 읽지 못한다.
+// 그래서 파일 업로드처럼 결과값(생성된 파일 ID 등)이 꼭 필요한 요청은,
+// no-cors POST로 업로드를 요청해 서버가 CacheService에 결과를 잠시 저장하게 하고,
+// 그 결과를 CORS 문제가 없는 GET(apiGet)으로 폴링해서 가져오는 방식을 쓴다.
+async function uploadFileAndWaitResult(fileName, base64Data, mimeType){
+  const uploadToken = 'up_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+  await apiPost({ action:'uploadNoticeAttachment', uploadToken, fileName, base64Data, mimeType });
+  const maxAttempts = 20; // 최대 약 20초 대기
+  for(let i=0; i<maxAttempts; i++){
+    await new Promise(r=>setTimeout(r, 1000));
+    const res = await apiGet({ action:'checkUpload', token: uploadToken });
+    if(res && res.status === 'done') return res;
+    if(res && res.status === 'error') throw new Error(res.message || '업로드 확인 실패');
+  }
+  throw new Error('업로드 확인 시간이 초과됐어요.');
 }
 
 let saveToastTimer = null;
@@ -2026,7 +2031,7 @@ async function renderNoticePage(){
         reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
         reader.readAsDataURL(file);
       });
-      const result = await apiPostWithResponse({ action:'uploadNoticeAttachment', fileName: file.name, base64Data, mimeType: file.type });
+      const result = await uploadFileAndWaitResult(file.name, base64Data, file.type);
       currentAttachment = { fileId: result.fileId, fileName: result.fileName, fileType: result.fileType };
       statusEl.textContent = `첨부됨: ${result.fileName} (저장을 눌러야 최종 반영돼요)`;
     }catch(err){
