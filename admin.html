@@ -1578,7 +1578,12 @@ function renderEditView(){
     const day = inp.getAttribute('data-day'), block = inp.getAttribute('data-block'), slot = inp.getAttribute('data-slot');
     const original = roster[day][block][parseInt(slot)] || "";
     const effRow = editView.querySelector(`.edit-eff-row[data-day="${day}"][data-block="${block}"][data-slot="${slot}"]`);
+    // 입력 도중에는 원본과 우연히 같아지는 순간(오타 수정 등)에도 계속 보이게 유지하고,
+    // 이 칸을 벗어날 때(blur)만 최종적으로 원본과 같은지 판단해 숨긴다 — 타이핑 중 깜빡임 방지.
     inp.addEventListener('input', ()=>{
+      if(inp.value.trim() !== original.trim()) effRow.style.display = 'flex';
+    });
+    inp.addEventListener('blur', ()=>{
       effRow.style.display = (inp.value.trim() !== original.trim()) ? 'flex' : 'none';
     });
   });
