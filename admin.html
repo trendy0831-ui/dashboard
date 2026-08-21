@@ -222,6 +222,11 @@
   .edit-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .edit-grid input{font-size:13.5px;border:1px solid var(--line);border-radius:8px;
     padding:8px 10px;font-family:inherit;}
+  .edit-slot{display:flex;flex-direction:column;gap:4px;}
+  .edit-eff-row{display:flex;align-items:center;gap:6px;background:#FBF2DD;border:1px solid var(--amber);
+    border-radius:7px;padding:5px 8px;}
+  .edit-eff-row label{font-size:10.5px;color:var(--amber);font-weight:700;white-space:nowrap;}
+  .edit-eff-row input{flex:1;font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;}
 
   /* ===================== 하단: 미체크 + 학생별 이력 ===================== */
   .bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;}
@@ -666,6 +671,30 @@ function hwStatusLabel(v){
   return "미확인";
 }
 
+let rosterHistory = []; // 서버가 내려주는 명단 이력 원본: [{day, block, slot, name, effectiveFrom}, ...]
+
+// 특정 (요일,시간,슬롯)에 대해, 주어진 날짜(dateStr) 기준으로 유효했던 이름을 계산한다.
+// effectiveFrom이 없는(예전 방식) 행은 항상 유효한 것으로 보고, effectiveFrom이 있는 행들 중에는
+// dateStr 이전(또는 같은 날)에 시작된 것 중 가장 최근 것을 채택한다.
+function rosterNameAt(day, block, slot, dateStr){
+  const candidates = rosterHistory.filter(it =>
+    it.day === day && String(it.block).trim() === String(block).trim() && String(it.slot) === String(slot + 1)
+  );
+  if(!candidates.length) return "";
+  let best = null;
+  candidates.forEach(it=>{
+    if(!it.effectiveFrom){
+      // 예전 방식(시작일 없음) 행: 더 나은 후보가 없을 때의 기본값으로만 사용
+      if(!best) best = it;
+      return;
+    }
+    if(it.effectiveFrom <= dateStr){
+      if(!best || !best.effectiveFrom || it.effectiveFrom > best.effectiveFrom) best = it;
+    }
+  });
+  return best ? (best.name || "") : "";
+}
+
 function emptyRoster(){
   const r={};
   DAYS.forEach(d=>{ r[d]={}; BLOCKS.forEach(b=>{ r[d][b]=["","","",""]; }); });
@@ -710,11 +739,25 @@ function showSaveFailToast(msg){
   saveToastTimer = setTimeout(()=> el.classList.remove('show'), 4000);
 }
 
+// roster는 "오늘 기준 유효 명단"의 캐시 — 명단 편집 화면, 학생 목록 등
+// "지금 현재"를 다루는 화면에서 그대로 사용한다. 특정 과거/미래 날짜를 기준으로 카드를
+// 그릴 때는 rosterNameAt()으로 그 날짜에 맞는 이름을 다시 계산해서 써야 한다.
 async function loadRoster(){
   try{
     const rows = await apiGet({action:"roster"});
+    rosterHistory = rows.map(item => ({
+      day: item.day, block: item.block, slot: item.slot,
+      name: item.name || "", effectiveFrom: item.effectiveFrom || ""
+    }));
+    const todayStr = toDateStr(new Date());
     const r = emptyRoster();
-    rows.forEach(item=>{ if(r[item.day] && r[item.day][item.block]) r[item.day][item.block][item.slot-1] = item.name || ""; });
+    DAYS.forEach(day=>{
+      BLOCKS.forEach(block=>{
+        for(let s=0; s<SUB; s++){
+          r[day][block][s] = rosterNameAt(day, block, s, todayStr);
+        }
+      });
+    });
     roster = r;
   }catch(e){
     if(!roster || !Object.keys(roster).length) roster = emptyRoster();
@@ -886,9 +929,18 @@ document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible') refreshData(true);
 });
 
-async function pushRoster(){
+async function pushRoster(prevSnapshot, effOverrides){
   const rows = [];
-  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{ rows.push({day, block, slot: idx+1, name}); }); }); });
+  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{
+    const prevName = prevSnapshot && prevSnapshot[day] && prevSnapshot[day][block] ? (prevSnapshot[day][block][idx] || "") : "";
+    if((name || "") !== prevName){
+      const key = day+'|'+block+'|'+idx;
+      const item = {day, block, slot: idx+1, name};
+      if(effOverrides && effOverrides[key]) item.effectiveFrom = effOverrides[key]; // 직접 지정한 시작일 — 없으면 서버가 오늘 날짜로 처리
+      rows.push(item);
+    }
+  }); }); });
+  if(!rows.length) return; // 실제로 바뀐 슬롯이 없으면 아무것도 보내지 않는다
   const body = {action:"saveRoster", roster: rows};
   pendingSaveCount++;
   try{
@@ -898,6 +950,7 @@ async function pushRoster(){
       try{ await apiPost(body); }
       catch(e2){ showSaveFailToast('명단 저장에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); }
     }
+    await loadRoster(); // 새로 추가된 이력을 rosterHistory에 반영
   }finally{
     pendingSaveCount--;
   }
@@ -1000,27 +1053,19 @@ function renderDayContent(){
   const d = addDays(weekStart, activeDayIdx);
   const dateStr = toDateStr(d);
   const dayName = DAYS[activeDayIdx];
-  const todayStr = toDateStr(new Date());
   let html = "";
   BLOCKS.forEach(block=>{
-    const names = roster[dayName][block];
-    // "종료" 상태인 슬롯은 오늘 이후(미래) 날짜에서는 이미 안 쓰는 자리이므로 카드 자체를 숨기고,
-    // 과거 날짜에서는 실제 그날 수업이 있었으므로 그대로 표시한다.
-    const isVisibleSlot = n => {
-      if(!n || !n.trim()) return false;
-      const st = parseStudentEntry(n).status;
-      if(st === '종료' && dateStr >= todayStr) return false;
-      return true;
-    };
-    const hasAny = names.some(isVisibleSlot);
+    // 이 카드가 그리는 날짜(dateStr) 기준으로 그 시점에 유효했던 이름을 계산한다.
+    // 요일/시간이 나중에 바뀌어도, 과거 날짜 카드는 그 당시 배정된 학생 이름을 그대로 보여준다.
+    const names = [0,1,2,3].map(s => rosterNameAt(dayName, block, s, dateStr));
+    const hasAny = names.some(n=>n && n.trim());
     if(!hasAny) return;
     html += `<div class="time-label">${block}</div><div class="slot-group">`;
     for(let s=0;s<SUB;s++){
       const name = names[s];
-      if(!isVisibleSlot(name)) continue;
+      if(!name || !name.trim()) continue;
       const stu = parseStudentEntry(name);
       const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
-      const isEnded = stu.status === '종료';
       const rec = getRec(dateStr, block, s);
       const hw = getHwRec(dateStr, block, name);
       const mk = dateStr+"|"+block+"|"+s;
@@ -1050,9 +1095,9 @@ function renderDayContent(){
       else if(hwState==="안함"){ hwCls="hw-missing"; hwLabel="숙제 미제출"; }
       else { hwCls="hw-unchecked"; hwLabel="숙제 미확인"; }
 
-      html += `<div class="slot-card${isEnded?' slot-card-ended':''}">
+      html += `<div class="slot-card">
         <div class="slot-top">
-          <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}${isEnded?` <span class="slot-ended-badge">종료된 시간대</span>`:''}</span>
+          <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
         </div>
 
         <div class="quad-grid">
@@ -1453,7 +1498,7 @@ document.getElementById('calNext').onclick = async ()=>{
 async function loadMonthRecords(){
   monthRecords = {};
   if(!selectedStudent) return;
-  const selectedName = parseStudentEntry(selectedStudent).name; // 종료 여부와 무관하게 이름으로만 매칭
+  const selectedName = parseStudentEntry(selectedStudent).name;
   const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
   const last = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0);
   let cursor = mondayOf(first);
@@ -1467,10 +1512,11 @@ async function loadMonthRecords(){
       const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
       rows.forEach(rec=>{
         const dayName = dayNameForDate(rec.date);
-        const names = roster[dayName] ? roster[dayName][rec.block] : null;
-        if(!names) return;
         const slotIdx = (parseInt(rec.slot)||1)-1;
-        const slotName = names[slotIdx] ? parseStudentEntry(names[slotIdx].trim()).name : '';
+        // 그 기록이 실제로 있었던 날짜(rec.date) 기준으로 그 슬롯의 유효 이름을 계산 —
+        // 요일/시간이 나중에 바뀌어도 과거 기록은 그 당시 학생 것으로 정확히 매칭된다.
+        const slotRaw = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
+        const slotName = slotRaw ? parseStudentEntry(slotRaw).name : '';
         if(slotName && slotName === selectedName){
           monthRecords[rec.date] = rec.status;
         }
@@ -1505,7 +1551,7 @@ function renderCalendar(){
 function renderEditView(){
   const editView = document.getElementById('editView');
   let html = `<div class="edit-hint">요일 × 시간블록별 고정 명단을 입력하세요. "이름/학교/학년" 형식으로 입력하면 카드에 함께 표시돼요 (예: 김휘은/동부고/중1). 학교·학년은 생략 가능해요. 빈칸은 배정 가능 자리로 표시됩니다.<br>
-  <b>요일·시간을 옮길 때는</b>: 기존 자리를 바로 지우지 말고 "이름/학교/학년/종료"로 표시해두면(예: 김휘은/동부고/중1/종료), 지난 수업 기록은 그대로 보존되고 오늘 이후로는 화면에서 자동으로 숨겨져요. 새 요일·시간에는 평소처럼 "이름/학교/학년"으로 등록해주세요.<br>
+  <b>요일·시간을 옮길 때는</b>: 이 자리를 새 학생 이름으로(또는 빈칸으로) 바꾸고, 학생이 옮겨간 새 요일·시간에 이름을 등록해주세요. 이름을 바꾼 슬롯 아래에 "적용 시작일"이 나타나요 — 비워두면 오늘부터, 날짜를 직접 넣으면 그 날짜부터 적용돼요. 지난 수업이 실제로는 다른 날짜에 이미 바뀌었다면, 시작일을 그 날짜로 맞춰주세요.<br>
   "편집 종료"를 누르면 저장됩니다.</div>`;
   DAYS.forEach(day=>{
     html += `<div class="edit-day">${day}요일</div>`;
@@ -1513,13 +1559,32 @@ function renderEditView(){
       html += `<div class="edit-block"><div class="lbl">${block}</div><div class="edit-grid">`;
       for(let s=0;s<SUB;s++){
         const val = roster[day][block][s] || "";
-        html += `<input type="text" data-day="${day}" data-block="${block}" data-slot="${s}" value="${val.replace(/"/g,'&quot;')}" placeholder="이름/학교/학년">`;
+        const escVal = val.replace(/"/g,'&quot;');
+        html += `<div class="edit-slot">
+          <input type="text" class="edit-name-input" data-day="${day}" data-block="${block}" data-slot="${s}" value="${escVal}" placeholder="이름/학교/학년">
+          <div class="edit-eff-row" data-day="${day}" data-block="${block}" data-slot="${s}" style="display:none;">
+            <label>적용 시작일</label>
+            <input type="date" class="edit-eff-input" data-day="${day}" data-block="${block}" data-slot="${s}">
+          </div>
+        </div>`;
       }
       html += `</div></div>`;
     });
   });
   editView.innerHTML = html;
+
+  // 이름이 원래 값과 달라지면 그 슬롯 아래에 "적용 시작일" 입력을 보여준다.
+  editView.querySelectorAll('.edit-name-input').forEach(inp=>{
+    const day = inp.getAttribute('data-day'), block = inp.getAttribute('data-block'), slot = inp.getAttribute('data-slot');
+    const original = roster[day][block][parseInt(slot)] || "";
+    const effRow = editView.querySelector(`.edit-eff-row[data-day="${day}"][data-block="${block}"][data-slot="${slot}"]`);
+    inp.addEventListener('input', ()=>{
+      effRow.style.display = (inp.value.trim() !== original.trim()) ? 'flex' : 'none';
+    });
+  });
 }
+
+let rosterEditSnapshot = null; // 편집 시작 시점의 roster 스냅샷 — 종료 시 바뀐 슬롯만 골라내는 데 사용
 
 function setEditMode(on){
   editMode = on;
@@ -1529,17 +1594,31 @@ function setEditMode(on){
   const btn = document.getElementById('toggleEdit');
   btn.textContent = on ? '편집 종료' : '명단 편집';
   btn.classList.toggle('active', on);
-  if(on) renderEditView();
+  if(on){
+    rosterEditSnapshot = JSON.parse(JSON.stringify(roster));
+    renderEditView();
+  }
 }
 
 document.getElementById('toggleEdit').onclick = async ()=>{
   if(editMode){
-    document.querySelectorAll('#editView input[data-day]').forEach(inp=>{
-      roster[inp.getAttribute('data-day')][inp.getAttribute('data-block')][parseInt(inp.getAttribute('data-slot'))] = inp.value.trim();
+    const effOverrides = {}; // "day|block|slot" → 사용자가 직접 지정한 적용시작일(YYYY-MM-DD), 없으면 키 자체가 없음
+    document.querySelectorAll('#editView .edit-eff-input').forEach(inp=>{
+      const v = inp.value.trim();
+      if(!v) return;
+      const key = inp.getAttribute('data-day')+'|'+inp.getAttribute('data-block')+'|'+inp.getAttribute('data-slot');
+      effOverrides[key] = v;
+    });
+    document.querySelectorAll('#editView .edit-name-input').forEach(inp=>{
+      const day = inp.getAttribute('data-day');
+      const block = inp.getAttribute('data-block');
+      const slot = parseInt(inp.getAttribute('data-slot'));
+      roster[day][block][slot] = inp.value.trim();
     });
     setEditMode(false);
     renderCardView();
-    await pushRoster();
+    await pushRoster(rosterEditSnapshot, effOverrides);
+    rosterEditSnapshot = null;
   } else {
     setEditMode(true);
   }
@@ -1651,9 +1730,8 @@ async function renderMakeupFeed(){
         if(rec.makeupStatus !== 'wait') return;
         if(rec.date < toDateStr(monthStart) || rec.date > toDateStr(today)) return;
         const dayName = dayNameForDate(rec.date);
-        const names = roster[dayName] ? roster[dayName][rec.block] : null;
         const slotIdx = (parseInt(rec.slot)||1)-1;
-        const rawName = (names && names[slotIdx]) ? names[slotIdx] : '';
+        const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
         if(!rawName) return;
         items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName });
       });
@@ -1757,9 +1835,8 @@ async function renderReasonFeed(){
         if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
         if(rec.status !== 'late' && rec.status !== 'absent') return;
         const dayName = dayNameForDate(rec.date);
-        const names = roster[dayName] ? roster[dayName][rec.block] : null;
         const slotIdx = (parseInt(rec.slot)||1)-1;
-        const rawName = (names && names[slotIdx]) ? names[slotIdx] : '';
+        const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
         if(!rawName) return;
         items.push({ date: rec.date, block: rec.block, status: rec.status, note: rec.statusNote, name: rawName });
       });
