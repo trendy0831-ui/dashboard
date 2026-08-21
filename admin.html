@@ -674,8 +674,10 @@ function rosterNameAt(day, block, slot, dateStr){
   let best = null;
   candidates.forEach(it=>{
     if(!it.effectiveFrom){
-      // 예전 방식(시작일 없음) 행: 더 나은 후보가 없을 때의 기본값으로만 사용
-      if(!best) best = it;
+      // 예전 방식(시작일 없음) 레거시 행: 같은 슬롯에 이런 행이 실수로 여러 개 남아있을 수 있으므로,
+      // 이름이 있는 레거시 행을 이름이 없는 레거시 행보다 우선한다 — 빈 이름 잔여 행이 먼저 채택되어
+      // 실제 유효했던 학생 이름을 가려버리는 문제를 막기 위함.
+      if(!best || (!best.effectiveFrom && !best.name && it.name)) best = it;
       return;
     }
     if(it.effectiveFrom <= dateStr){
@@ -739,10 +741,6 @@ async function loadRoster(){
       day: item.day, block: item.block, slot: item.slot,
       name: item.name || "", effectiveFrom: item.effectiveFrom || ""
     }));
-    // 임시 디버그 로그 — 화요일 16:00 슬롯2 이력을 콘솔에 출력해 원인을 확인한다.
-    console.log('[DEBUG] 화 16:00 슬롯2 이력:', JSON.stringify(
-      rosterHistory.filter(it => it.day === '화' && it.block === '16:00' && String(it.slot) === '2')
-    ));
     const todayStr = toDateStr(new Date());
     const r = emptyRoster();
     DAYS.forEach(day=>{
@@ -1048,9 +1046,6 @@ function renderDayContent(){
     // 이 카드가 그리는 날짜(dateStr) 기준으로 그 시점에 유효했던 이름을 계산한다.
     // 요일/시간이 나중에 바뀌어도, 과거 날짜 카드는 그 당시 배정된 학생 이름을 그대로 보여준다.
     const names = [0,1,2,3].map(s => rosterNameAt(dayName, block, s, dateStr));
-    if(dayName === '화' && block === '16:00'){
-      console.log('[DEBUG] renderDayContent 화 16:00 dateStr=', dateStr, 'names=', JSON.stringify(names));
-    }
     const hasAny = names.some(n=>n && n.trim());
     if(!hasAny) return;
     html += `<div class="time-label">${block}</div><div class="slot-group">`;
