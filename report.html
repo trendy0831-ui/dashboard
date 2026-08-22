@@ -494,6 +494,17 @@
     color:var(--teal-dark);
     text-decoration:underline;
   }
+  .textbook-memo{
+    margin-top:12px;
+    padding:10px 12px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:13px;
+    color:var(--ink);
+    line-height:1.5;
+    white-space:pre-wrap;
+  }
   .image-modal-overlay{
     position:fixed;
     inset:0;
@@ -1036,25 +1047,32 @@
   function renderTextbook(textbook){
     const card = document.getElementById('textbook-card');
     if(!card) return;
-    if(!textbook || !textbook.thumbUrl){
+    if(!textbook || (!textbook.thumbUrl && !textbook.memo)){
       card.innerHTML = '<div class="log-empty">등록된 준비 교재가 없어요</div>';
       latestTextbookSeenId = null;
       document.getElementById('tab-textbook-dot').style.display = 'none';
       return;
     }
-    card.innerHTML = `
-      <button type="button" class="notice-attach-thumb-btn" id="textbookThumbBtn">
-        <img class="notice-attach-thumb" src="${textbook.thumbUrl}" alt="${textbook.name || '준비 교재'}" loading="lazy">
-        <span class="notice-attach-thumb-info">
-          <span class="notice-attach-thumb-name">📘 ${textbook.name || '준비 교재'}</span>
-          <span class="notice-attach-thumb-hint">눌러서 크게 보기</span>
-        </span>
-      </button>
-    `;
-    const thumbBtn = document.getElementById('textbookThumbBtn');
-    if(thumbBtn) thumbBtn.onclick = ()=> openImageModal(textbook.viewUrl, textbook.name);
+    const memoHtml = textbook.memo ? `<div class="textbook-memo">${textbook.memo}</div>` : '';
+    if(textbook.thumbUrl){
+      card.innerHTML = `
+        <button type="button" class="notice-attach-thumb-btn" id="textbookThumbBtn">
+          <img class="notice-attach-thumb" src="${textbook.thumbUrl}" alt="${textbook.name || '준비 교재'}" loading="lazy">
+          <span class="notice-attach-thumb-info">
+            <span class="notice-attach-thumb-name">📘 ${textbook.name || '준비 교재'}</span>
+            <span class="notice-attach-thumb-hint">눌러서 크게 보기</span>
+          </span>
+        </button>
+        ${memoHtml}
+      `;
+      const thumbBtn = document.getElementById('textbookThumbBtn');
+      if(thumbBtn) thumbBtn.onclick = ()=> openImageModal(textbook.viewUrl, textbook.name);
+    } else {
+      // 이미지 없이 메모만 등록된 경우
+      card.innerHTML = memoHtml;
+    }
 
-    latestTextbookSeenId = textbook.viewUrl || textbook.name || null;
+    latestTextbookSeenId = (textbook.viewUrl || '') + '|' + (textbook.memo || '');
     document.getElementById('tab-textbook-dot').style.display = isUnseen('textbook', latestTextbookSeenId) ? 'block' : 'none';
   }
 
