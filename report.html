@@ -446,31 +446,8 @@
     line-height:1.6;
     white-space:pre-wrap;
   }
-  .notice-attachment{
-    margin-top:12px;
-  }
-  .notice-attachment-name{
-    font-size:12.5px;
-    color:var(--teal-dark);
-    font-weight:600;
-    margin-bottom:8px;
-  }
-  .notice-pdf-frame{
-    width:100%;
-    height:420px;
-    border:1px solid var(--line);
-    border-radius:10px;
-    background:#fff;
-  }
-  .notice-attachment-link{
-    display:inline-block;
-    margin-top:8px;
-    font-size:12px;
-    color:var(--teal-dark);
-    text-decoration:underline;
-  }
-  /* B안: 첨부 이미지는 작은 썸네일 카드로 보여주고, 누르면 확대 모달이 뜬다 */
-  .notice-image-thumb-btn{
+  /* 첨부파일(이미지·PDF 공통): 작은 썸네일 카드로 보여주고, 누르면 확대 모달이 뜬다 */
+  .notice-attach-thumb-btn{
     display:flex;
     align-items:center;
     gap:10px;
@@ -484,7 +461,7 @@
     font-family:inherit;
     text-align:left;
   }
-  .notice-image-thumb{
+  .notice-attach-thumb{
     width:44px;
     height:44px;
     object-fit:cover;
@@ -492,13 +469,13 @@
     flex-shrink:0;
     background:var(--card);
   }
-  .notice-image-thumb-info{
+  .notice-attach-thumb-info{
     display:flex;
     flex-direction:column;
     gap:2px;
     min-width:0;
   }
-  .notice-image-thumb-name{
+  .notice-attach-thumb-name{
     font-size:12.5px;
     font-weight:600;
     color:var(--ink);
@@ -506,9 +483,16 @@
     text-overflow:ellipsis;
     white-space:nowrap;
   }
-  .notice-image-thumb-hint{
+  .notice-attach-thumb-hint{
     font-size:11px;
     color:var(--ink-soft);
+  }
+  .notice-attach-thumb-link{
+    display:inline-block;
+    margin-top:10px;
+    font-size:12px;
+    color:var(--teal-dark);
+    text-decoration:underline;
   }
   .image-modal-overlay{
     position:fixed;
@@ -546,6 +530,47 @@
     display:flex;
     align-items:center;
     justify-content:center;
+  }
+  /* PDF 확대 모달: 상단에 파일명+닫기 버튼이 있는 헤더를 두고, 그 아래 iframe으로 크게 보여준다 */
+  .pdf-modal-overlay .pdf-modal-inner{
+    position:relative;
+    width:100%;
+    max-width:640px;
+    max-height:90vh;
+    background:#fff;
+    border-radius:12px;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+  }
+  .pdf-modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .pdf-modal-name{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .pdf-modal-overlay .image-modal-close{
+    position:static;
+    width:28px;
+    height:28px;
+    flex-shrink:0;
+    background:var(--bg);
+  }
+  .pdf-modal-frame{
+    width:100%;
+    height:70vh;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
   }
   .notice-period{
     font-size:11px;
@@ -1004,19 +1029,12 @@
     card.innerHTML = `
       <div class="notice-title">${notice.title}</div>
       ${notice.content ? `<div class="notice-body">${notice.content}</div>` : ''}
-      ${notice.attachmentEmbedUrl ? `
-        <div class="notice-attachment">
-          <div class="notice-attachment-name">📎 ${notice.attachmentName || '첨부파일'}</div>
-          <iframe class="notice-pdf-frame" src="${notice.attachmentEmbedUrl}" loading="lazy"></iframe>
-          <a class="notice-attachment-link" href="${notice.attachmentViewUrl}" target="_blank" rel="noopener">새 창에서 크게 보기</a>
-        </div>
-      ` : ''}
       ${notice.attachmentThumbUrl ? `
-        <button type="button" class="notice-image-thumb-btn" id="noticeImageThumbBtn">
-          <img class="notice-image-thumb" src="${notice.attachmentThumbUrl}" alt="${notice.attachmentName || '첨부 이미지'}" loading="lazy">
-          <span class="notice-image-thumb-info">
-            <span class="notice-image-thumb-name">🖼️ ${notice.attachmentName || '첨부 이미지'}</span>
-            <span class="notice-image-thumb-hint">눌러서 크게 보기</span>
+        <button type="button" class="notice-attach-thumb-btn" id="noticeAttachThumbBtn">
+          <img class="notice-attach-thumb" src="${notice.attachmentThumbUrl}" alt="${notice.attachmentName || '첨부파일'}" loading="lazy">
+          <span class="notice-attach-thumb-info">
+            <span class="notice-attach-thumb-name">${notice.attachmentType === 'image' ? '🖼️' : '📎'} ${notice.attachmentName || '첨부파일'}</span>
+            <span class="notice-attach-thumb-hint">눌러서 크게 보기</span>
           </span>
         </button>
       ` : ''}
@@ -1024,8 +1042,11 @@
     `;
 
     if(notice.attachmentThumbUrl){
-      const thumbBtn = document.getElementById('noticeImageThumbBtn');
-      if(thumbBtn) thumbBtn.onclick = ()=> openImageModal(notice.attachmentViewUrl, notice.attachmentName);
+      const thumbBtn = document.getElementById('noticeAttachThumbBtn');
+      if(thumbBtn) thumbBtn.onclick = ()=>{
+        if(notice.attachmentType === 'image') openImageModal(notice.attachmentViewUrl, notice.attachmentName);
+        else openPdfModal(notice.attachmentEmbedUrl, notice.attachmentViewUrl, notice.attachmentName);
+      };
     }
 
     const id = getParam('id');
@@ -1055,6 +1076,29 @@
       <div class="image-modal-inner">
         <button type="button" class="image-modal-close" aria-label="닫기">✕</button>
         <img class="image-modal-img" src="${bigSrc}" alt="${name || '첨부 이미지'}">
+      </div>
+    `;
+    overlay.addEventListener('click', (e)=>{
+      if(e.target === overlay) document.body.removeChild(overlay);
+    });
+    overlay.querySelector('.image-modal-close').onclick = ()=> document.body.removeChild(overlay);
+    document.body.appendChild(overlay);
+  }
+
+  // 첨부 PDF 확대 보기 — 평소엔 작은 썸네일 카드만 보이다가, 눌렀을 때만 전체 화면 오버레이에
+  // Drive의 페이지 미리보기(iframe)를 띄운다. 학부모 Drive 화면 UI가 그대로 노출되긴 하지만,
+  // 이 방식은 그 파일 하나에만 한정된 뷰어이며 다른 폴더나 파일에는 접근할 수 없다.
+  function openPdfModal(embedUrl, viewUrl, name){
+    const overlay = document.createElement('div');
+    overlay.className = 'image-modal-overlay pdf-modal-overlay';
+    overlay.innerHTML = `
+      <div class="pdf-modal-inner">
+        <div class="pdf-modal-header">
+          <span class="pdf-modal-name">${name || '첨부파일'}</span>
+          <button type="button" class="image-modal-close" aria-label="닫기">✕</button>
+        </div>
+        <iframe class="pdf-modal-frame" src="${embedUrl}" loading="lazy"></iframe>
+        <a class="notice-attach-thumb-link" href="${viewUrl}" target="_blank" rel="noopener">새 창에서 열기</a>
       </div>
     `;
     overlay.addEventListener('click', (e)=>{
