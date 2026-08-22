@@ -287,6 +287,10 @@
     color:var(--ink-soft);cursor:pointer;text-align:center;}
   .sc-status-toggle:hover{border-color:var(--red);color:var(--red);}
   .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-dark);}
+  .sc-textbook{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .sc-textbook-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .sc-textbook-input{width:100%;font-size:11.5px;color:var(--ink-soft);}
+  .sc-textbook-status{font-size:11.5px;color:var(--teal-dark);margin-top:6px;}
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:#EAF3EF;
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
@@ -1899,6 +1903,11 @@ function studentStatusOf(name){
   return found ? found.status : '재원'; // 학생정보 시트에 아직 없는 이름은 기본 재원으로 간주
 }
 
+function studentTextbookOf(name){
+  const found = studentInfoList.find(s => s.name === name);
+  return (found && found.textbookImageId) ? { fileName: found.textbookImageName } : null;
+}
+
 function slotsByStudent(){
   const map = {};
   DAYS.forEach(day=>{
@@ -1932,6 +1941,7 @@ async function renderStudentGrid(){
     const badges = bySlot[raw].map(s=>`<span class="slot-badge">${s.day} ${s.block}</span>`).join('');
     const status = studentStatusOf(stu.name);
     const isWithdrawn = status === '퇴원';
+    const textbook = studentTextbookOf(stu.name);
     return `<div class="student-card${isWithdrawn?' student-card-withdrawn':''}" data-name="${raw}">
       <div class="sc-top">
         <div class="sc-name">${stu.name}</div>
@@ -1942,6 +1952,11 @@ async function renderStudentGrid(){
       <button class="sc-status-toggle" data-student-name="${stu.name}" data-cur-status="${status}">
         ${isWithdrawn ? '재원으로 되돌리기' : '퇴원 처리'}
       </button>
+      <div class="sc-textbook">
+        <label class="sc-textbook-label">📘 준비 교재 이미지</label>
+        <input type="file" class="sc-textbook-input" data-student-name="${stu.name}" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp">
+        <div class="sc-textbook-status">${textbook ? `현재: ${textbook.fileName}` : '등록된 이미지 없음'}</div>
+      </div>
     </div>`;
   }).join('');
 
@@ -1962,6 +1977,35 @@ async function renderStudentGrid(){
         showSaveFailToast('재원 상태 변경에 실패했어요. 인터넷 연결을 확인해주세요.');
       }
       await renderStudentGrid();
+    };
+  });
+
+  el.querySelectorAll('.sc-textbook-input').forEach(input=>{
+    input.onchange = async (e)=>{
+      const file = e.target.files[0];
+      const name = input.getAttribute('data-student-name');
+      const statusEl = input.parentElement.querySelector('.sc-textbook-status');
+      if(!file) return;
+      if(file.type.indexOf('image/') !== 0){
+        statusEl.textContent = '이미지 파일만 등록할 수 있어요.';
+        e.target.value = '';
+        return;
+      }
+      statusEl.textContent = `업로드 중... (${file.name})`;
+      try{
+        const base64Data = await new Promise((resolve, reject)=>{
+          const reader = new FileReader();
+          reader.onload = ()=> resolve(reader.result.split(',')[1]);
+          reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
+          reader.readAsDataURL(file);
+        });
+        await apiPost({ action:'uploadTextbookImage', name, fileName: file.name, base64Data, mimeType: file.type });
+        await new Promise(r=>setTimeout(r, 4000)); // 업로드+시트 기록이 끝날 시간을 확보
+        statusEl.textContent = `현재: ${file.name}`;
+      }catch(err){
+        statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
+        e.target.value = '';
+      }
     };
   });
 }
