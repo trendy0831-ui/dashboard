@@ -244,6 +244,12 @@
   .dash-card.accent-red .dc-value{color:var(--red);}
   .dash-card.accent-teal .dc-value{color:var(--teal-dark);}
   .dash-card.accent-blue .dc-value{color:var(--blue);}
+  .weekly-attend-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;}
+  .weekly-attend-cell{background:var(--paper);border-radius:9px;padding:10px 4px;}
+  .weekly-attend-cell.weekly-attend-today{border:1.5px solid var(--teal);}
+  .weekly-attend-dow{font-size:11px;color:var(--ink-soft);font-weight:700;margin-bottom:4px;}
+  .weekly-attend-rate{font-size:16px;font-weight:800;color:var(--ink);}
+  .weekly-attend-rate.weekly-attend-low{color:var(--red);}
 
   .reason-feed{display:flex;flex-direction:column;gap:10px;}
   .reason-item{display:flex;align-items:flex-start;gap:14px;background:var(--paper);
@@ -1667,8 +1673,11 @@ function emptyPagePanel(icon, title, desc){
 /* ============ 대시보드 ============ */
 async function renderDashboard(){
   renderDashSummary();
+  await renderWeeklyAttendance();
   await renderUpcomingExams();
   await renderMakeupFeed();
+  await renderHomeworkRank();
+  await renderMakeupOldest();
   await renderReasonFeed();
 }
 
@@ -1793,7 +1802,186 @@ async function renderMakeupFeed(){
   }).join("");
 }
 
+// 최근 7일(오늘 포함, 주말도 포함)의 요일별 출석률을 요약 카드로 보여준다.
+// 그날 실제로 배정된 학생 수 대비 "출석" 또는 "지각"으로 체크된 비율을 계산한다(결석·미체크는 분모엔 포함, 출석률엔 미포함).
+async function renderWeeklyAttendance(){
+  const el = document.getElementById('weeklyAttendanceGrid');
+  if(!el) return;
+
+  const today = new Date();
+  const days7 = [];
+  for(let i=6; i>=0; i--) days7.push(addDays(today, -i));
+
+  // 이 7일이 걸쳐있는 모든 주(월요일 시작 기준)의 기록을 한 번씩만 불러온다.
+  const weekStartsNeeded = new Set(days7.map(d => toDateStr(mondayOf(d))));
+  const recordsByWeek = {};
+  for(const ws of weekStartsNeeded){
+    try{ recordsByWeek[ws] = await apiGet({action:"records", weekStart: ws}); }
+    catch(e){ recordsByWeek[ws] = []; }
+  }
+
+  const dowLabels = ["일","월","화","수","목","금","토"];
+  const cells = days7.map(d=>{
+    const dateStr = toDateStr(d);
+    const dayName = dayNameForDate(dateStr);
+    const ws = toDateStr(mondayOf(d));
+    const rows = (recordsByWeek[ws] || []).filter(r => r.date === dateStr);
+
+    // 그날 실제 배정된 슬롯 수(분모)와, 그중 결석이 아닌(출석/지각) 슬롯 수(분자)를 센다.
+    let total = 0, present = 0;
+    BLOCKS.forEach(block=>{
+      for(let s=0; s<SUB; s++){
+        const name = rosterNameAt(dayName, block, s, dateStr);
+        if(!name || !name.trim()) continue;
+        total++;
+        const rec = rows.find(r => r.block === block && String((parseInt(r.slot)||1)-1) === String(s));
+        const status = rec ? rec.status : null;
+        if(status === 'present' || status === 'late') present++;
+      }
+    });
+
+    const rate = total ? Math.round((present/total)*100) : null;
+    return { dateStr, dow: dowLabels[d.getDay()], rate, isToday: dateStr === toDateStr(today) };
+  });
+
+  el.innerHTML = `<div class="weekly-attend-grid">` + cells.map(c=>{
+    const lowClass = (c.rate !== null && c.rate < 95) ? 'weekly-attend-low' : '';
+    return `<div class="weekly-attend-cell${c.isToday?' weekly-attend-today':''}">
+      <div class="weekly-attend-dow">${c.dow}</div>
+      <div class="weekly-attend-rate ${lowClass}">${c.rate === null ? '-' : c.rate+'%'}</div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+// 최근 4주간 숙제 상태가 "미흡" 또는 "미확인"이었던 횟수를 학생별로 합산해 상위 5명을 보여준다.
+// (결석한 날은 숙제 체크 대상이 아니므로 제외한다.)
+async function renderHomeworkRank(){
+  const el = document.getElementById('homeworkRankFeed');
+  if(!el) return;
+
+  const today = new Date();
+  const start = addDays(today, -27); // 4주 = 28일
+  let cursor = mondayOf(start);
+  const weeks = [];
+  while(cursor <= today){
+    weeks.push(new Date(cursor));
+    cursor = addDays(cursor, 7);
+  }
+
+  const countByName = {}; // rawName(이름/학교/학년) → 미흡·미확인 누적 횟수
+  for(const ws of weeks){
+    try{
+      const [recordRows, hwRows] = await Promise.all([
+        apiGet({action:"records", weekStart: toDateStr(ws)}),
+        apiGet({action:"homework", weekStart: toDateStr(ws)})
+      ]);
+      hwRows.forEach(hw=>{
+        if(hw.date < toDateStr(start) || hw.date > toDateStr(today)) return;
+        const rawName = hw.name;
+        if(!rawName) return;
+        // 이 학생이 그 시간대에 실제로 결석했는지 확인 — 슬롯 번호까지 정확히 맞춰서
+        // 그날 그 시간대 그 자리의 이름이 이 학생과 일치하는 결석 기록이 있는지 본다.
+        // (같은 시간대에 여러 학생이 있을 수 있어 이름까지 대조해야 정확하다.)
+        const dayName = dayNameForDate(hw.date);
+        const isAbsent = recordRows.some(r => {
+          if(r.date !== hw.date || r.block !== hw.block || r.status !== 'absent') return false;
+          const slotIdx = (parseInt(r.slot)||1)-1;
+          const slotName = rosterNameAt(dayName, r.block, slotIdx, r.date);
+          return slotName && parseStudentEntry(slotName).name === parseStudentEntry(rawName).name;
+        });
+        if(isAbsent) return;
+        const state = hwStatusLabel(hw.completed);
+        if(state !== '미흡' && state !== '미확인') return;
+        countByName[rawName] = (countByName[rawName] || 0) + 1;
+      });
+    }catch(e){}
+  }
+
+  const ranked = Object.entries(countByName)
+    .map(([rawName, count]) => ({ rawName, count }))
+    .sort((a,b)=> b.count - a.count)
+    .slice(0, 5);
+
+  if(!ranked.length){
+    el.innerHTML = `<div class="reason-feed-empty">최근 4주간 숙제 미흡·미확인 기록이 없어요.</div>`;
+    return;
+  }
+
+  el.innerHTML = ranked.map(r=>{
+    const stu = parseStudentEntry(r.rawName);
+    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+    return `<div class="reason-item">
+      <div class="ri-body">
+        <div class="ri-top">
+          <span class="ri-name">${stu.name}</span>
+          ${meta?`<span class="ri-meta">${meta}</span>`:''}
+          <span class="ri-date">${r.count}회</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// 보강 대기 중(결석 후 아직 보강하지 않은) 건을 결석일이 오래된 순으로 전부 보여준다.
+// 조회 범위는 "이번 달"이 아니라 최근 3개월로 넓혀, 오래 밀린 보강도 놓치지 않게 한다.
+async function renderMakeupOldest(){
+  const el = document.getElementById('makeupOldestFeed');
+  if(!el) return;
+
+  const today = new Date();
+  const start = addDays(today, -90);
+  let cursor = mondayOf(start);
+  const weeks = [];
+  while(cursor <= today){
+    weeks.push(new Date(cursor));
+    cursor = addDays(cursor, 7);
+  }
+
+  const items = [];
+  for(const ws of weeks){
+    try{
+      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
+      rows.forEach(rec=>{
+        if(rec.status !== 'absent') return;
+        if(rec.makeupStatus !== 'wait') return;
+        if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
+        const dayName = dayNameForDate(rec.date);
+        const slotIdx = (parseInt(rec.slot)||1)-1;
+        const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
+        if(!rawName) return;
+        items.push({ date: rec.date, block: rec.block, name: rawName });
+      });
+    }catch(e){}
+  }
+
+  // 결석일이 오래된 것부터(과거 날짜 우선) 정렬
+  items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
+
+  if(!items.length){
+    el.innerHTML = `<div class="reason-feed-empty">보강 대기 중인 건이 없어요.</div>`;
+    return;
+  }
+
+  const days2=["일","월","화","수","목","금","토"];
+  el.innerHTML = items.map(it=>{
+    const stu = parseStudentEntry(it.name);
+    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
+    const d = new Date(it.date+"T00:00:00");
+    const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days2[d.getDay()]})`;
+    return `<div class="reason-item">
+      <div class="ri-body">
+        <div class="ri-top">
+          <span class="ri-name">${stu.name}</span>
+          ${meta?`<span class="ri-meta">${meta}</span>`:''}
+          <span class="ri-date">${dateLabel} 결석 · ${it.block}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
 function renderDashSummary(){
+
   const el = document.getElementById('dashSummary');
   if(!el) return;
 
@@ -2478,12 +2666,24 @@ function switchPage(page){
   if(page === 'dashboard'){
     otherPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
       <div class="panel" style="margin-bottom:20px;">
+        <h2>최근 7일 출석률</h2>
+        <div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:20px;">
         <h2>다가오는 시험 <span class="sub" id="examCountLabel"></span></h2>
         <div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
       </div>
       <div class="panel" style="margin-bottom:20px;">
         <h2>이번 달 보강 대기 <span class="sub" id="makeupCountLabel"></span></h2>
         <div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>숙제 미흡·미제출 누적 <span class="sub">(최근 4주)</span></h2>
+        <div class="reason-feed" id="homeworkRankFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>보강 대기 <span class="sub">(결석일 오래된 순)</span></h2>
+        <div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
       </div>
       <div class="panel">
         <h2>최근 지각·결석 사유 <span class="sub">(최근 2주)</span></h2>
