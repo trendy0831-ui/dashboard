@@ -651,6 +651,10 @@
           🔁 보강
           <span class="tab-new-dot" id="tab-makeup-dot" style="display:none;"></span>
         </button>
+        <button class="tab-btn" data-tab="textbook">
+          📘 교재
+          <span class="tab-new-dot" id="tab-textbook-dot" style="display:none;"></span>
+        </button>
       </div>
     </div>
 
@@ -710,6 +714,13 @@
         <div class="makeup-info-card" style="margin-top:16px;">
           <div class="makeup-info-title">💡 보강은 이렇게 진행돼요</div>
           <div class="makeup-info-body">보강은 단순히 시간을 채우는 방식이 아니라, 결석한 수업 내용과 학생에게 필요한 개념을 먼저 확인한 뒤 가장 적절한 형태로 진행됩니다. 경우에 따라 같은 진도의 다른 반 수업에 함께 참여하거나, 자습실에서 질문 확인 및 개념 보완 중심으로 진행될 수 있습니다.</div>
+        </div>
+      </div>
+
+      <!-- 교재 탭 -->
+      <div class="tab-panel" id="panel-textbook">
+        <div class="card" id="textbook-card">
+          <div class="log-empty">등록된 준비 교재가 없어요</div>
         </div>
       </div>
 
@@ -786,6 +797,7 @@
       if(tab === 'attend') hideDot('tab-attend-dot'); // 오늘 기록은 열람 즉시 확인된 것으로 처리
       if(tab === 'exam') markSeenRead('exam', latestExamSeenId);
       if(tab === 'makeup') markSeenRead('makeup', latestMakeupSeenId);
+      if(tab === 'textbook') markSeenRead('textbook', latestTextbookSeenId);
     });
   });
 
@@ -810,6 +822,7 @@
   }
   let latestExamSeenId = null;
   let latestMakeupSeenId = null;
+  let latestTextbookSeenId = null;
 
   let currentNotice = null;
 
@@ -830,6 +843,7 @@
     const notice = data.notice;
     const isElementary = !!data.isElementary;
     const elemTests = data.elemTests || [];
+    const textbook = data.textbook || null;
 
     document.getElementById('app').style.display = 'block';
     document.getElementById('s-name').textContent = student.name;
@@ -874,6 +888,9 @@
 
     // ── 공지사항 ──
     renderNotice(notice);
+
+    // ── 준비 교재 ──
+    renderTextbook(textbook);
 
     // ── 다가오는 시험 (중등 이상: 학교 D-day / 초등: 개인별 테스트 기록) ──
     // 개인별 테스트 기록은 초등·중등 공통으로 표시 — 중등은 D-day 카드 아래에 이어서 보여준다.
@@ -1012,6 +1029,33 @@
   function hwStateDisplayLabel(state){
     if(state === '안함') return '미제출';
     return state;
+  }
+
+  // 준비 교재 탭 콘텐츠 + 탭 라벨 NEW 점 표시. 이미지 하나만 등록 가능(admin.html에서 새로 올리면 이전 것 교체).
+  // 읽음 여부는 이미지의 fileId 자체를 식별자로 써서, 새 이미지로 바뀌면 자동으로 새 글로 인식된다.
+  function renderTextbook(textbook){
+    const card = document.getElementById('textbook-card');
+    if(!card) return;
+    if(!textbook || !textbook.thumbUrl){
+      card.innerHTML = '<div class="log-empty">등록된 준비 교재가 없어요</div>';
+      latestTextbookSeenId = null;
+      document.getElementById('tab-textbook-dot').style.display = 'none';
+      return;
+    }
+    card.innerHTML = `
+      <button type="button" class="notice-attach-thumb-btn" id="textbookThumbBtn">
+        <img class="notice-attach-thumb" src="${textbook.thumbUrl}" alt="${textbook.name || '준비 교재'}" loading="lazy">
+        <span class="notice-attach-thumb-info">
+          <span class="notice-attach-thumb-name">📘 ${textbook.name || '준비 교재'}</span>
+          <span class="notice-attach-thumb-hint">눌러서 크게 보기</span>
+        </span>
+      </button>
+    `;
+    const thumbBtn = document.getElementById('textbookThumbBtn');
+    if(thumbBtn) thumbBtn.onclick = ()=> openImageModal(textbook.viewUrl, textbook.name);
+
+    latestTextbookSeenId = textbook.viewUrl || textbook.name || null;
+    document.getElementById('tab-textbook-dot').style.display = isUnseen('textbook', latestTextbookSeenId) ? 'block' : 'none';
   }
 
   // 공지사항 탭 콘텐츠 + 탭 라벨 NEW 점 표시. 읽음 여부는 이 학생(id)의 브라우저 localStorage에 저장
