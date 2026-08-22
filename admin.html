@@ -276,26 +276,31 @@
     padding:16px 18px;transition:border-color .15s;}
   .student-card:hover{border-color:var(--teal);}
   .student-card.student-card-withdrawn{opacity:.6;border-style:dashed;}
-  .student-card .sc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .student-card .sc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
   .student-card .sc-name{font-size:15.5px;font-weight:700;color:var(--ink);}
-  .student-card .sc-status-badge{font-size:11px;font-weight:700;color:#fff;background:var(--ink-soft);
-    padding:2px 9px;border-radius:99px;white-space:nowrap;}
   .student-card .sc-meta{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
-  .student-card .sc-slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
-  .sc-status-toggle{display:block;width:100%;margin-top:12px;padding:8px 10px;font-size:12.5px;
+  .student-card .sc-slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .sc-status-toggle{flex-shrink:0;padding:4px 10px;font-size:11px;
     font-weight:700;border-radius:8px;border:1px solid var(--line);background:#fff;
     color:var(--ink-soft);cursor:pointer;text-align:center;}
   .sc-status-toggle:hover{border-color:var(--red);color:var(--red);}
   .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-dark);}
-  .sc-textbook{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .sc-textbook{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
   .sc-textbook-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .sc-textbook-current{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:8px;}
+  .sc-textbook-filename{font-size:11.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;flex:1;min-width:0;}
+  .sc-textbook-delete{border:none;background:none;color:var(--red);padding:2px 4px;
+    cursor:pointer;flex-shrink:0;font-size:13px;line-height:1;}
   .sc-textbook-input{width:100%;font-size:11.5px;color:var(--ink-soft);}
-  .sc-textbook-status{font-size:11.5px;color:var(--teal-dark);margin-top:6px;}
-  .sc-textbook-memo{width:100%;font-size:11.5px;border:1px solid var(--line);border-radius:6px;
-    padding:6px 8px;font-family:inherit;margin-top:8px;color:var(--ink);}
-  .sc-textbook-memo-save{display:block;width:100%;margin-top:6px;padding:6px 8px;font-size:11px;
+  .sc-textbook-status{font-size:11.5px;color:var(--teal-dark);margin-top:4px;}
+  .sc-textbook-memo-row{display:flex;gap:6px;margin-top:8px;}
+  .sc-textbook-memo{flex:1;min-width:0;font-size:11.5px;border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-family:inherit;color:var(--ink);}
+  .sc-textbook-memo-save{flex-shrink:0;padding:0 12px;font-size:11px;
     font-weight:700;border-radius:6px;border:1px solid var(--teal);background:#fff;
-    color:var(--teal-dark);cursor:pointer;text-align:center;}
+    color:var(--teal-dark);cursor:pointer;}
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:#EAF3EF;
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
@@ -1948,22 +1953,33 @@ async function renderStudentGrid(){
     const status = studentStatusOf(stu.name);
     const isWithdrawn = status === '퇴원';
     const textbook = studentTextbookOf(stu.name);
+    const hasImage = !!(textbook && textbook.fileName);
     return `<div class="student-card${isWithdrawn?' student-card-withdrawn':''}" data-name="${raw}">
       <div class="sc-top">
-        <div class="sc-name">${stu.name}</div>
-        ${isWithdrawn ? '<span class="sc-status-badge">퇴원</span>' : ''}
+        <div>
+          <div class="sc-name">${stu.name}</div>
+          ${meta ? `<div class="sc-meta">${meta}</div>` : ''}
+        </div>
+        <button class="sc-status-toggle" data-student-name="${stu.name}" data-cur-status="${status}">
+          ${isWithdrawn ? '재원' : '퇴원'}
+        </button>
       </div>
-      ${meta ? `<div class="sc-meta">${meta}</div>` : ''}
       <div class="sc-slots">${badges}</div>
-      <button class="sc-status-toggle" data-student-name="${stu.name}" data-cur-status="${status}">
-        ${isWithdrawn ? '재원으로 되돌리기' : '퇴원 처리'}
-      </button>
+
       <div class="sc-textbook">
-        <label class="sc-textbook-label">📘 준비 교재 이미지</label>
+        <label class="sc-textbook-label">📘 준비 교재</label>
+        ${hasImage ? `
+          <div class="sc-textbook-current">
+            <span class="sc-textbook-filename">${textbook.fileName}</span>
+            <button class="sc-textbook-delete" data-student-name="${stu.name}" aria-label="이미지 삭제">✕</button>
+          </div>
+        ` : ''}
         <input type="file" class="sc-textbook-input" data-student-name="${stu.name}" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp">
-        <div class="sc-textbook-status">${(textbook && textbook.fileName) ? `현재: ${textbook.fileName}` : '등록된 이미지 없음'}</div>
-        <input type="text" class="sc-textbook-memo" data-student-name="${stu.name}" placeholder="교재명·준비 기한 메모 (예: 쎈 중2-1, 9/1까지)" value="${((textbook && textbook.memo) || '').replace(/"/g,'&quot;')}">
-        <button class="sc-textbook-memo-save" data-student-name="${stu.name}">메모 저장</button>
+        <div class="sc-textbook-status"></div>
+        <div class="sc-textbook-memo-row">
+          <input type="text" class="sc-textbook-memo" data-student-name="${stu.name}" placeholder="교재명·기한 (예: 쎈 중2-1, 9/1까지)" value="${((textbook && textbook.memo) || '').replace(/"/g,'&quot;')}">
+          <button class="sc-textbook-memo-save" data-student-name="${stu.name}">저장</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -2009,10 +2025,29 @@ async function renderStudentGrid(){
         });
         await apiPost({ action:'uploadTextbookImage', name, fileName: file.name, base64Data, mimeType: file.type });
         await new Promise(r=>setTimeout(r, 4000)); // 업로드+시트 기록이 끝날 시간을 확보
-        statusEl.textContent = `현재: ${file.name}`;
+        await loadStudentInfoList();
+        await renderStudentGrid();
       }catch(err){
         statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
         e.target.value = '';
+      }
+    };
+  });
+
+  el.querySelectorAll('.sc-textbook-delete').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const name = btn.getAttribute('data-student-name');
+      if(!confirm(`${name} 학생의 준비 교재 이미지를 삭제할까요?\n메모는 그대로 남아요.`)) return;
+      btn.disabled = true;
+      try{
+        await apiPost({ action:'deleteTextbookImage', name });
+        await new Promise(r=>setTimeout(r, 1500));
+        await loadStudentInfoList();
+        await renderStudentGrid();
+      }catch(err){
+        showSaveFailToast('이미지 삭제에 실패했어요. 인터넷 연결을 확인해주세요.');
+        btn.disabled = false;
       }
     };
   });
