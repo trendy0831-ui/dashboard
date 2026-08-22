@@ -249,6 +249,7 @@
   .weekly-attend-cell.weekly-attend-today{border:1.5px solid var(--teal);}
   .weekly-attend-dow{font-size:11px;color:var(--ink-soft);font-weight:700;margin-bottom:4px;}
   .weekly-attend-rate{font-size:16px;font-weight:800;color:var(--ink);}
+  .weekly-attend-rate .wa-unit{font-size:12px;font-weight:700;}
   .weekly-attend-rate.weekly-attend-low{color:var(--red);}
 
   .reason-feed{display:flex;flex-direction:column;gap:10px;}
@@ -457,6 +458,11 @@
     .sync-status{font-size:11px;order:1;}
     .date-picker input[type=date]{font-size:13px;width:100%;}
     .edit-toggle{padding:9px 14px;font-size:13px;white-space:nowrap;}
+    .weekly-attend-grid{gap:4px;}
+    .weekly-attend-cell{padding:8px 2px;}
+    .weekly-attend-dow{font-size:10px;margin-bottom:3px;}
+    .weekly-attend-rate{font-size:13px;}
+    .weekly-attend-rate .wa-unit{font-size:10px;font-weight:600;}
     #pageContent{padding:14px;}
     .section-tabs{width:100%;}
     .section-tab{flex:1;padding:9px 0;font-size:13px;}
@@ -1848,7 +1854,7 @@ async function renderWeeklyAttendance(){
     const lowClass = (c.rate !== null && c.rate < 95) ? 'weekly-attend-low' : '';
     return `<div class="weekly-attend-cell${c.isToday?' weekly-attend-today':''}">
       <div class="weekly-attend-dow">${c.dow}</div>
-      <div class="weekly-attend-rate ${lowClass}">${c.rate === null ? '-' : c.rate+'%'}</div>
+      <div class="weekly-attend-rate ${lowClass}">${c.rate === null ? '-' : c.rate+'<span class="wa-unit">%</span>'}</div>
     </div>`;
   }).join('') + `</div>`;
 }
