@@ -291,6 +291,11 @@
   .sc-textbook-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
   .sc-textbook-input{width:100%;font-size:11.5px;color:var(--ink-soft);}
   .sc-textbook-status{font-size:11.5px;color:var(--teal-dark);margin-top:6px;}
+  .sc-textbook-memo{width:100%;font-size:11.5px;border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-family:inherit;margin-top:8px;color:var(--ink);}
+  .sc-textbook-memo-save{display:block;width:100%;margin-top:6px;padding:6px 8px;font-size:11px;
+    font-weight:700;border-radius:6px;border:1px solid var(--teal);background:#fff;
+    color:var(--teal-dark);cursor:pointer;text-align:center;}
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:#EAF3EF;
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
@@ -1905,7 +1910,8 @@ function studentStatusOf(name){
 
 function studentTextbookOf(name){
   const found = studentInfoList.find(s => s.name === name);
-  return (found && found.textbookImageId) ? { fileName: found.textbookImageName } : null;
+  if(!found) return null;
+  return { fileName: found.textbookImageName || '', memo: found.textbookMemo || '' };
 }
 
 function slotsByStudent(){
@@ -1955,7 +1961,9 @@ async function renderStudentGrid(){
       <div class="sc-textbook">
         <label class="sc-textbook-label">📘 준비 교재 이미지</label>
         <input type="file" class="sc-textbook-input" data-student-name="${stu.name}" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp">
-        <div class="sc-textbook-status">${textbook ? `현재: ${textbook.fileName}` : '등록된 이미지 없음'}</div>
+        <div class="sc-textbook-status">${(textbook && textbook.fileName) ? `현재: ${textbook.fileName}` : '등록된 이미지 없음'}</div>
+        <input type="text" class="sc-textbook-memo" data-student-name="${stu.name}" placeholder="교재명·준비 기한 메모 (예: 쎈 중2-1, 9/1까지)" value="${((textbook && textbook.memo) || '').replace(/"/g,'&quot;')}">
+        <button class="sc-textbook-memo-save" data-student-name="${stu.name}">메모 저장</button>
       </div>
     </div>`;
   }).join('');
@@ -2005,6 +2013,28 @@ async function renderStudentGrid(){
       }catch(err){
         statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
         e.target.value = '';
+      }
+    };
+  });
+
+  el.querySelectorAll('.sc-textbook-memo-save').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const name = btn.getAttribute('data-student-name');
+      const input = btn.parentElement.querySelector('.sc-textbook-memo');
+      const memo = input.value.trim();
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '저장 중...';
+      try{
+        await apiPost({ action:'setTextbookMemo', name, memo });
+        await new Promise(r=>setTimeout(r, 1000));
+        btn.textContent = '저장됨';
+        setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 1500);
+      }catch(err){
+        showSaveFailToast('메모 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+        btn.textContent = originalText;
+        btn.disabled = false;
       }
     };
   });
