@@ -284,6 +284,20 @@
   }
   .badge-wait{ background:#EAF3EF; color:var(--teal-dark); }
   .badge-done{ background:#E9F3E4; color:#4C8B3A; }
+  .badge-unpaid{ background:#FBEBE7; color:var(--red); }
+
+  /* ── 수강료 ──────────────────────────────── */
+  .tuition-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:13px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .tuition-item:last-child{ border-bottom:none; }
+  .tu-month{ font-size:14px; font-weight:700; color:var(--ink); }
+  .tu-amount{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
   .makeup-empty{
     font-size:13px;
     color:var(--ink-soft);
@@ -666,6 +680,10 @@
           📘 교재
           <span class="tab-new-dot" id="tab-textbook-dot" style="display:none;"></span>
         </button>
+        <button class="tab-btn" data-tab="tuition">
+          💰 수강료
+          <span class="tab-new-dot" id="tab-tuition-dot" style="display:none;"></span>
+        </button>
       </div>
     </div>
 
@@ -732,6 +750,13 @@
       <div class="tab-panel" id="panel-textbook">
         <div class="card" id="textbook-card">
           <div class="log-empty">등록된 준비 교재가 없어요</div>
+        </div>
+      </div>
+
+      <!-- 수강료 탭 -->
+      <div class="tab-panel" id="panel-tuition">
+        <div class="card" id="tuition-card">
+          <div class="log-empty">등록된 수강료 내역이 없어요</div>
         </div>
       </div>
 
@@ -809,6 +834,7 @@
       if(tab === 'exam') markSeenRead('exam', latestExamSeenId);
       if(tab === 'makeup') markSeenRead('makeup', latestMakeupSeenId);
       if(tab === 'textbook') markSeenRead('textbook', latestTextbookSeenId);
+      if(tab === 'tuition') markSeenRead('tuition', latestTuitionSeenId);
     });
   });
 
@@ -834,6 +860,7 @@
   let latestExamSeenId = null;
   let latestMakeupSeenId = null;
   let latestTextbookSeenId = null;
+  let latestTuitionSeenId = null;
 
   let currentNotice = null;
 
@@ -855,6 +882,7 @@
     const isElementary = !!data.isElementary;
     const elemTests = data.elemTests || [];
     const textbook = data.textbook || null;
+    const tuition = data.tuition || [];
 
     document.getElementById('app').style.display = 'block';
     document.getElementById('s-name').textContent = student.name;
@@ -902,6 +930,9 @@
 
     // ── 준비 교재 ──
     renderTextbook(textbook);
+
+    // ── 수강료 납부 현황 ──
+    renderTuition(tuition);
 
     // ── 다가오는 시험 (중등 이상: 학교 D-day / 초등: 개인별 테스트 기록) ──
     // 개인별 테스트 기록은 초등·중등 공통으로 표시 — 중등은 D-day 카드 아래에 이어서 보여준다.
@@ -1074,6 +1105,40 @@
 
     latestTextbookSeenId = (textbook.viewUrl || '') + '|' + (textbook.memo || '');
     document.getElementById('tab-textbook-dot').style.display = isUnseen('textbook', latestTextbookSeenId) ? 'block' : 'none';
+  }
+
+  function tuitionMonthLabel(ym){
+    const parts = String(ym || '').split('-');
+    if(parts.length !== 2) return ym || '';
+    return parts[0] + '년 ' + parseInt(parts[1], 10) + '월';
+  }
+
+  // 수강료 탭 콘텐츠 + 탭 라벨 NEW 점 표시. 최근 6개월치를 최신순으로 보여준다.
+  // 읽음 여부는 가장 최근 달의 (연월+납부상태) 조합을 식별자로 써서, 상태가 바뀌면 새 글로 인식한다.
+  function renderTuition(tuition){
+    const card = document.getElementById('tuition-card');
+    if(!card) return;
+    if(!tuition || !tuition.length){
+      card.innerHTML = '<div class="log-empty">등록된 수강료 내역이 없어요</div>';
+      latestTuitionSeenId = null;
+      document.getElementById('tab-tuition-dot').style.display = 'none';
+      return;
+    }
+    card.innerHTML = tuition.map(t=>{
+      const badgeCls = t.status === '완납' ? 'badge-done' : 'badge-unpaid';
+      return `
+        <div class="tuition-item">
+          <div>
+            <div class="tu-month">${tuitionMonthLabel(t.yearMonth)}</div>
+            ${t.amount ? `<div class="tu-amount">${Number(t.amount).toLocaleString()}원${t.paidDate ? ' · '+t.paidDate+' 납부' : ''}</div>` : ''}
+          </div>
+          <span class="badge ${badgeCls}">${t.status}</span>
+        </div>
+      `;
+    }).join('');
+
+    latestTuitionSeenId = tuition[0].yearMonth + '|' + tuition[0].status;
+    document.getElementById('tab-tuition-dot').style.display = isUnseen('tuition', latestTuitionSeenId) ? 'block' : 'none';
   }
 
   // 공지사항 탭 콘텐츠 + 탭 라벨 NEW 점 표시. 읽음 여부는 이 학생(id)의 브라우저 localStorage에 저장

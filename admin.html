@@ -398,6 +398,30 @@
   .grades-cancel-btn{background:none;border:1px solid var(--line);color:var(--ink-soft);
     border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;}
 
+  /* ===================== 수강료 관리 ===================== */
+  .tuition-monthbar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:18px;}
+  .tuition-monthbar button{border:none;background:var(--paper);border-radius:9px;width:34px;height:34px;
+    color:var(--teal);cursor:pointer;font-size:16px;}
+  .tuition-monthbar .lbl{font-size:16px;font-weight:800;color:var(--ink);min-width:110px;text-align:center;}
+  .tuition-summary{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:18px;}
+  .tuition-summary .unpaid-count{color:var(--red);font-weight:700;}
+  .tuition-list{display:flex;flex-direction:column;gap:10px;}
+  .tuition-row{background:var(--paper);border:1px solid var(--line);border-radius:11px;
+    padding:14px 16px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1.4fr auto;gap:10px;align-items:center;}
+  @media (max-width: 900px){ .tuition-row{grid-template-columns:1fr 1fr;} }
+  .tuition-row .tr-name{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .tuition-row .tr-meta{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
+  .tuition-row input[type=number],.tuition-row input[type=date],.tuition-row input[type=text]{
+    width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    font-size:13px;font-family:inherit;color:var(--ink);background:#fff;}
+  .tuition-status-toggle{padding:8px 4px;font-size:12.5px;font-weight:700;border-radius:8px;
+    border:1px solid var(--line);background:#fff;cursor:pointer;text-align:center;white-space:nowrap;}
+  .tuition-status-toggle.paid{border-color:var(--teal);color:var(--teal-dark);background:#EAF3EF;}
+  .tuition-status-toggle.unpaid{border-color:var(--red);color:var(--red);background:#FBEAE7;}
+  .tuition-row-save{flex-shrink:0;padding:8px 14px;font-size:12.5px;font-weight:700;
+    border-radius:8px;border:1px solid var(--teal);background:#fff;color:var(--teal-dark);cursor:pointer;}
+  .tuition-list-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
+
   /* ===================== 모바일 상단바 + 오버레이 메뉴 (기본은 숨김) ===================== */
   #mobileTopbar{display:none;}
   #mobileMenuOverlay{display:none;}
@@ -558,6 +582,10 @@
         <span class="nav-emoji" aria-hidden="true">📈</span>
         성적 관리
       </button>
+      <button class="nav-item" data-page="tuition">
+        <span class="nav-emoji" aria-hidden="true">💰</span>
+        수강료
+      </button>
       <button class="nav-item" data-page="notice">
         <span class="nav-emoji" aria-hidden="true">📢</span>
         공지사항
@@ -591,6 +619,10 @@
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
         성적 관리
+      </button>
+      <button class="nav-item" data-page="tuition">
+        <span class="nav-emoji" aria-hidden="true">💰</span>
+        수강료
       </button>
       <button class="nav-item" data-page="notice">
         <span class="nav-emoji" aria-hidden="true">📢</span>
@@ -683,6 +715,9 @@ let monthRecords = {};  // 학생별 캘린더용 (월 단위)
 let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
 let calMonth = new Date(); calMonth.setDate(1);
+let tuitionMonth = new Date(); tuitionMonth.setDate(1);
+function toYearMonth(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1); }
+function addMonths(d,n){ const r=new Date(d); r.setDate(1); r.setMonth(r.getMonth()+n); return r; }
 let selectedStudent = '';
 let editMode = false;
 let openAttKey = null;    // 메모(특이사항) 편집중인 카드 키
@@ -1668,6 +1703,7 @@ const PAGE_TITLES = {
   students:   "학생 관리",
   attendance: "출결 관리",
   grades:     "성적 관리",
+  tuition:    "수강료 관리",
   notice:     "공지사항"
 };
 let currentPage = 'attendance';
@@ -1679,6 +1715,7 @@ function emptyPagePanel(icon, title, desc){
 /* ============ 대시보드 ============ */
 async function renderDashboard(){
   renderDashSummary();
+  await renderTuitionSummary();
   await renderWeeklyAttendance();
   await renderUpcomingExams();
   await renderMakeupFeed();
@@ -2647,6 +2684,162 @@ async function renderGradesTestList(){
 }
 
 
+/* ============ 수강료 관리 ============ */
+async function renderTuitionSummary(){
+  const el = document.getElementById('tuitionUnpaidFeed');
+  const labelEl = document.getElementById('tuitionUnpaidCountLabel');
+  if(!el) return;
+
+  await loadStudentInfoList();
+  const yearMonth = toYearMonth(new Date());
+  let rows;
+  try{
+    rows = await apiGet({action:'tuition', yearMonth});
+    if(!Array.isArray(rows)) rows = [];
+  }catch(e){
+    el.innerHTML = `<div class="reason-feed-empty">수강료 현황을 불러오지 못했어요.</div>`;
+    return;
+  }
+
+  const rowByName = {};
+  rows.forEach(r=>{ rowByName[r.name] = r; });
+  const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const unpaid = active.filter(s=> !(rowByName[s.name] && rowByName[s.name].status === '완납'));
+
+  if(labelEl) labelEl.innerHTML = unpaid.length ? `<span class="badge-count">${unpaid.length}명</span>` : '';
+
+  if(!unpaid.length){
+    el.innerHTML = `<div class="reason-feed-empty">이번 달 미납 학생이 없어요.</div>`;
+    return;
+  }
+
+  el.innerHTML = unpaid.map(s=>{
+    const meta = [s.school, s.grade].filter(Boolean).join(' · ');
+    const amount = rowByName[s.name] && rowByName[s.name].amount;
+    return `<div class="reason-item">
+      <span class="ri-badge absent">미납</span>
+      <div class="ri-body">
+        <div class="ri-top">
+          <span class="ri-name">${s.name}</span>
+          ${meta?`<span class="ri-meta">${meta}</span>`:''}
+        </div>
+        ${amount ? `<div class="ri-text">${Number(amount).toLocaleString()}원</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderTuitionPage(){
+  const el = document.getElementById('otherPage');
+  el.innerHTML = `
+    <div class="tuition-monthbar">
+      <button id="tuitionPrevMonth">‹</button>
+      <div class="lbl" id="tuitionMonthLabel"></div>
+      <button id="tuitionNextMonth">›</button>
+    </div>
+    <div class="tuition-summary" id="tuitionSummaryLine"></div>
+    <div class="tuition-list" id="tuitionList"><div class="reason-feed-empty">불러오는 중...</div></div>
+  `;
+  document.getElementById('tuitionMonthLabel').textContent = tuitionMonth.getFullYear()+'년 '+(tuitionMonth.getMonth()+1)+'월';
+  document.getElementById('tuitionPrevMonth').onclick = ()=>{
+    tuitionMonth = addMonths(tuitionMonth, -1);
+    renderTuitionPage();
+  };
+  document.getElementById('tuitionNextMonth').onclick = ()=>{
+    tuitionMonth = addMonths(tuitionMonth, 1);
+    renderTuitionPage();
+  };
+  await renderTuitionList();
+}
+
+async function renderTuitionList(){
+  const listEl = document.getElementById('tuitionList');
+  const summaryEl = document.getElementById('tuitionSummaryLine');
+  if(!listEl) return;
+
+  await loadStudentInfoList();
+  const yearMonth = toYearMonth(tuitionMonth);
+  let rows;
+  try{
+    rows = await apiGet({action:'tuition', yearMonth});
+    if(!Array.isArray(rows)) rows = [];
+
+    const rowByName = {};
+    rows.forEach(r=>{ rowByName[r.name] = r; });
+
+    const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+
+    if(!active.length){
+      listEl.innerHTML = `<div class="tuition-list-empty">재원 중인 학생이 없어요.</div>`;
+      if(summaryEl) summaryEl.textContent = '';
+      return;
+    }
+
+    const paidCount = active.filter(s => rowByName[s.name] && rowByName[s.name].status === '완납').length;
+    if(summaryEl){
+      summaryEl.innerHTML = `완납 ${paidCount}명 · <span class="unpaid-count">미납 ${active.length - paidCount}명</span>`;
+    }
+
+    listEl.innerHTML = active.map(s=>{
+      const rec = rowByName[s.name] || {};
+      const status = rec.status === '완납' ? '완납' : '미납';
+      const meta = [s.school, s.grade].filter(Boolean).join(' · ');
+      return `<div class="tuition-row" data-name="${s.name}">
+        <div>
+          <div class="tr-name">${s.name}</div>
+          ${meta ? `<div class="tr-meta">${meta}</div>` : ''}
+        </div>
+        <input type="number" class="tuition-amount" placeholder="금액" value="${rec.amount || ''}">
+        <button type="button" class="tuition-status-toggle ${status==='완납'?'paid':'unpaid'}" data-status="${status}">${status}</button>
+        <input type="date" class="tuition-paiddate" value="${rec.paidDate || ''}">
+        <input type="text" class="tuition-memo" placeholder="메모 (선택)" value="${(rec.memo||'').replace(/"/g,'&quot;')}">
+        <button type="button" class="tuition-row-save">저장</button>
+      </div>`;
+    }).join('');
+  }catch(e){
+    listEl.innerHTML = `<div class="tuition-list-empty">불러오지 못했어요. 인터넷 연결을 확인해주세요.</div>`;
+    if(summaryEl) summaryEl.textContent = '';
+    return;
+  }
+
+  listEl.querySelectorAll('.tuition-status-toggle').forEach(btn=>{
+    btn.onclick = ()=>{
+      const next = btn.getAttribute('data-status') === '완납' ? '미납' : '완납';
+      btn.setAttribute('data-status', next);
+      btn.textContent = next;
+      btn.classList.toggle('paid', next==='완납');
+      btn.classList.toggle('unpaid', next==='미납');
+      const row = btn.closest('.tuition-row');
+      const dateInput = row.querySelector('.tuition-paiddate');
+      if(next === '완납' && !dateInput.value) dateInput.value = toDateStr(new Date());
+    };
+  });
+
+  listEl.querySelectorAll('.tuition-row-save').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const row = btn.closest('.tuition-row');
+      const name = row.getAttribute('data-name');
+      const amount = row.querySelector('.tuition-amount').value.trim();
+      const status = row.querySelector('.tuition-status-toggle').getAttribute('data-status');
+      const paidDate = row.querySelector('.tuition-paiddate').value;
+      const memo = row.querySelector('.tuition-memo').value.trim();
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '저장 중...';
+      try{
+        await apiPost({ action:'saveTuition', record:{ name, yearMonth, amount, status, paidDate, memo } });
+        await new Promise(r=>setTimeout(r, 800));
+        btn.textContent = '저장됨';
+        setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1200);
+      }catch(e){
+        showSaveFailToast('수강료 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+        btn.textContent = original;
+        btn.disabled = false;
+      }
+    };
+  });
+}
+
 function switchPage(page){
   currentPage = page;
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
@@ -2671,6 +2864,10 @@ function switchPage(page){
   otherPage.style.display = '';
   if(page === 'dashboard'){
     otherPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>이번 달 미납 학생 <span class="sub" id="tuitionUnpaidCountLabel"></span></h2>
+        <div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+      </div>
       <div class="panel" style="margin-bottom:20px;">
         <h2>최근 7일 출석률</h2>
         <div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
@@ -2701,6 +2898,8 @@ function switchPage(page){
     renderStudentGrid();
   } else if(page === 'grades'){
     renderGradesPage();
+  } else if(page === 'tuition'){
+    renderTuitionPage();
   } else if(page === 'notice'){
     renderNoticePage();
   }
