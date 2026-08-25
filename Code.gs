@@ -660,6 +660,17 @@ function getTuitionSheet_() {
   return sheet;
 }
 
+// 연월(YYYY-MM) 셀 값을 정규화한다. 시트가 "2026-08" 같은 값을 날짜(Date)로 자동 변환해
+// 저장하는 경우가 있어, 비교/반환 전에 항상 'yyyy-MM' 문자열로 되돌린다.
+function normalizeYearMonth_(val) {
+  if (Object.prototype.toString.call(val) === '[object Date]') {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM');
+  }
+  const s = String(val || '').trim();
+  const m = s.match(/^\d{4}-\d{2}/);
+  return m ? m[0] : s;
+}
+
 // 특정 연월(YYYY-MM)의 수강료 기록 전체를 반환 (학생 관리 화면의 수강료 탭에서 사용).
 // 아직 해당 연월 행이 없는 재원생은 여기 포함되지 않으며, 클라이언트가 studentInfoList와
 // 합쳐서 "기록 없음 = 미납"으로 보여준다.
@@ -670,7 +681,7 @@ function getTuitionForMonth(yearMonth) {
   const rows = [];
   for (let i = 1; i < data.length; i++) {
     const name = String(data[i][0] || '').trim();
-    const ym = String(data[i][1] || '').trim();
+    const ym = normalizeYearMonth_(data[i][1]);
     if (!name || ym !== yearMonth) continue;
     rows.push({
       rowNum: i + 1,
@@ -686,6 +697,8 @@ function getTuitionForMonth(yearMonth) {
 }
 
 // 수강료 한 건 저장. 같은 이름+연월 행이 있으면 덮어쓰고, 없으면 새 행을 추가한다.
+// "2026-08" 같은 연월 값을 구글시트가 날짜로 자동 변환해버리는 것을 막기 위해(초등 테스트
+// 점수의 "9/10"과 동일한 문제), 연월 셀은 항상 텍스트 서식으로 고정한 뒤 값을 넣는다.
 function saveTuition(rec) {
   if (!rec || !rec.name || !rec.yearMonth) return;
   const sheet = getTuitionSheet_();
@@ -693,15 +706,22 @@ function saveTuition(rec) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     const name = String(data[i][0] || '').trim();
-    const ym = String(data[i][1] || '').trim();
+    const ym = normalizeYearMonth_(data[i][1]);
     if (name === rec.name && ym === rec.yearMonth) {
-      sheet.getRange(i + 1, 1, 1, 6).setValues([[
-        rec.name, rec.yearMonth, rec.amount || '', status, rec.paidDate || '', rec.memo || ''
-      ]]);
+      const rowNum = i + 1;
+      sheet.getRange(rowNum, 1).setValue(rec.name);
+      const ymCell = sheet.getRange(rowNum, 2);
+      ymCell.setNumberFormat('@');
+      ymCell.setValue(rec.yearMonth);
+      sheet.getRange(rowNum, 3, 1, 4).setValues([[rec.amount || '', status, rec.paidDate || '', rec.memo || '']]);
       return;
     }
   }
-  sheet.appendRow([rec.name, rec.yearMonth, rec.amount || '', status, rec.paidDate || '', rec.memo || '']);
+  sheet.appendRow([rec.name, '', rec.amount || '', status, rec.paidDate || '', rec.memo || '']);
+  const newRowNum = sheet.getLastRow();
+  const ymCell = sheet.getRange(newRowNum, 2);
+  ymCell.setNumberFormat('@');
+  ymCell.setValue(rec.yearMonth);
 }
 
 // 특정 학생의 수강료 이력을 최신 연월순으로 최대 limit건 반환 (report.html 학부모 리포트에서 사용)
@@ -713,7 +733,7 @@ function getTuitionHistoryForStudent_(studentName, limit) {
   for (let i = 1; i < data.length; i++) {
     const name = String(data[i][0] || '').trim();
     if (name !== String(studentName).trim()) continue;
-    const ym = String(data[i][1] || '').trim();
+    const ym = normalizeYearMonth_(data[i][1]);
     if (!ym) continue;
     rows.push({
       yearMonth: ym,
