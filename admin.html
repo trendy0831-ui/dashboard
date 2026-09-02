@@ -2813,12 +2813,37 @@ function populatePbUnitFilters(){
   if(!mainSel || !subSel) return;
   const grades = pbSortByOrder([...new Set(pbProblems.map(p=>p.grade).filter(Boolean))], PB_GRADE_ORDER);
   const sems = pbSortByOrder([...new Set(pbProblems.map(p=>p.semester).filter(Boolean))], PB_SEMESTER_ORDER);
-  const mains = [...new Set(pbProblems.map(p=>p.unitMain).filter(Boolean))];
-  const subs = [...new Set(pbProblems.map(p=>p.unitSub).filter(Boolean))];
-  if(gradeSel) gradeSel.innerHTML = '<option value="">전체</option>' + grades.map(g=>`<option value="${g}">${g}</option>`).join('');
-  if(semSel) semSel.innerHTML = '<option value="">전체</option>' + sems.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // 대단원/소단원 옵션은 학년·학기를 먼저 고른 뒤 그 범위 안에 실제로 있는
+  // 단원만 보여주도록 좁힌다 -- 예전엔 전체 문제은행 기준으로 옵션을
+  // 만들어서, 중3·1학기를 선택해도 중2·2학기 단원(삼각형의 성질 등)까지
+  // 같이 보이는 문제가 있었음 (2026-09-02)
+  const curGrade = gradeSel ? gradeSel.value : '';
+  const curSem = semSel ? semSel.value : '';
+  const scoped = pbProblems.filter(p =>
+    (!curGrade || p.grade === curGrade) && (!curSem || p.semester === curSem)
+  );
+  const mains = [...new Set(scoped.map(p=>p.unitMain).filter(Boolean))];
+  const subs = [...new Set(scoped.map(p=>p.unitSub).filter(Boolean))];
+  // 학년/학기 select 자체도 change 이벤트가 날 때마다 이 함수가 다시 불려서
+  // 옵션을 새로 그리는데, innerHTML로 옵션을 통째로 갈아끼우면 select의
+  // 현재 선택값이 첫 옵션("전체")으로 리셋돼버린다 -- 그러면 방금 고른
+  // 학년/학기가 그 즉시 다시 "전체"로 풀려버리는 버그가 생기므로, 옵션을
+  // 새로 그린 뒤 원래 선택값을 그대로 복원한다. (2026-09-02)
+  if(gradeSel){
+    gradeSel.innerHTML = '<option value="">전체</option>' + grades.map(g=>`<option value="${g}">${g}</option>`).join('');
+    gradeSel.value = curGrade;
+  }
+  if(semSel){
+    semSel.innerHTML = '<option value="">전체</option>' + sems.map(s=>`<option value="${s}">${s}</option>`).join('');
+    semSel.value = curSem;
+  }
+  const prevMain = mainSel.value, prevSub = subSel.value;
   mainSel.innerHTML = '<option value="">전체</option>' + mains.map(m=>`<option value="${m}">${m}</option>`).join('');
   subSel.innerHTML = '<option value="">전체</option>' + subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // 이전 선택값이 새 범위에도 여전히 있으면 유지, 없으면(예: 학년을 바꿔서
+  // 더 이상 해당 단원이 없어짐) "전체"로 초기화한다.
+  mainSel.value = mains.includes(prevMain) ? prevMain : '';
+  subSel.value = subs.includes(prevSub) ? prevSub : '';
 }
 function renderPbCards(){
   const gridEl = document.getElementById('pbGrid');
@@ -3044,8 +3069,8 @@ async function renderProblemBankPage(){
       <div id="pbPrintPages"></div>
     </div>
   `;
-  document.getElementById('pbFGrade').addEventListener('change', applyPbFilters);
-  document.getElementById('pbFSemester').addEventListener('change', applyPbFilters);
+  document.getElementById('pbFGrade').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
+  document.getElementById('pbFSemester').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
   document.getElementById('pbFUnitMain').addEventListener('change', applyPbFilters);
   document.getElementById('pbFUnitSub').addEventListener('change', applyPbFilters);
   document.getElementById('pbFSchool').addEventListener('input', applyPbFilters);
