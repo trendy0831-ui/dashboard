@@ -54,9 +54,7 @@
   #main{flex:1;min-width:0;display:flex;flex-direction:column;}
   #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
     padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-  /* 페이지 제목 -- 카드형 배지 스타일 (2026-09-02, 사용자 요청) */
-  #mainTopbar h1{display:inline-block;font-size:19px;font-weight:800;margin:0;letter-spacing:-0.2px;
-    color:#fff;background:var(--deep);border-radius:10px;padding:9px 18px;}
+  #mainTopbar h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-0.3px;}
   .topbar-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   .date-picker{display:flex;align-items:center;gap:9px;background:var(--paper);
     border:1px solid var(--line);border-radius:11px;padding:11px 16px;font-size:14.5px;font-weight:600;}
@@ -462,7 +460,7 @@
     #mobileMenuOverlay .nav-item{color:#CFE6DE;}
     #mobileMenuOverlay .nav-item.active{background:#E1F5EE;color:var(--deep);}
     #mainTopbar{padding:16px 18px;}
-    #mainTopbar h1{font-size:16px;padding:8px 15px;}
+    #mainTopbar h1{font-size:18px;}
     #pageContent{padding:18px;}
     .slot-group{grid-template-columns:1fr;}
     .edit-grid{grid-template-columns:repeat(2,1fr);}
@@ -471,7 +469,7 @@
   @media (max-width: 480px){
     :root{font-size:14px;}
     #mainTopbar{padding:12px 14px;gap:10px;}
-    #mainTopbar h1{font-size:14.5px;padding:7px 13px;border-radius:8px;}
+    #mainTopbar h1{font-size:16px;}
     #mobileTopbar .mt-brand .t1{font-size:16px;}
     #mobileMenuOverlay .mmo-head .t1{font-size:16px;}
     .mmo-brand-text{font-size:16px !important;}
@@ -807,7 +805,14 @@
           </div>
         </div>
       </div>
-      <div id="otherPage" style="display:none;"></div>
+      <div id="otherPage" style="display:none;">
+        <div id="studentsPageEl" style="display:none;"></div>
+        <div id="gradesPageEl" style="display:none;"></div>
+        <div id="tuitionPageEl" style="display:none;"></div>
+        <div id="noticePageEl" style="display:none;"></div>
+        <div id="problemBankPageEl" style="display:none;"></div>
+      </div>
+      <div id="dashboardPage" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -1753,15 +1758,29 @@ function emptyPagePanel(icon, title, desc){
   return '<div class="empty-panel"><div class="big">'+icon+'</div><div class="title">'+title+'</div><div>'+desc+'</div></div>';
 }
 /* ============ 대시보드 ============ */
+// 대시보드의 여러 섹션이 겹치는 주간의 출결 기록(records)을 각자 따로 요청하던 것을
+// 요청 1회로 공유하기 위한 캐시. renderDashboard()가 호출될 때마다 새로 만들어서,
+// 예전 값이 남아 다음 새로고침에서도 계속 쓰이는 일이 없도록 한다 (2026-09-02, 속도 개선).
+function getRecordsCached(weekStart, cache){
+  if(!cache.has(weekStart)){
+    cache.set(weekStart, apiGet({action:"records", weekStart}).catch(()=>[]));
+  }
+  return cache.get(weekStart);
+}
 async function renderDashboard(){
   renderDashSummary();
-  await renderTuitionSummary();
-  await renderWeeklyAttendance();
-  await renderUpcomingExams();
-  await renderMakeupFeed();
-  await renderHomeworkRank();
-  await renderMakeupOldest();
-  await renderReasonFeed();
+  const recordsCache = new Map();
+  // 7개 섹션이 순서대로 하나씩 끝나길 기다리지 않고 한꺼번에 불러온다.
+  // (겹치는 주간 데이터는 위 recordsCache가 공유해서 중복 요청도 줄어든다)
+  await Promise.all([
+    renderTuitionSummary(),
+    renderWeeklyAttendance(recordsCache),
+    renderUpcomingExams(),
+    renderMakeupFeed(recordsCache),
+    renderHomeworkRank(recordsCache),
+    renderMakeupOldest(recordsCache),
+    renderReasonFeed(recordsCache)
+  ]);
 }
 async function renderUpcomingExams(){
   const el = document.getElementById('examFeed');
@@ -1817,7 +1836,8 @@ async function renderUpcomingExams(){
     </div>`;
   }).join("");
 }
-async function renderMakeupFeed(){
+async function renderMakeupFeed(cache){
+  cache = cache || new Map();
   const el = document.getElementById('makeupFeed');
   const labelEl = document.getElementById('makeupCountLabel');
   if(!el) return;
@@ -1830,21 +1850,19 @@ async function renderMakeupFeed(){
     cursor = addDays(cursor, 7);
   }
   const items = [];
-  for(const ws of weeks){
-    try{
-      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
-      rows.forEach(rec=>{
-        if(rec.status !== 'absent') return;
-        if(rec.makeupStatus !== 'wait') return;
-        if(rec.date < toDateStr(monthStart) || rec.date > toDateStr(today)) return;
-        const dayName = dayNameForDate(rec.date);
-        const slotIdx = (parseInt(rec.slot)||1)-1;
-        const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
-        if(!rawName) return;
-        items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName });
-      });
-    }catch(e){}
-  }
+  const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
+  weekRows.forEach(rows=>{
+    (rows||[]).forEach(rec=>{
+      if(rec.status !== 'absent') return;
+      if(rec.makeupStatus !== 'wait') return;
+      if(rec.date < toDateStr(monthStart) || rec.date > toDateStr(today)) return;
+      const dayName = dayNameForDate(rec.date);
+      const slotIdx = (parseInt(rec.slot)||1)-1;
+      const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
+      if(!rawName) return;
+      items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName });
+    });
+  });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
   if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
   if(!items.length){
@@ -1868,18 +1886,18 @@ async function renderMakeupFeed(){
     </div>`;
   }).join("");
 }
-async function renderWeeklyAttendance(){
+async function renderWeeklyAttendance(cache){
+  cache = cache || new Map();
   const el = document.getElementById('weeklyAttendanceGrid');
   if(!el) return;
   const today = new Date();
   const days7 = [];
   for(let i=6; i>=0; i--) days7.push(addDays(today, -i));
-  const weekStartsNeeded = new Set(days7.map(d => toDateStr(mondayOf(d))));
+  const weekStartsNeeded = [...new Set(days7.map(d => toDateStr(mondayOf(d))))];
   const recordsByWeek = {};
-  for(const ws of weekStartsNeeded){
-    try{ recordsByWeek[ws] = await apiGet({action:"records", weekStart: ws}); }
-    catch(e){ recordsByWeek[ws] = []; }
-  }
+  await Promise.all(weekStartsNeeded.map(async ws=>{
+    recordsByWeek[ws] = await getRecordsCached(ws, cache);
+  }));
   const dowLabels = ["일","월","화","수","목","금","토"];
   const cells = days7.map(d=>{
     const dateStr = toDateStr(d);
@@ -1908,7 +1926,8 @@ async function renderWeeklyAttendance(){
     </div>`;
   }).join('') + `</div>`;
 }
-async function renderHomeworkRank(){
+async function renderHomeworkRank(cache){
+  cache = cache || new Map();
   const el = document.getElementById('homeworkRankFeed');
   if(!el) return;
   const today = new Date();
@@ -1920,30 +1939,35 @@ async function renderHomeworkRank(){
     cursor = addDays(cursor, 7);
   }
   const countByName = {};
-  for(const ws of weeks){
+  const weekResults = await Promise.all(weeks.map(async ws=>{
     try{
       const [recordRows, hwRows] = await Promise.all([
-        apiGet({action:"records", weekStart: toDateStr(ws)}),
+        getRecordsCached(toDateStr(ws), cache),
         apiGet({action:"homework", weekStart: toDateStr(ws)})
       ]);
-      hwRows.forEach(hw=>{
-        if(hw.date < toDateStr(start) || hw.date > toDateStr(today)) return;
-        const rawName = hw.name;
-        if(!rawName) return;
-        const dayName = dayNameForDate(hw.date);
-        const isAbsent = recordRows.some(r => {
-          if(r.date !== hw.date || r.block !== hw.block || r.status !== 'absent') return false;
-          const slotIdx = (parseInt(r.slot)||1)-1;
-          const slotName = rosterNameAt(dayName, r.block, slotIdx, r.date);
-          return slotName && parseStudentEntry(slotName).name === parseStudentEntry(rawName).name;
-        });
-        if(isAbsent) return;
-        const state = hwStatusLabel(hw.completed);
-        if(state !== '미흡' && state !== '미확인') return;
-        countByName[rawName] = (countByName[rawName] || 0) + 1;
+      return { recordRows, hwRows };
+    }catch(e){ return null; }
+  }));
+  weekResults.forEach(res=>{
+    if(!res) return;
+    const { recordRows, hwRows } = res;
+    hwRows.forEach(hw=>{
+      if(hw.date < toDateStr(start) || hw.date > toDateStr(today)) return;
+      const rawName = hw.name;
+      if(!rawName) return;
+      const dayName = dayNameForDate(hw.date);
+      const isAbsent = recordRows.some(r => {
+        if(r.date !== hw.date || r.block !== hw.block || r.status !== 'absent') return false;
+        const slotIdx = (parseInt(r.slot)||1)-1;
+        const slotName = rosterNameAt(dayName, r.block, slotIdx, r.date);
+        return slotName && parseStudentEntry(slotName).name === parseStudentEntry(rawName).name;
       });
-    }catch(e){}
-  }
+      if(isAbsent) return;
+      const state = hwStatusLabel(hw.completed);
+      if(state !== '미흡' && state !== '미확인') return;
+      countByName[rawName] = (countByName[rawName] || 0) + 1;
+    });
+  });
   const ranked = Object.entries(countByName)
     .map(([rawName, count]) => ({ rawName, count }))
     .sort((a,b)=> b.count - a.count)
@@ -1964,7 +1988,8 @@ async function renderHomeworkRank(){
     </div>`;
   }).join("");
 }
-async function renderMakeupOldest(){
+async function renderMakeupOldest(cache){
+  cache = cache || new Map();
   const el = document.getElementById('makeupOldestFeed');
   if(!el) return;
   const today = new Date();
@@ -1976,21 +2001,19 @@ async function renderMakeupOldest(){
     cursor = addDays(cursor, 7);
   }
   const items = [];
-  for(const ws of weeks){
-    try{
-      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
-      rows.forEach(rec=>{
-        if(rec.status !== 'absent') return;
-        if(rec.makeupStatus !== 'wait') return;
-        if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
-        const dayName = dayNameForDate(rec.date);
-        const slotIdx = (parseInt(rec.slot)||1)-1;
-        const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
-        if(!rawName) return;
-        items.push({ date: rec.date, block: rec.block, name: rawName });
-      });
-    }catch(e){}
-  }
+  const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
+  weekRows.forEach(rows=>{
+    (rows||[]).forEach(rec=>{
+      if(rec.status !== 'absent') return;
+      if(rec.makeupStatus !== 'wait') return;
+      if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
+      const dayName = dayNameForDate(rec.date);
+      const slotIdx = (parseInt(rec.slot)||1)-1;
+      const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
+      if(!rawName) return;
+      items.push({ date: rec.date, block: rec.block, name: rawName });
+    });
+  });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
   if(!items.length){
     el.className = 'reason-feed';
@@ -2048,7 +2071,8 @@ function renderDashSummary(){
     `<div class="dash-card ${c.accent}"><div class="dc-label">${c.label}</div><div class="dc-value">${c.value}<span class="unit">${c.unit}</span></div></div>`
   ).join("");
 }
-async function renderReasonFeed(){
+async function renderReasonFeed(cache){
+  cache = cache || new Map();
   const el = document.getElementById('reasonFeed');
   if(!el) return;
   const today = new Date();
@@ -2060,21 +2084,19 @@ async function renderReasonFeed(){
     cursor = addDays(cursor, 7);
   }
   const items = [];
-  for(const ws of weeks){
-    try{
-      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
-      rows.forEach(rec=>{
-        if(!rec.statusNote) return;
-        if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
-        if(rec.status !== 'late' && rec.status !== 'absent') return;
-        const dayName = dayNameForDate(rec.date);
-        const slotIdx = (parseInt(rec.slot)||1)-1;
-        const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
-        if(!rawName) return;
-        items.push({ date: rec.date, block: rec.block, status: rec.status, note: rec.statusNote, name: rawName });
-      });
-    }catch(e){}
-  }
+  const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
+  weekRows.forEach(rows=>{
+    (rows||[]).forEach(rec=>{
+      if(!rec.statusNote) return;
+      if(rec.date < toDateStr(start) || rec.date > toDateStr(today)) return;
+      if(rec.status !== 'late' && rec.status !== 'absent') return;
+      const dayName = dayNameForDate(rec.date);
+      const slotIdx = (parseInt(rec.slot)||1)-1;
+      const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
+      if(!rawName) return;
+      items.push({ date: rec.date, block: rec.block, status: rec.status, note: rec.statusNote, name: rawName });
+    });
+  });
   items.sort((a,b)=> b.date.localeCompare(a.date) || b.block.localeCompare(a.block));
   if(!items.length){
     el.className = 'reason-feed';
@@ -2266,99 +2288,102 @@ async function renderStudentGrid(){
 /* ============ 공지사항 (관리자 작성 화면) ============ */
 let currentAttachment = null;
 async function renderNoticePage(){
-  const el = document.getElementById('otherPage');
-  el.innerHTML = `
-    <div class="notice-form">
-      <div class="notice-field">
-        <label>제목</label>
-        <input type="text" id="noticeTitle" placeholder="예: 8월 넷째 주 휴강 안내">
-      </div>
-      <div class="notice-field">
-        <label>내용</label>
-        <textarea id="noticeContent" placeholder="공지 내용을 입력하세요"></textarea>
-      </div>
-      <div class="notice-daterow">
+  const el = document.getElementById('noticePageEl');
+  if(!el.dataset.built){
+    el.innerHTML = `
+      <div class="notice-form">
         <div class="notice-field">
-          <label>시작일</label>
-          <input type="date" id="noticeStart">
+          <label>제목</label>
+          <input type="text" id="noticeTitle" placeholder="예: 8월 넷째 주 휴강 안내">
         </div>
         <div class="notice-field">
-          <label>종료일</label>
-          <input type="date" id="noticeEnd">
+          <label>내용</label>
+          <textarea id="noticeContent" placeholder="공지 내용을 입력하세요"></textarea>
+        </div>
+        <div class="notice-daterow">
+          <div class="notice-field">
+            <label>시작일</label>
+            <input type="date" id="noticeStart">
+          </div>
+          <div class="notice-field">
+            <label>종료일</label>
+            <input type="date" id="noticeEnd">
+          </div>
+        </div>
+        <div class="notice-field">
+          <label>파일 첨부 (선택, PDF·이미지)</label>
+          <input type="file" id="noticeAttachInput" accept="application/pdf,image/png,image/jpeg,image/jpg,image/gif,image/webp">
+          <div id="noticeAttachStatus" class="notice-attach-status"></div>
+        </div>
+        <button class="notice-save-btn" id="noticeSaveBtn">저장</button>
+        <div class="notice-status-msg" id="noticeStatusMsg"></div>
+        <div class="notice-preview">
+          <div class="lbl">현재 학부모 리포트에 노출 중인 공지</div>
+          <div class="notice-preview-card" id="noticePreviewCard">불러오는 중...</div>
         </div>
       </div>
-      <div class="notice-field">
-        <label>파일 첨부 (선택, PDF·이미지)</label>
-        <input type="file" id="noticeAttachInput" accept="application/pdf,image/png,image/jpeg,image/jpg,image/gif,image/webp">
-        <div id="noticeAttachStatus" class="notice-attach-status"></div>
-      </div>
-      <button class="notice-save-btn" id="noticeSaveBtn">저장</button>
-      <div class="notice-status-msg" id="noticeStatusMsg"></div>
-      <div class="notice-preview">
-        <div class="lbl">현재 학부모 리포트에 노출 중인 공지</div>
-        <div class="notice-preview-card" id="noticePreviewCard">불러오는 중...</div>
-      </div>
-    </div>
-  `;
+    `;
+    document.getElementById('noticeAttachInput').onchange = async (e)=>{
+      const file = e.target.files[0];
+      const statusEl = document.getElementById('noticeAttachStatus');
+      if(!file) return;
+      const isPdf = file.type === 'application/pdf';
+      const isImage = file.type.indexOf('image/') === 0;
+      if(!isPdf && !isImage){
+        statusEl.textContent = 'PDF 또는 이미지 파일만 첨부할 수 있어요.';
+        e.target.value = '';
+        return;
+      }
+      statusEl.textContent = `업로드 중... (${file.name})`;
+      try{
+        const base64Data = await new Promise((resolve, reject)=>{
+          const reader = new FileReader();
+          reader.onload = ()=> resolve(reader.result.split(',')[1]);
+          reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
+          reader.readAsDataURL(file);
+        });
+        await uploadFileAndWait(file.name, base64Data, file.type);
+        currentAttachment = { fileName: file.name };
+        statusEl.textContent = `첨부됨: ${file.name}`;
+      }catch(err){
+        statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
+        currentAttachment = null;
+        e.target.value = '';
+      }
+    };
+    document.getElementById('noticeSaveBtn').onclick = async ()=>{
+      const title = document.getElementById('noticeTitle').value.trim();
+      const content = document.getElementById('noticeContent').value.trim();
+      const startDate = document.getElementById('noticeStart').value;
+      const endDate = document.getElementById('noticeEnd').value;
+      const msgEl = document.getElementById('noticeStatusMsg');
+      if(!title || !startDate || !endDate){
+        msgEl.textContent = '제목, 시작일, 종료일은 꼭 입력해주세요.';
+        msgEl.classList.remove('ok');
+        return;
+      }
+      if(startDate > endDate){
+        msgEl.textContent = '종료일이 시작일보다 빠를 수 없어요.';
+        msgEl.classList.remove('ok');
+        return;
+      }
+      msgEl.textContent = '저장 중...';
+      msgEl.classList.remove('ok');
+      try{
+        await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
+        await new Promise(r=>setTimeout(r, 1200));
+        msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
+        msgEl.classList.add('ok');
+        await renderNoticePreview();
+      }catch(e){
+        msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
+        msgEl.classList.remove('ok');
+      }
+    };
+    el.dataset.built = '1';
+  }
   currentAttachment = null;
   await loadNoticeIntoForm();
-  document.getElementById('noticeAttachInput').onchange = async (e)=>{
-    const file = e.target.files[0];
-    const statusEl = document.getElementById('noticeAttachStatus');
-    if(!file) return;
-    const isPdf = file.type === 'application/pdf';
-    const isImage = file.type.indexOf('image/') === 0;
-    if(!isPdf && !isImage){
-      statusEl.textContent = 'PDF 또는 이미지 파일만 첨부할 수 있어요.';
-      e.target.value = '';
-      return;
-    }
-    statusEl.textContent = `업로드 중... (${file.name})`;
-    try{
-      const base64Data = await new Promise((resolve, reject)=>{
-        const reader = new FileReader();
-        reader.onload = ()=> resolve(reader.result.split(',')[1]);
-        reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
-        reader.readAsDataURL(file);
-      });
-      await uploadFileAndWait(file.name, base64Data, file.type);
-      currentAttachment = { fileName: file.name };
-      statusEl.textContent = `첨부됨: ${file.name}`;
-    }catch(err){
-      statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
-      currentAttachment = null;
-      e.target.value = '';
-    }
-  };
-  document.getElementById('noticeSaveBtn').onclick = async ()=>{
-    const title = document.getElementById('noticeTitle').value.trim();
-    const content = document.getElementById('noticeContent').value.trim();
-    const startDate = document.getElementById('noticeStart').value;
-    const endDate = document.getElementById('noticeEnd').value;
-    const msgEl = document.getElementById('noticeStatusMsg');
-    if(!title || !startDate || !endDate){
-      msgEl.textContent = '제목, 시작일, 종료일은 꼭 입력해주세요.';
-      msgEl.classList.remove('ok');
-      return;
-    }
-    if(startDate > endDate){
-      msgEl.textContent = '종료일이 시작일보다 빠를 수 없어요.';
-      msgEl.classList.remove('ok');
-      return;
-    }
-    msgEl.textContent = '저장 중...';
-    msgEl.classList.remove('ok');
-    try{
-      await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
-      await new Promise(r=>setTimeout(r, 1200));
-      msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
-      msgEl.classList.add('ok');
-      await renderNoticePreview();
-    }catch(e){
-      msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
-      msgEl.classList.remove('ok');
-    }
-  };
 }
 async function loadNoticeIntoForm(){
   try{
@@ -2426,30 +2451,37 @@ function secondaryStudents(){
     .sort(byGrade);
 }
 function renderGradesPage(){
-  const el = document.getElementById('otherPage');
-  el.innerHTML = `
-    <div class="section-tabs">
-      <button class="section-tab ${gradesActiveGroup==='elem'?'active':''}" id="gradesTabElem">초등부</button>
-      <button class="section-tab ${gradesActiveGroup==='secondary'?'active':''}" id="gradesTabSecondary">중·고등부</button>
-    </div>
-    <div class="grades-layout">
-      <div class="grades-stu-list" id="gradesStuList"></div>
-      <div id="gradesMain">
-        <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div>
-        <div>왼쪽 목록에서 학생을 선택하면 테스트·시험 점수를 기록할 수 있어요.</div></div>
+  const el = document.getElementById('gradesPageEl');
+  if(!el.dataset.built){
+    el.innerHTML = `
+      <div class="section-tabs">
+        <button class="section-tab" id="gradesTabElem">초등부</button>
+        <button class="section-tab" id="gradesTabSecondary">중·고등부</button>
       </div>
-    </div>
-  `;
-  document.getElementById('gradesTabElem').onclick = ()=>{
-    gradesActiveGroup = 'elem';
-    gradesSelectedName = '';
-    renderGradesPage();
-  };
-  document.getElementById('gradesTabSecondary').onclick = ()=>{
-    gradesActiveGroup = 'secondary';
-    gradesSelectedName = '';
-    renderGradesPage();
-  };
+      <div class="grades-layout">
+        <div class="grades-stu-list" id="gradesStuList"></div>
+        <div id="gradesMain"></div>
+      </div>
+    `;
+    document.getElementById('gradesTabElem').onclick = ()=>{
+      gradesActiveGroup = 'elem';
+      gradesSelectedName = '';
+      renderGradesPage();
+    };
+    document.getElementById('gradesTabSecondary').onclick = ()=>{
+      gradesActiveGroup = 'secondary';
+      gradesSelectedName = '';
+      renderGradesPage();
+    };
+    el.dataset.built = '1';
+  }
+  document.getElementById('gradesTabElem').classList.toggle('active', gradesActiveGroup==='elem');
+  document.getElementById('gradesTabSecondary').classList.toggle('active', gradesActiveGroup==='secondary');
+  if(!gradesSelectedName){
+    document.getElementById('gradesMain').innerHTML = `
+      <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div>
+      <div>왼쪽 목록에서 학생을 선택하면 테스트·시험 점수를 기록할 수 있어요.</div></div>`;
+  }
   renderGradesStuList();
 }
 function renderGradesStuList(){
@@ -2645,25 +2677,28 @@ async function renderTuitionSummary(){
   }).join('');
 }
 async function renderTuitionPage(){
-  const el = document.getElementById('otherPage');
-  el.innerHTML = `
-    <div class="tuition-monthbar">
-      <button id="tuitionPrevMonth">‹</button>
-      <div class="lbl" id="tuitionMonthLabel"></div>
-      <button id="tuitionNextMonth">›</button>
-    </div>
-    <div class="tuition-summary" id="tuitionSummaryLine"></div>
-    <div class="tuition-list" id="tuitionList"><div class="reason-feed-empty">불러오는 중...</div></div>
-  `;
+  const el = document.getElementById('tuitionPageEl');
+  if(!el.dataset.built){
+    el.innerHTML = `
+      <div class="tuition-monthbar">
+        <button id="tuitionPrevMonth">‹</button>
+        <div class="lbl" id="tuitionMonthLabel"></div>
+        <button id="tuitionNextMonth">›</button>
+      </div>
+      <div class="tuition-summary" id="tuitionSummaryLine"></div>
+      <div class="tuition-list" id="tuitionList"><div class="reason-feed-empty">불러오는 중...</div></div>
+    `;
+    document.getElementById('tuitionPrevMonth').onclick = ()=>{
+      tuitionMonth = addMonths(tuitionMonth, -1);
+      renderTuitionPage();
+    };
+    document.getElementById('tuitionNextMonth').onclick = ()=>{
+      tuitionMonth = addMonths(tuitionMonth, 1);
+      renderTuitionPage();
+    };
+    el.dataset.built = '1';
+  }
   document.getElementById('tuitionMonthLabel').textContent = tuitionMonth.getFullYear()+'년 '+(tuitionMonth.getMonth()+1)+'월';
-  document.getElementById('tuitionPrevMonth').onclick = ()=>{
-    tuitionMonth = addMonths(tuitionMonth, -1);
-    renderTuitionPage();
-  };
-  document.getElementById('tuitionNextMonth').onclick = ()=>{
-    tuitionMonth = addMonths(tuitionMonth, 1);
-    renderTuitionPage();
-  };
   await renderTuitionList();
 }
 async function renderTuitionList(){
@@ -2754,57 +2789,85 @@ function switchPage(page){
   closeMobileMenu();
   const attPage = document.getElementById('attendancePage');
   const otherPage = document.getElementById('otherPage');
+  const dashPage = document.getElementById('dashboardPage');
   const topActions = document.getElementById('attendanceTopActions');
   if(page === 'attendance'){
     attPage.style.display = '';
     otherPage.style.display = 'none';
+    dashPage.style.display = 'none';
     topActions.style.display = '';
     return;
   }
   attPage.style.display = 'none';
   topActions.style.display = 'none';
-  otherPage.style.display = '';
   if(page === 'dashboard'){
-    otherPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
-      <div class="panel" style="margin-bottom:20px;">
-        <h2>이번 달 미납 학생 <span class="sub" id="tuitionUnpaidCountLabel"></span></h2>
-        <div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>
-      <div class="panel" style="margin-bottom:20px;">
-        <h2>최근 7일 출석률</h2>
-        <div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>
-      <div class="panel" style="margin-bottom:20px;">
-        <h2>다가오는 시험 <span class="sub" id="examCountLabel"></span></h2>
-        <div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>
-      <div class="panel" style="margin-bottom:20px;">
-        <h2>이번 달 보강 대기 <span class="sub" id="makeupCountLabel"></span></h2>
-        <div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>
-      <div class="panel" style="margin-bottom:20px;">
-        <h2>숙제 미흡·미제출 누적 <span class="sub">(최근 4주)</span></h2>
-        <div class="reason-feed" id="homeworkRankFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>
-      <div class="panel" style="margin-bottom:20px;">
-        <h2>보강 대기 <span class="sub">(결석일 오래된 순)</span></h2>
-        <div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>
-      <div class="panel">
-        <h2>최근 지각·결석 사유 <span class="sub">(최근 2주)</span></h2>
-        <div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-      </div>`;
+    // 대시보드는 다른 탭과 달리 화면을 지우지 않고 유지한다 -- 탭을 오갈 때마다
+    // "불러오는 중"부터 다시 보여주지 않고, 이전에 불러온 내용을 그대로 둔 채
+    // 뒤에서 조용히 최신 데이터로 갱신한다 (2026-09-02, 사용자 요청)
+    otherPage.style.display = 'none';
+    dashPage.style.display = '';
+    if(!dashPage.dataset.built){
+      dashPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>이번 달 미납 학생 <span class="sub" id="tuitionUnpaidCountLabel"></span></h2>
+          <div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>최근 7일 출석률</h2>
+          <div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>다가오는 시험 <span class="sub" id="examCountLabel"></span></h2>
+          <div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>이번 달 보강 대기 <span class="sub" id="makeupCountLabel"></span></h2>
+          <div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>숙제 미흡·미제출 누적 <span class="sub">(최근 4주)</span></h2>
+          <div class="reason-feed" id="homeworkRankFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>보강 대기 <span class="sub">(결석일 오래된 순)</span></h2>
+          <div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
+        <div class="panel">
+          <h2>최근 지각·결석 사유 <span class="sub">(최근 2주)</span></h2>
+          <div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>`;
+      dashPage.dataset.built = '1';
+    }
     renderDashboard();
-  } else if(page === 'students'){
-    otherPage.innerHTML = `<div class="student-grid" id="studentGrid"></div>`;
+    return;
+  }
+  dashPage.style.display = 'none';
+  otherPage.style.display = '';
+  // 학생관리/성적관리/수강료/공지사항/문제은행도 대시보드와 같은 방식으로,
+  // 각자 자기만의 화면을 유지한 채(탭을 오갈 때 지우지 않고) 다시 방문할 때마다
+  // 조용히 최신 내용으로 갱신한다 (2026-09-02, 사용자 요청)
+  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','problemBankPageEl'].forEach(id=>{
+    document.getElementById(id).style.display = 'none';
+  });
+  if(page === 'students'){
+    const el = document.getElementById('studentsPageEl');
+    el.style.display = '';
+    if(!el.dataset.built){
+      el.innerHTML = `<div class="student-grid" id="studentGrid"></div>`;
+      el.dataset.built = '1';
+    }
     renderStudentGrid();
   } else if(page === 'grades'){
+    document.getElementById('gradesPageEl').style.display = '';
     renderGradesPage();
   } else if(page === 'tuition'){
+    document.getElementById('tuitionPageEl').style.display = '';
     renderTuitionPage();
   } else if(page === 'notice'){
+    document.getElementById('noticePageEl').style.display = '';
     renderNoticePage();
   } else if(page === 'problemBank'){
+    document.getElementById('problemBankPageEl').style.display = '';
     renderProblemBankPage();
   }
 }
@@ -3025,112 +3088,115 @@ function buildPbPrintView(){
   document.getElementById('pbPrintView').classList.add('show');
 }
 async function renderProblemBankPage(){
-  const el = document.getElementById('otherPage');
-  el.innerHTML = `
-    <div class="fb">
-      <div class="fb-row">
-        <div class="fb-group">
-          <label>학년</label>
-          <select class="fb-select" id="pbFGrade"><option value="">전체</option></select>
-        </div>
-        <div class="fb-group">
-          <label>학기</label>
-          <select class="fb-select" id="pbFSemester"><option value="">전체</option></select>
-        </div>
-        <div class="fb-divider"></div>
-        <div class="fb-group">
-          <label>대단원</label>
-          <select class="fb-select" id="pbFUnitMain"><option value="">전체</option></select>
-        </div>
-        <div class="fb-group">
-          <label>소단원</label>
-          <select class="fb-select" id="pbFUnitSub"><option value="">전체</option></select>
-        </div>
-        <div class="fb-group">
-          <label>난이도</label>
-          <div class="chipset" id="pbFLevel">
-            <div class="chip" data-v="상">상</div>
-            <div class="chip" data-v="중">중</div>
-            <div class="chip" data-v="하">하</div>
+  const el = document.getElementById('problemBankPageEl');
+  if(!el.dataset.built){
+    el.innerHTML = `
+      <div class="fb">
+        <div class="fb-row">
+          <div class="fb-group">
+            <label>학년</label>
+            <select class="fb-select" id="pbFGrade"><option value="">전체</option></select>
+          </div>
+          <div class="fb-group">
+            <label>학기</label>
+            <select class="fb-select" id="pbFSemester"><option value="">전체</option></select>
+          </div>
+          <div class="fb-divider"></div>
+          <div class="fb-group">
+            <label>대단원</label>
+            <select class="fb-select" id="pbFUnitMain"><option value="">전체</option></select>
+          </div>
+          <div class="fb-group">
+            <label>소단원</label>
+            <select class="fb-select" id="pbFUnitSub"><option value="">전체</option></select>
+          </div>
+          <div class="fb-group">
+            <label>난이도</label>
+            <div class="chipset" id="pbFLevel">
+              <div class="chip" data-v="상">상</div>
+              <div class="chip" data-v="중">중</div>
+              <div class="chip" data-v="하">하</div>
+            </div>
+          </div>
+          <div class="fb-group">
+            <label>유형</label>
+            <div class="chipset" id="pbFType">
+              <div class="chip" data-v="객관식">객관식</div>
+              <div class="chip" data-v="서술형">서술형</div>
+            </div>
+          </div>
+          <div class="fb-divider"></div>
+          <div class="fb-group">
+            <label>학교 검색</label>
+            <input class="fb-search" id="pbFSchool" placeholder="예: 노변중">
+          </div>
+          <div class="fb-group">
+            <label>&nbsp;</label>
+            <label class="fb-check"><input type="checkbox" id="pbFHasSol">해설 있는 문제만</label>
           </div>
         </div>
-        <div class="fb-group">
-          <label>유형</label>
-          <div class="chipset" id="pbFType">
-            <div class="chip" data-v="객관식">객관식</div>
-            <div class="chip" data-v="서술형">서술형</div>
+      </div>
+      <div class="result-bar">
+        <div class="result-count">총 <b id="pbTotalCount">0</b>문제 중 <b id="pbVisibleCount">0</b>개 표시</div>
+        <label class="select-all"><input type="checkbox" id="pbSelectAll">전체 선택</label>
+      </div>
+      <div class="pb-grid" id="pbGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
+      <div id="pbStickyBar">
+        <div class="sb-left">선택한 문제 <b id="pbSbCount">0</b>개</div>
+        <div class="sb-actions">
+          <button class="sb-clear" id="pbSbClear">선택 해제</button>
+          <button class="sb-make" id="pbSbMake">📄 문제지 생성</button>
+        </div>
+      </div>
+      <div id="pbPrintView">
+        <div id="pbPrintToolbar">
+          <div class="pt-title">📄 문제지 미리보기 — 브라우저 인쇄로 PDF 저장 가능</div>
+          <div class="pt-actions">
+            <button id="pbPrintClose">닫기</button>
+            <button id="pbPrintNow">🖨️ 인쇄 / PDF로 저장</button>
           </div>
         </div>
-        <div class="fb-divider"></div>
-        <div class="fb-group">
-          <label>학교 검색</label>
-          <input class="fb-search" id="pbFSchool" placeholder="예: 노변중">
-        </div>
-        <div class="fb-group">
-          <label>&nbsp;</label>
-          <label class="fb-check"><input type="checkbox" id="pbFHasSol">해설 있는 문제만</label>
-        </div>
+        <div id="pbPrintPages"></div>
       </div>
-    </div>
-    <div class="result-bar">
-      <div class="result-count">총 <b id="pbTotalCount">0</b>문제 중 <b id="pbVisibleCount">0</b>개 표시</div>
-      <label class="select-all"><input type="checkbox" id="pbSelectAll">전체 선택</label>
-    </div>
-    <div class="pb-grid" id="pbGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
-    <div id="pbStickyBar">
-      <div class="sb-left">선택한 문제 <b id="pbSbCount">0</b>개</div>
-      <div class="sb-actions">
-        <button class="sb-clear" id="pbSbClear">선택 해제</button>
-        <button class="sb-make" id="pbSbMake">📄 문제지 생성</button>
-      </div>
-    </div>
-    <div id="pbPrintView">
-      <div id="pbPrintToolbar">
-        <div class="pt-title">📄 문제지 미리보기 — 브라우저 인쇄로 PDF 저장 가능</div>
-        <div class="pt-actions">
-          <button id="pbPrintClose">닫기</button>
-          <button id="pbPrintNow">🖨️ 인쇄 / PDF로 저장</button>
-        </div>
-      </div>
-      <div id="pbPrintPages"></div>
-    </div>
-  `;
-  document.getElementById('pbFGrade').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
-  document.getElementById('pbFSemester').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
-  document.getElementById('pbFUnitMain').addEventListener('change', applyPbFilters);
-  document.getElementById('pbFUnitSub').addEventListener('change', applyPbFilters);
-  document.getElementById('pbFSchool').addEventListener('input', applyPbFilters);
-  document.getElementById('pbFHasSol').addEventListener('change', applyPbFilters);
-  document.querySelectorAll('#pbFLevel .chip, #pbFType .chip').forEach(chip=>{
-    chip.addEventListener('click', ()=>{ chip.classList.toggle('on'); applyPbFilters(); });
-  });
-  document.getElementById('pbSelectAll').addEventListener('change', (e)=>{
-    const ids = pbVisibleIds();
-    if(e.target.checked){
-      ids.forEach(id=>{
-        pbSelected.add(id);
-        const c = document.querySelector(`#pbGrid .pb-card[data-id="${id}"]`);
-        if(c) c.classList.add('sel');
-      });
-    }else{
-      ids.forEach(id=>{
-        pbSelected.delete(id);
-        const c = document.querySelector(`#pbGrid .pb-card[data-id="${id}"]`);
-        if(c) c.classList.remove('sel');
-      });
-    }
-    updatePbSticky();
-  });
-  document.getElementById('pbSbClear').onclick = ()=>{
-    pbSelected.clear();
-    document.querySelectorAll('#pbGrid .pb-card.sel').forEach(c=>c.classList.remove('sel'));
-    updatePbSticky();
-  };
-  document.getElementById('pbSbMake').onclick = buildPbPrintView;
-  document.getElementById('pbPrintClose').onclick = ()=>{
-    document.getElementById('pbPrintView').classList.remove('show');
-  };
-  document.getElementById('pbPrintNow').onclick = ()=>{ window.print(); };
+    `;
+    document.getElementById('pbFGrade').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
+    document.getElementById('pbFSemester').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
+    document.getElementById('pbFUnitMain').addEventListener('change', applyPbFilters);
+    document.getElementById('pbFUnitSub').addEventListener('change', applyPbFilters);
+    document.getElementById('pbFSchool').addEventListener('input', applyPbFilters);
+    document.getElementById('pbFHasSol').addEventListener('change', applyPbFilters);
+    document.querySelectorAll('#pbFLevel .chip, #pbFType .chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{ chip.classList.toggle('on'); applyPbFilters(); });
+    });
+    document.getElementById('pbSelectAll').addEventListener('change', (e)=>{
+      const ids = pbVisibleIds();
+      if(e.target.checked){
+        ids.forEach(id=>{
+          pbSelected.add(id);
+          const c = document.querySelector(`#pbGrid .pb-card[data-id="${id}"]`);
+          if(c) c.classList.add('sel');
+        });
+      }else{
+        ids.forEach(id=>{
+          pbSelected.delete(id);
+          const c = document.querySelector(`#pbGrid .pb-card[data-id="${id}"]`);
+          if(c) c.classList.remove('sel');
+        });
+      }
+      updatePbSticky();
+    });
+    document.getElementById('pbSbClear').onclick = ()=>{
+      pbSelected.clear();
+      document.querySelectorAll('#pbGrid .pb-card.sel').forEach(c=>c.classList.remove('sel'));
+      updatePbSticky();
+    };
+    document.getElementById('pbSbMake').onclick = buildPbPrintView;
+    document.getElementById('pbPrintClose').onclick = ()=>{
+      document.getElementById('pbPrintView').classList.remove('show');
+    };
+    document.getElementById('pbPrintNow').onclick = ()=>{ window.print(); };
+    el.dataset.built = '1';
+  }
 
   updatePbSticky();
   try{
