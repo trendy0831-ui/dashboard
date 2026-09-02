@@ -243,11 +243,23 @@
   .reason-item .ri-date{font-size:12px;color:var(--ink-soft);margin-left:auto;white-space:nowrap;}
   .reason-item .ri-text{font-size:13.5px;color:var(--ink);}
   .reason-feed-empty{color:var(--ink-soft);font-size:14px;text-align:center;padding:40px 0;}
-  /* 다가오는 시험 D-day 배지 -- "내신 대비 시작 MM/DD" 텍스트 대신 표시 (2026-09-02) */
-  .dday{flex-shrink:0;text-align:center;background:var(--deep);color:#fff;
-    border-radius:9px;padding:7px 12px;font-weight:800;min-width:52px;}
-  .dday .num{font-size:15px;line-height:1.1;white-space:nowrap;}
-  .dday.soon{background:var(--amber);}
+  /* 미납 학생 / 다가오는 시험 -- 컴팩트 카드 그리드 (2026-09-02, "최근 7일 출석률"과 같은 톤) */
+  .compact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+  .cc-unpaid{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .cc-unpaid .cc-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .cc-unpaid .cc-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .cc-exam{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .cc-exam .cc-dday{font-size:12px;font-weight:800;color:#fff;background:var(--deep);
+    border-radius:6px;padding:2px 7px;display:inline-block;margin-bottom:6px;}
+  .cc-exam.soon .cc-dday{background:var(--amber);}
+  .cc-exam .cc-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .cc-exam .cc-date{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .cc-exam .cc-math{font-size:10.5px;color:var(--ink-soft);margin-top:4px;font-weight:600;}
+  .cc-exam .cc-math.warn{color:var(--amber);font-weight:800;}
+  .cc-exam.math-warn{border-color:var(--amber);background:#FBF2DD;}
+  @media (max-width:420px){
+    .compact-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));}
+  }
   .unchecked-list{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
   .unchecked-item{display:flex;align-items:center;justify-content:space-between;
     background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px 14px;}
@@ -1762,9 +1774,11 @@ async function renderUpcomingExams(){
     .sort((a,b)=> a.examStart.localeCompare(b.examStart));
   if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
   if(!items.length){
+    el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">앞으로 4주 이내 예정된 시험이 없어요.</div>`;
     return;
   }
+  el.className = 'compact-grid';
   el.innerHTML = items.map(it=>{
     const isDDay7 = it.dday === 7;
     const examSoon = it.examDday <= 7;
@@ -1772,18 +1786,13 @@ async function renderUpcomingExams(){
       ? `${fmtMD(new Date(it.examStart+"T00:00:00"))} ~ ${fmtMD(new Date(it.examEnd+"T00:00:00"))}`
       : fmtMD(new Date(it.examStart+"T00:00:00"));
     const mathLabel = it.mathExamDate
-      ? `수학 ${fmtMD(new Date(it.mathExamDate+"T00:00:00"))}${it.dday!==null ? ` (D-${it.dday})` : ''}`
+      ? `수학 ${fmtMD(new Date(it.mathExamDate+"T00:00:00"))}${it.dday!==null ? ` (D-${it.dday})` : ''}${isDDay7?' — 보강 확인!':''}`
       : '';
-    return `<div class="reason-item" style="${isDDay7?'border-color:var(--amber);background:#FBF2DD;':''}">
-      <div class="dday${examSoon?' soon':''}"><div class="num">D-${it.examDday}</div></div>
-      <div class="ri-body">
-        <div class="ri-top">
-          <span class="ri-name">${it.school}</span>
-          <span class="ri-date">${periodLabel}</span>
-        </div>
-        ${mathLabel ? `<div class="ri-text" style="${isDDay7?'color:var(--amber);font-weight:700;':''}">${mathLabel}${isDDay7?' — 일주일 뒤 수학시험, 보강 확인!':''}</div>` : ''}
-        <div class="ri-text" style="color:var(--ink-soft);">${it.memo || '시험'}</div>
-      </div>
+    return `<div class="cc-exam${examSoon?' soon':''}${isDDay7?' math-warn':''}">
+      <div class="cc-dday">D-${it.examDday}</div>
+      <div class="cc-name">${it.school}</div>
+      <div class="cc-date">${periodLabel}</div>
+      ${mathLabel ? `<div class="cc-math${isDDay7?' warn':''}">${mathLabel}</div>` : ''}
     </div>`;
   }).join("");
 }
@@ -2608,21 +2617,16 @@ async function renderTuitionSummary(){
   const unpaid = active.filter(s=> !(rowByName[s.name] && rowByName[s.name].status === '완납'));
   if(labelEl) labelEl.innerHTML = unpaid.length ? `<span class="badge-count">${unpaid.length}명</span>` : '';
   if(!unpaid.length){
+    el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">이번 달 미납 학생이 없어요.</div>`;
     return;
   }
+  el.className = 'compact-grid';
   el.innerHTML = unpaid.map(s=>{
     const meta = [s.school, s.grade].filter(Boolean).join(' · ');
-    const amount = rowByName[s.name] && rowByName[s.name].amount;
-    return `<div class="reason-item">
-      <span class="ri-badge absent">미납</span>
-      <div class="ri-body">
-        <div class="ri-top">
-          <span class="ri-name">${s.name}</span>
-          ${meta?`<span class="ri-meta">${meta}</span>`:''}
-        </div>
-        ${amount ? `<div class="ri-text">${Number(amount).toLocaleString()}원</div>` : ''}
-      </div>
+    return `<div class="cc-unpaid">
+      <div class="cc-name">${s.name}</div>
+      ${meta?`<div class="cc-meta">${meta}</div>`:''}
     </div>`;
   }).join('');
 }
