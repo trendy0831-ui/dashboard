@@ -541,6 +541,7 @@
   .pb-tag.level2{background:#FFF6E2;color:#8A6D1A;}
   .pb-tag.level1{background:#EAF3EF;color:var(--teal-dark);}
   .pb-tag.nosol{background:#EEF0F1;color:#6B7B77;}
+  .pb-tag.grade{background:var(--teal);color:#fff;}
 
   .nav-item.new-badge{position:relative;}
   .nav-item.new-badge::after{content:"NEW";position:absolute;right:10px;top:9px;font-size:8.5px;
@@ -2793,12 +2794,29 @@ async function loadProblemBankData(){
 function pbLevelClass(lv){
   return lv === '3' ? 'level3' : lv === '2' ? 'level2' : 'level1';
 }
+const PB_GRADE_ORDER = ['중1','중2','중3','고1','고2','고3'];
+const PB_SEMESTER_ORDER = ['1학기','2학기'];
+function pbSortByOrder(values, order){
+  return values.sort((a,b)=>{
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    if(ia === -1 && ib === -1) return a.localeCompare(b);
+    if(ia === -1) return 1;
+    if(ib === -1) return -1;
+    return ia - ib;
+  });
+}
 function populatePbUnitFilters(){
+  const gradeSel = document.getElementById('pbFGrade');
+  const semSel = document.getElementById('pbFSemester');
   const mainSel = document.getElementById('pbFUnitMain');
   const subSel = document.getElementById('pbFUnitSub');
   if(!mainSel || !subSel) return;
+  const grades = pbSortByOrder([...new Set(pbProblems.map(p=>p.grade).filter(Boolean))], PB_GRADE_ORDER);
+  const sems = pbSortByOrder([...new Set(pbProblems.map(p=>p.semester).filter(Boolean))], PB_SEMESTER_ORDER);
   const mains = [...new Set(pbProblems.map(p=>p.unitMain).filter(Boolean))];
   const subs = [...new Set(pbProblems.map(p=>p.unitSub).filter(Boolean))];
+  if(gradeSel) gradeSel.innerHTML = '<option value="">전체</option>' + grades.map(g=>`<option value="${g}">${g}</option>`).join('');
+  if(semSel) semSel.innerHTML = '<option value="">전체</option>' + sems.map(s=>`<option value="${s}">${s}</option>`).join('');
   mainSel.innerHTML = '<option value="">전체</option>' + mains.map(m=>`<option value="${m}">${m}</option>`).join('');
   subSel.innerHTML = '<option value="">전체</option>' + subs.map(s=>`<option value="${s}">${s}</option>`).join('');
 }
@@ -2820,6 +2838,7 @@ function renderPbCards(){
       <div class="pb-body">
         <div class="pb-id">${p.id}</div>
         <div class="pb-tags">
+          ${p.grade ? `<span class="pb-tag grade">${p.grade}${p.semester ? ' · '+p.semester : ''}</span>` : ''}
           <span class="pb-tag">${p.school || ''}</span>
           <span class="pb-tag">${p.unitSub || ''}</span>
           <span class="pb-tag ${pbLevelClass(p.lv)}">${p.level || ''} · LV${p.lv || ''}</span>
@@ -2852,11 +2871,15 @@ function updatePbSticky(){
   if(allEl) allEl.checked = n>0 && n===pbVisibleIds().length;
 }
 function applyPbFilters(){
+  const gEl = document.getElementById('pbFGrade');
+  const semEl = document.getElementById('pbFSemester');
   const umEl = document.getElementById('pbFUnitMain');
   const usEl = document.getElementById('pbFUnitSub');
   const schoolEl = document.getElementById('pbFSchool');
   const hasSolEl = document.getElementById('pbFHasSol');
   if(!umEl || !usEl || !schoolEl || !hasSolEl) return;
+  const grade = gEl ? gEl.value : '';
+  const sem = semEl ? semEl.value : '';
   const um = umEl.value;
   const us = usEl.value;
   const levels = Array.from(document.querySelectorAll('#pbFLevel .chip.on')).map(c=>c.dataset.v);
@@ -2869,6 +2892,8 @@ function applyPbFilters(){
     const card = document.querySelector(`#pbGrid .pb-card[data-id="${p.id}"]`);
     if(!card) return;
     let ok = true;
+    if(grade && p.grade !== grade) ok = false;
+    if(sem && p.semester !== sem) ok = false;
     if(um && p.unitMain !== um) ok = false;
     if(us && p.unitSub !== us) ok = false;
     if(levels.length && !levels.includes(p.level)) ok = false;
@@ -2954,6 +2979,15 @@ async function renderProblemBankPage(){
     <div class="fb">
       <div class="fb-row">
         <div class="fb-group">
+          <label>학년</label>
+          <select class="fb-select" id="pbFGrade"><option value="">전체</option></select>
+        </div>
+        <div class="fb-group">
+          <label>학기</label>
+          <select class="fb-select" id="pbFSemester"><option value="">전체</option></select>
+        </div>
+        <div class="fb-divider"></div>
+        <div class="fb-group">
           <label>대단원</label>
           <select class="fb-select" id="pbFUnitMain"><option value="">전체</option></select>
         </div>
@@ -3010,6 +3044,8 @@ async function renderProblemBankPage(){
       <div id="pbPrintPages"></div>
     </div>
   `;
+  document.getElementById('pbFGrade').addEventListener('change', applyPbFilters);
+  document.getElementById('pbFSemester').addEventListener('change', applyPbFilters);
   document.getElementById('pbFUnitMain').addEventListener('change', applyPbFilters);
   document.getElementById('pbFUnitSub').addEventListener('change', applyPbFilters);
   document.getElementById('pbFSchool').addEventListener('input', applyPbFilters);
