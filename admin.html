@@ -54,7 +54,9 @@
   #main{flex:1;min-width:0;display:flex;flex-direction:column;}
   #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
     padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-  #mainTopbar h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-0.3px;}
+  /* 페이지 제목 -- 카드형 배지 스타일 (2026-09-02, 사용자 요청) */
+  #mainTopbar h1{display:inline-block;font-size:19px;font-weight:800;margin:0;letter-spacing:-0.2px;
+    color:#fff;background:var(--deep);border-radius:10px;padding:9px 18px;}
   .topbar-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   .date-picker{display:flex;align-items:center;gap:9px;background:var(--paper);
     border:1px solid var(--line);border-radius:11px;padding:11px 16px;font-size:14.5px;font-weight:600;}
@@ -260,6 +262,25 @@
   @media (max-width:420px){
     .compact-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));}
   }
+  /* 보강 대기 / 숙제 미흡 / 지각·결석 사유 -- 컴팩트 카드 그리드 (2026-09-02) */
+  .compact-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
+  .compact-grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+  .cc-simple{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .cc-simple .cc-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .cc-simple .cc-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .cc-simple .cc-sub{font-size:11.5px;color:var(--teal-dark);font-weight:800;margin-top:6px;}
+  .cc-note{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .cc-note .cc-badge{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;
+    border-radius:6px;padding:2px 7px;margin-bottom:6px;background:var(--red);}
+  .cc-note .cc-badge.late{background:var(--amber);}
+  .cc-note .cc-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .cc-note .cc-meta{font-size:11px;color:var(--ink-soft);margin-top:1px;}
+  .cc-note .cc-date{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  .cc-note .cc-reason{font-size:11.5px;color:var(--ink);margin-top:4px;line-height:1.4;}
+  @media (max-width:420px){
+    .compact-grid2{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+    .compact-grid3{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));}
+  }
   .unchecked-list{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
   .unchecked-item{display:flex;align-items:center;justify-content:space-between;
     background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px 14px;}
@@ -441,7 +462,7 @@
     #mobileMenuOverlay .nav-item{color:#CFE6DE;}
     #mobileMenuOverlay .nav-item.active{background:#E1F5EE;color:var(--deep);}
     #mainTopbar{padding:16px 18px;}
-    #mainTopbar h1{font-size:18px;}
+    #mainTopbar h1{font-size:16px;padding:8px 15px;}
     #pageContent{padding:18px;}
     .slot-group{grid-template-columns:1fr;}
     .edit-grid{grid-template-columns:repeat(2,1fr);}
@@ -450,7 +471,7 @@
   @media (max-width: 480px){
     :root{font-size:14px;}
     #mainTopbar{padding:12px 14px;gap:10px;}
-    #mainTopbar h1{font-size:16px;}
+    #mainTopbar h1{font-size:14.5px;padding:7px 13px;border-radius:8px;}
     #mobileTopbar .mt-brand .t1{font-size:16px;}
     #mobileMenuOverlay .mmo-head .t1{font-size:16px;}
     .mmo-brand-text{font-size:16px !important;}
@@ -1827,25 +1848,23 @@ async function renderMakeupFeed(){
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
   if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
   if(!items.length){
+    el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">이번 달 보강 대기 건이 없어요.</div>`;
     return;
   }
   const days=["일","월","화","수","목","금","토"];
+  el.className = 'compact-grid2';
   el.innerHTML = items.map(it=>{
     const stu = parseStudentEntry(it.name);
     const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
     const d = new Date(it.date+"T00:00:00");
     const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days[d.getDay()]})`;
-    return `<div class="reason-item">
-      <span class="ri-badge absent">결석</span>
-      <div class="ri-body">
-        <div class="ri-top">
-          <span class="ri-name">${stu.name}</span>
-          ${meta?`<span class="ri-meta">${meta}</span>`:''}
-          <span class="ri-date">${dateLabel} · ${it.block}</span>
-        </div>
-        ${it.note ? `<div class="ri-text">사유: ${it.note}</div>` : ''}
-      </div>
+    return `<div class="cc-note">
+      <span class="cc-badge">결석</span>
+      <div class="cc-name">${stu.name}</div>
+      ${meta?`<div class="cc-meta">${meta}</div>`:''}
+      <div class="cc-date">${dateLabel} · ${it.block}</div>
+      ${it.note ? `<div class="cc-reason">사유: ${it.note}</div>` : ''}
     </div>`;
   }).join("");
 }
@@ -1930,20 +1949,18 @@ async function renderHomeworkRank(){
     .sort((a,b)=> b.count - a.count)
     .slice(0, 5);
   if(!ranked.length){
+    el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">최근 4주간 숙제 미흡·미확인 기록이 없어요.</div>`;
     return;
   }
+  el.className = 'compact-grid3';
   el.innerHTML = ranked.map(r=>{
     const stu = parseStudentEntry(r.rawName);
     const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
-    return `<div class="reason-item">
-      <div class="ri-body">
-        <div class="ri-top">
-          <span class="ri-name">${stu.name}</span>
-          ${meta?`<span class="ri-meta">${meta}</span>`:''}
-          <span class="ri-date">${r.count}회</span>
-        </div>
-      </div>
+    return `<div class="cc-simple">
+      <div class="cc-name">${stu.name}</div>
+      ${meta?`<div class="cc-meta">${meta}</div>`:''}
+      <div class="cc-sub">${r.count}회</div>
     </div>`;
   }).join("");
 }
@@ -1976,23 +1993,21 @@ async function renderMakeupOldest(){
   }
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
   if(!items.length){
+    el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">보강 대기 중인 건이 없어요.</div>`;
     return;
   }
   const days2=["일","월","화","수","목","금","토"];
+  el.className = 'compact-grid3';
   el.innerHTML = items.map(it=>{
     const stu = parseStudentEntry(it.name);
     const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
     const d = new Date(it.date+"T00:00:00");
     const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days2[d.getDay()]})`;
-    return `<div class="reason-item">
-      <div class="ri-body">
-        <div class="ri-top">
-          <span class="ri-name">${stu.name}</span>
-          ${meta?`<span class="ri-meta">${meta}</span>`:''}
-          <span class="ri-date">${dateLabel} 결석 · ${it.block}</span>
-        </div>
-      </div>
+    return `<div class="cc-simple">
+      <div class="cc-name">${stu.name}</div>
+      ${meta?`<div class="cc-meta">${meta}</div>`:''}
+      <div class="cc-sub">${dateLabel} 결석 · ${it.block}</div>
     </div>`;
   }).join("");
 }
@@ -2062,26 +2077,25 @@ async function renderReasonFeed(){
   }
   items.sort((a,b)=> b.date.localeCompare(a.date) || b.block.localeCompare(a.block));
   if(!items.length){
+    el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">최근 2주간 지각·결석 사유가 없어요.</div>`;
     return;
   }
   const days=["일","월","화","수","목","금","토"];
+  el.className = 'compact-grid2';
   el.innerHTML = items.map(it=>{
     const stu = parseStudentEntry(it.name);
     const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
     const d = new Date(it.date+"T00:00:00");
     const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days[d.getDay()]})`;
     const badgeLabel = it.status === 'late' ? '지각' : '결석';
-    return `<div class="reason-item">
-      <span class="ri-badge ${it.status}">${badgeLabel}</span>
-      <div class="ri-body">
-        <div class="ri-top">
-          <span class="ri-name">${stu.name}</span>
-          ${meta?`<span class="ri-meta">${meta}</span>`:''}
-          <span class="ri-date">${dateLabel} · ${it.block}</span>
-        </div>
-        <div class="ri-text">${it.note}</div>
-      </div>
+    const badgeClass = it.status === 'late' ? 'cc-badge late' : 'cc-badge';
+    return `<div class="cc-note">
+      <span class="${badgeClass}">${badgeLabel}</span>
+      <div class="cc-name">${stu.name}</div>
+      ${meta?`<div class="cc-meta">${meta}</div>`:''}
+      <div class="cc-date">${dateLabel} · ${it.block}</div>
+      <div class="cc-reason">${it.note}</div>
     </div>`;
   }).join("");
 }
