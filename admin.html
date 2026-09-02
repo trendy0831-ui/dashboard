@@ -243,6 +243,11 @@
   .reason-item .ri-date{font-size:12px;color:var(--ink-soft);margin-left:auto;white-space:nowrap;}
   .reason-item .ri-text{font-size:13.5px;color:var(--ink);}
   .reason-feed-empty{color:var(--ink-soft);font-size:14px;text-align:center;padding:40px 0;}
+  /* 다가오는 시험 D-day 배지 -- "내신 대비 시작 MM/DD" 텍스트 대신 표시 (2026-09-02) */
+  .dday{flex-shrink:0;text-align:center;background:var(--deep);color:#fff;
+    border-radius:9px;padding:7px 12px;font-weight:800;min-width:52px;}
+  .dday .num{font-size:15px;line-height:1.1;white-space:nowrap;}
+  .dday.soon{background:var(--amber);}
   .unchecked-list{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
   .unchecked-item{display:flex;align-items:center;justify-content:space-between;
     background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px 14px;}
@@ -1748,8 +1753,11 @@ async function renderUpcomingExams(){
         const diffMs = new Date(r.mathExamDate+"T00:00:00") - new Date(todayStr+"T00:00:00");
         dday = Math.round(diffMs / 86400000);
       }
-      const prepStart = toDateStr(addDays(new Date(r.examStart+"T00:00:00"), -30));
-      return { ...r, dday, prepStart };
+      // 시험 시작일 기준 D-day -- "내신 대비 시작 MM/DD" 텍스트 대신 이 값을
+      // 배지로 보여준다 (2026-09-02, 사용자 요청)
+      const examDdayMs = new Date(r.examStart+"T00:00:00") - new Date(todayStr+"T00:00:00");
+      const examDday = Math.round(examDdayMs / 86400000);
+      return { ...r, dday, examDday };
     })
     .sort((a,b)=> a.examStart.localeCompare(b.examStart));
   if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
@@ -1759,22 +1767,22 @@ async function renderUpcomingExams(){
   }
   el.innerHTML = items.map(it=>{
     const isDDay7 = it.dday === 7;
+    const examSoon = it.examDday <= 7;
     const periodLabel = it.examEnd && it.examEnd !== it.examStart
       ? `${fmtMD(new Date(it.examStart+"T00:00:00"))} ~ ${fmtMD(new Date(it.examEnd+"T00:00:00"))}`
       : fmtMD(new Date(it.examStart+"T00:00:00"));
     const mathLabel = it.mathExamDate
       ? `수학 ${fmtMD(new Date(it.mathExamDate+"T00:00:00"))}${it.dday!==null ? ` (D-${it.dday})` : ''}`
       : '';
-    const prepLabel = `내신 대비 시작 ${fmtMD(new Date(it.prepStart+"T00:00:00"))}`;
     return `<div class="reason-item" style="${isDDay7?'border-color:var(--amber);background:#FBF2DD;':''}">
-      <span class="ri-badge" style="background:${isDDay7?'var(--amber)':'var(--teal)'};">${it.memo || '시험'}</span>
+      <div class="dday${examSoon?' soon':''}"><div class="num">D-${it.examDday}</div></div>
       <div class="ri-body">
         <div class="ri-top">
           <span class="ri-name">${it.school}</span>
           <span class="ri-date">${periodLabel}</span>
         </div>
         ${mathLabel ? `<div class="ri-text" style="${isDDay7?'color:var(--amber);font-weight:700;':''}">${mathLabel}${isDDay7?' — 일주일 뒤 수학시험, 보강 확인!':''}</div>` : ''}
-        <div class="ri-text" style="color:var(--ink-soft);">${prepLabel}</div>
+        <div class="ri-text" style="color:var(--ink-soft);">${it.memo || '시험'}</div>
       </div>
     </div>`;
   }).join("");
