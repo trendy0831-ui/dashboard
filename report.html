@@ -1130,7 +1130,7 @@
         <div class="tuition-item">
           <div>
             <div class="tu-month">${tuitionMonthLabel(t.yearMonth)}</div>
-            ${t.amount ? `<div class="tu-amount">${Number(t.amount).toLocaleString()}원${t.paidDate ? ' · '+t.paidDate+' 납부' : ''}</div>` : ''}
+            ${t.paidDate ? `<div class="tu-amount">${t.paidDate} 납부</div>` : ''}
           </div>
           <span class="badge ${badgeCls}">${t.status}</span>
         </div>
