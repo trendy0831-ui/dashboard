@@ -111,6 +111,7 @@
   .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px;}
   /* "종료된 시간대" 카드: 요일/시간이 바뀌어 더 이상 쓰지 않는 과거 슬롯을 시각적으로 옅게 구분 */
   .slot-card-ended{opacity:.6;border-style:dashed;}
+  .slot-times{font-size:12.5px;font-weight:700;color:var(--teal-dark);background:var(--soft);border-radius:7px;padding:4px 9px;margin:6px 0 8px;display:inline-block;}
   .slot-ended-badge{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--line);
     padding:2px 8px;border-radius:99px;vertical-align:middle;}
   /* ===================== 아이콘/이름/메모 ===================== */
@@ -1056,7 +1057,8 @@ async function loadRecordsForWeek(){
       const key = rec.date+"|"+rec.block+"|"+slotIdx;
       next[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
         makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"",
-        makeupStatus: rec.makeupStatus || (rec.makeupDone ? "done" : "none") };
+        makeupStatus: rec.makeupStatus || (rec.makeupDone ? "done" : "none"),
+        checkIn: rec.checkIn||"", checkOut: rec.checkOut||"" };
     });
     records = next;
   }catch(e){
@@ -1348,10 +1350,12 @@ function renderDayContent(){
       else if(hwState==="미흡"){ hwCls="hw-partial"; hwLabel="숙제 미흡"; }
       else if(hwState==="안함"){ hwCls="hw-missing"; hwLabel="숙제 미제출"; }
       else { hwCls="hw-unchecked"; hwLabel="숙제 미확인"; }
+      const timesLine = (rec.checkIn || rec.checkOut)
+        ? `<div class="slot-times">🛎️ 등원 ${rec.checkIn || '—'} · 하원 ${rec.checkOut || '—'}</div>` : '';
       html += `<div class="slot-card">
         <div class="slot-top">
           <span><span class="slot-name">${stu.name}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
-        </div>
+        </div>${timesLine}
         <div class="quad-grid">
           <button class="quad-btn ${attCls}" data-key="${mk}" data-role="att" aria-label="출결 상태 변경 (현재 ${attLabel})">
             ${attIcon ? `<span class="qi">${attIcon}</span>` : ''}<span class="ql">${attLabel}</span>
@@ -1856,6 +1860,7 @@ async function renderDashboard(){
   // 7개 섹션이 순서대로 하나씩 끝나길 기다리지 않고 한꺼번에 불러온다.
   // (겹치는 주간 데이터는 위 recordsCache가 공유해서 중복 요청도 줄어든다)
   await Promise.all([
+    renderCheckInFeed(),
     renderTuitionSummary(),
     renderWeeklyAttendance(recordsCache),
     renderUpcomingExams(),
@@ -1864,6 +1869,35 @@ async function renderDashboard(){
     renderMakeupOldest(recordsCache),
     renderReasonFeed(recordsCache)
   ]);
+}
+// 키오스크(kiosk.html)로 찍힌 오늘 등하원 목록 — "등하원" 시트(action=checkInToday)
+async function renderCheckInFeed(){
+  const el = document.getElementById('checkInFeed');
+  const labelEl = document.getElementById('checkInCountLabel');
+  if(!el) return;
+  let rows = [];
+  try{
+    rows = await apiGet({action:"checkInToday"});
+  }catch(e){
+    el.className = 'reason-feed';
+    el.innerHTML = `<div class="reason-feed-empty">등하원 현황을 불러오지 못했어요.</div>`;
+    return;
+  }
+  rows = Array.isArray(rows) ? rows : [];
+  const inCount = rows.filter(r=>r.checkIn).length;
+  const stay = rows.filter(r=>r.checkIn && !r.checkOut).length;
+  if(labelEl) labelEl.innerHTML = rows.length ? `<span class="badge-count" style="background:var(--teal);">등원 ${inCount} · 재실 ${stay}</span>` : '';
+  if(!rows.length){
+    el.className = 'reason-feed';
+    el.innerHTML = `<div class="reason-feed-empty">아직 오늘 키오스크로 찍힌 학생이 없어요.</div>`;
+    return;
+  }
+  el.className = 'compact-grid';
+  el.innerHTML = rows.map(r=>`<div class="cc-simple">
+      <div class="cc-name">${r.name}</div>
+      <div class="cc-sub">등원 ${r.checkIn || '—'}</div>
+      <div class="cc-sub" style="color:${r.checkOut?'var(--ink-soft)':'var(--teal)'}">${r.checkOut ? '하원 '+r.checkOut : '● 수업 중'}</div>
+    </div>`).join('');
 }
 async function renderUpcomingExams(){
   const el = document.getElementById('examFeed');
@@ -2891,6 +2925,10 @@ function switchPage(page){
     dashPage.style.display = '';
     if(!dashPage.dataset.built){
       dashPage.innerHTML = `<div class="dash-summary" id="dashSummary"></div>
+        <div class="panel" style="margin-bottom:20px;">
+          <h2>🛎️ 오늘 등하원 현황 <span class="sub" id="checkInCountLabel"></span></h2>
+          <div class="reason-feed" id="checkInFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
+        </div>
         <div class="panel" style="margin-bottom:20px;">
           <h2>이번 달 미납 학생 <span class="sub" id="tuitionUnpaidCountLabel"></span></h2>
           <div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
