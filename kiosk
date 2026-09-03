@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#085041">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="assets/logo-180.png">
+<title>등하원 체크 | 이끌림수학학원</title>
+<style>
+  :root{--deep:#085041;--teal:#018875;--soft:#EAF3EF;--paper:#F1F7F5;--ink:#173B33;--muted:#5C7A72;--line:#E1EAE5;--yellow:#F2DE97;--red:#C0463A;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+  html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;overflow:hidden;}
+  #app{height:100%;display:grid;grid-template-columns:1.15fr 1fr;position:relative;}
+  /* 왼쪽 */
+  .left{background:var(--deep);color:#fff;padding:5vh 5vw;display:flex;flex-direction:column;}
+  .brand{display:flex;align-items:center;gap:14px;}
+  .brand img{width:64px;height:64px;border-radius:16px;object-fit:contain;background:rgba(255,255,255,.12);}
+  .brand .t1{font-size:clamp(20px,2.6vw,30px);font-weight:800;}
+  .brand .t2{font-size:clamp(12px,1.3vw,15px);opacity:.75;}
+  .prompt{margin:auto 0 3vh;font-size:clamp(24px,3.2vw,40px);font-weight:800;line-height:1.3;}
+  .prompt em{font-style:normal;color:var(--yellow);}
+  .prompt small{display:block;font-size:clamp(14px,1.6vw,19px);font-weight:500;opacity:.8;margin-top:10px;}
+  .digits{display:flex;gap:14px;}
+  .digits span{width:clamp(56px,7vw,84px);height:clamp(72px,9vw,108px);border-radius:16px;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;font-size:clamp(34px,4.5vw,54px);font-weight:800;}
+  .digits span.on{background:#fff;color:var(--deep);border-color:#fff;}
+  .clock{margin-top:auto;font-size:clamp(13px,1.5vw,17px);opacity:.85;}
+  .clock b{display:block;font-size:clamp(36px,5vw,60px);font-weight:800;letter-spacing:-1px;line-height:1.1;}
+  /* 오른쪽 키패드 */
+  .right{padding:5vh 4vw;display:flex;flex-direction:column;justify-content:center;}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,1.4vw,18px);}
+  .pad button{height:clamp(70px,13vh,110px);border-radius:20px;border:1px solid var(--line);background:#fff;font-size:clamp(30px,4vw,44px);font-weight:700;color:var(--ink);
+    cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05);font-family:inherit;}
+  .pad button:active{background:var(--soft);transform:scale(.97);}
+  .pad button.fn{font-size:clamp(15px,1.8vw,20px);font-weight:700;color:var(--muted);background:var(--soft);border-color:transparent;}
+  .foot{margin-top:18px;font-size:clamp(12px,1.3vw,15px);color:var(--muted);text-align:center;}
+  /* 결과 */
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;background:var(--paper);z-index:10;}
+  .overlay.show{display:flex;}
+  .big{width:clamp(110px,16vw,160px);height:clamp(110px,16vw,160px);border-radius:50%;background:var(--teal);color:#fff;font-size:clamp(56px,8vw,84px);display:flex;align-items:center;justify-content:center;animation:pop .35s ease-out;}
+  .overlay.out .big{background:#2F6F5E;}
+  @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+  .overlay h1{margin:6px 0 0;font-size:clamp(34px,5vw,58px);font-weight:800;color:var(--deep);}
+  .overlay h1 em{font-style:normal;color:var(--teal);}
+  .overlay p{margin:0;font-size:clamp(18px,2.4vw,28px);color:var(--muted);}
+  .overlay .cnt{font-size:clamp(12px,1.4vw,15px);color:var(--muted);margin-top:14px;}
+  /* 선택 */
+  #choose{background:rgba(241,247,245,.98);}
+  #choose h2{margin:0;font-size:clamp(24px,3.2vw,36px);color:var(--deep);}
+  #choose .opts{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;}
+  #choose .opts button{padding:22px 40px;border-radius:18px;border:2px solid var(--line);background:#fff;font-size:clamp(22px,3vw,32px);font-weight:800;cursor:pointer;font-family:inherit;color:var(--ink);}
+  #choose .opts button:active{border-color:var(--teal);background:var(--soft);}
+  #choose .cancel{margin-top:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;font-family:inherit;}
+  /* 로딩·에러 */
+  #busy{background:rgba(241,247,245,.85);}
+  #busy .spin{width:64px;height:64px;border-radius:50%;border:6px solid var(--soft);border-top-color:var(--teal);animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .toast{position:absolute;left:50%;bottom:4vh;transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 26px;border-radius:14px;font-weight:700;font-size:clamp(15px,1.8vw,20px);display:none;z-index:20;white-space:nowrap;}
+  .toast.show{display:block;}
+  #netDot{position:absolute;top:12px;right:14px;font-size:12px;color:rgba(255,255,255,.7);z-index:5;display:flex;align-items:center;gap:6px;}
+  #netDot i{width:8px;height:8px;border-radius:50%;background:#7ED3A6;display:inline-block;}
+  #netDot.off i{background:#F0A24B;}
+  #fsBtn{position:absolute;left:12px;bottom:10px;background:none;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;font-family:inherit;z-index:5;}
+  @media (orientation:portrait){
+    #app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+    .left{padding:3vh 6vw;}
+    .prompt{margin:3vh 0 2vh;}
+    .clock{display:none;}
+    .right{padding:3vh 6vw 5vh;}
+    .pad button{height:clamp(60px,9vh,90px);}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="left">
+    <div id="netDot"><i></i><span>연결됨</span></div>
+    <div class="brand"><img src="assets/logo-rounded.png" alt=""><div><div class="t1">이끌림수학학원</div><div class="t2">등하원 체크</div></div></div>
+    <div class="prompt">학부모님 휴대폰 번호<br><em>뒤 4자리</em>를 눌러주세요<small>등원할 때 한 번, 하원할 때 한 번</small></div>
+    <div class="digits" id="digits"><span></span><span></span><span></span><span></span></div>
+    <div class="clock"><span id="dateStr"></span><b id="clock"></b></div>
+    <button id="fsBtn">⛶ 전체화면</button>
+  </div>
+  <div class="right">
+    <div class="pad" id="pad">
+      <button>1</button><button>2</button><button>3</button>
+      <button>4</button><button>5</button><button>6</button>
+      <button>7</button><button>8</button><button>9</button>
+      <button class="fn" data-fn="clear">지우기</button><button>0</button><button class="fn" data-fn="back">←</button>
+    </div>
+    <div class="foot">번호가 안 되면 선생님께 말씀해 주세요</div>
+  </div>
+
+  <div class="overlay" id="busy"><div class="spin"></div></div>
+
+  <div class="overlay" id="result">
+    <div class="big" id="rIcon">✓</div>
+    <h1 id="rTitle"></h1>
+    <p id="rSub"></p>
+    <div class="cnt" id="rCnt"></div>
+  </div>
+
+  <div class="overlay" id="choose">
+    <h2>어느 학생인가요?</h2>
+    <div class="opts" id="chooseOpts"></div>
+    <button class="cancel" id="chooseCancel">취소</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSVS9mzGr116jePeDPKV1lesU4hI7wIm_11yjYaYruLS38kWj32-E_QHEny3K8l00E/exec";
+const RESULT_SECONDS = 3;
+const $ = id => document.getElementById(id);
+
+/* ---------- API ---------- */
+async function apiGet(params){
+  const url = SCRIPT_URL + "?" + new URLSearchParams({...params, _t: Date.now()}).toString();
+  const res = await fetch(url, { cache:"no-store" });
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  return res.json();
+}
+
+/* ---------- 학생 목록 (뒤 4자리 → 이름) ---------- */
+let students = [];
+async function loadStudents(){
+  try{
+    const rows = await apiGet({action:'kioskStudents'});
+    if(Array.isArray(rows)){ students = rows; try{ localStorage.setItem('kiosk_students', JSON.stringify(rows)); }catch(e){} }
+    setNet(true);
+  }catch(e){
+    try{ students = JSON.parse(localStorage.getItem('kiosk_students')||'[]'); }catch(e2){}
+    setNet(false);
+  }
+}
+function setNet(ok){ const d=$('netDot'); d.classList.toggle('off', !ok); d.querySelector('span').textContent = ok ? '연결됨' : '오프라인'; }
+
+/* ---------- 시계 ---------- */
+function tick(){
+  const d=new Date();
+  $('clock').textContent = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  $('dateStr').textContent = (d.getMonth()+1)+'월 '+d.getDate()+'일 '+['일','월','화','수','목','금','토'][d.getDay()]+'요일';
+}
+tick(); setInterval(tick, 5000);
+
+/* ---------- 소리: 딩동 + 음성 ---------- */
+let actx;
+function tone(f, t0, dur, vol){
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sine'; o.frequency.value=f; g.gain.value=0.0001;
+  o.connect(g); g.connect(actx.destination);
+  o.start(t0); g.gain.exponentialRampToValueAtTime(vol,t0+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); o.stop(t0+dur+0.02);
+}
+function dingdong(out){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended') actx.resume();
+    const t = actx.currentTime;
+    tone(out?659:784, t, 0.7, 0.25); tone(out?523:659, t+0.32, 0.9, 0.25);
+  }catch(e){}
+}
+function speak(text){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang='ko-KR'; u.rate=0.95; u.pitch=1.1;
+    const v = speechSynthesis.getVoices().find(v=>v.lang && v.lang.replace('_','-').startsWith('ko'));
+    if(v) u.voice=v;
+    setTimeout(()=>speechSynthesis.speak(u), 500);
+  }catch(e){}
+}
+if('speechSynthesis' in window){ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = ()=>speechSynthesis.getVoices(); }
+
+/* ---------- 입력 ---------- */
+let buf = '', busy = false;
+function render(){ [...$('digits').children].forEach((s,i)=>{ s.textContent = buf[i]||''; s.classList.toggle('on', !!buf[i]); }); }
+$('pad').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b || busy) return;
+  try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); }catch(e2){}
+  if(b.dataset.fn==='clear'){ buf=''; render(); return; }
+  if(b.dataset.fn==='back'){ buf=buf.slice(0,-1); render(); return; }
+  if(buf.length>=4) return;
+  buf += b.textContent.trim(); render();
+  if(buf.length===4) setTimeout(()=>submit(buf), 150);
+});
+document.addEventListener('keydown', e=>{ // 태블릿에 키보드가 붙어 있을 때도 쓸 수 있게
+  if(busy) return;
+  if(/^[0-9]$/.test(e.key) && buf.length<4){ buf+=e.key; render(); if(buf.length===4) setTimeout(()=>submit(buf),150); }
+  else if(e.key==='Backspace'){ buf=buf.slice(0,-1); render(); }
+  else if(e.key==='Escape'){ buf=''; render(); }
+});
+
+/* ---------- 처리 ---------- */
+async function submit(digits, chosenName){
+  // 서버로 보내기 전에 목록에서 먼저 확인 — 없는 번호는 서버 왕복 없이 바로 알려준다
+  const matches = students.filter(s=>s.last4===digits);
+  if(!matches.length && students.length){ fail('등록되지 않은 번호예요. 선생님께 말씀해 주세요.'); return; }
+  if(matches.length>1 && !chosenName){ showChoose(digits, matches.map(m=>m.name)); return; }
+
+  busy = true; $('busy').classList.add('show');
+  try{
+    const params = {action:'checkIn', digits};
+    if(chosenName) params.name = chosenName;
+    const r = await apiGet(params);
+    setNet(true);
+    if(r && r.choose){ $('busy').classList.remove('show'); busy=false; showChoose(digits, r.choose); return; }
+    if(!r || r.error){ fail(r && r.error==='not_found' ? '등록되지 않은 번호예요. 선생님께 말씀해 주세요.' : '처리하지 못했어요. 다시 눌러주세요.'); return; }
+    showResult(r);
+  }catch(e){
+    setNet(false);
+    fail('인터넷 연결을 확인해 주세요. 잠시 후 다시 눌러주세요.');
+  }finally{
+    $('busy').classList.remove('show');
+  }
+}
+function fail(msg){
+  busy = false; buf=''; render();
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function fmtTime(hhmm){ const [h,m]=hhmm.split(':').map(Number); return (h<12?'오전 ':'오후 ')+((h%12)||12)+':'+String(m).padStart(2,'0'); }
+function showResult(r){
+  const out = r.type==='out';
+  const el=$('result'); el.classList.toggle('out', out); el.classList.add('show');
+  $('rIcon').textContent = out ? '🏠' : '✓';
+  $('rTitle').innerHTML = `<em>${r.name}</em> 학생 ${out?'하원':'등원'}`;
+  $('rSub').textContent = fmtTime(r.time) + (r.duplicate ? ' · 이미 등원 처리되어 있어요' : '');
+  dingdong(out);
+  speak(out ? '하원하였습니다.' : '등원하였습니다.');
+  let n=RESULT_SECONDS; $('rCnt').textContent = n+'초 후 처음 화면으로';
+  const t=setInterval(()=>{ n--; $('rCnt').textContent=n+'초 후 처음 화면으로'; if(n<=0){ clearInterval(t); el.classList.remove('show'); busy=false; } },1000);
+  buf=''; render();
+}
+function showChoose(digits, names){
+  const wrap=$('chooseOpts'); wrap.innerHTML='';
+  names.forEach(n=>{ const b=document.createElement('button'); b.textContent=n; b.onclick=()=>{ $('choose').classList.remove('show'); submit(digits, n); }; wrap.appendChild(b); });
+  $('choose').classList.add('show');
+}
+$('chooseCancel').onclick = ()=>{ $('choose').classList.remove('show'); busy=false; buf=''; render(); };
+
+/* ---------- 전체화면 · 화면 꺼짐 방지 ---------- */
+$('fsBtn').onclick = ()=>{ const d=document.documentElement; (d.requestFullscreen||d.webkitRequestFullscreen||function(){}).call(d); };
+async function keepAwake(){ try{ if('wakeLock' in navigator){ await navigator.wakeLock.request('screen'); } }catch(e){} }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') keepAwake(); });
+document.addEventListener('click', keepAwake, {once:true});
+
+/* ---------- 시작 ---------- */
+loadStudents();
+setInterval(loadStudents, 10*60*1000); // 10분마다 학생 목록 갱신 (새 학생·퇴원 반영)
+</script>
+</body>
+</html>
