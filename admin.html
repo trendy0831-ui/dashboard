@@ -3,26 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>학생 관리 시스템 | 이끌림수학학원</title>
+<title>학생 관리 시스템 | 수학의 결</title>
 <link rel="apple-touch-icon" href="assets/logo-180.png">
-<meta name="theme-color" content="#085041">
+<meta name="theme-color" content="#8C6E3E">
 <style>
   :root{
-    --teal:#018875;
-    --teal-dark:#016A5B;
-    --deep:#085041;
+    --teal:#8C6E3E;            /* 샴페인골드 계열 메인 포인트색(구 틸) */
+    --teal-dark:#6B5228;       /* 진한 골드 — 밝은 배경 위 텍스트/포인트 */
+    --deep:#5A4520;            /* 가장 진한 브라운골드 — 배지·활성탭 등 강한 강조면 */
     --soft:var(--soft);            /* 테마색의 연한 배경(배지·강조) — 색상 테마 선택 시 자동 계산 */
-    --side-fg:#FFFFFF;         /* 사이드바 글자색 — 테마가 밝은 색이면 자동으로 어두운 글자 */
-    --side-fg-soft:rgba(255,255,255,.78);
-    --side-fg-dim:rgba(255,255,255,.55);
+    --ivory:#F5EDE0;           /* 아이보리 — 사이드바/모바일 상단바 전용 배경 */
+    --side-fg:#2E2A1F;         /* 사이드바 글자색(아이보리 배경 위 진한 잉크색, 고정) */
+    --side-fg-soft:rgba(46,42,31,.72);
+    --side-fg-dim:rgba(46,42,31,.5);
     --blue:#027A94;
     --green:#AACD98;
     --yellow:#F2DE97;
-    --ink:#173B33;
-    --ink-soft:#5C7A72;
-    --paper:#F1F7F5;
+    --ink:#2E2A1F;
+    --ink-soft:#7A6F5A;
+    --paper:#FBF8F2;
     --card:#FFFFFF;
-    --line:#E1EAE5;
+    --line:#E8DCC4;
     --amber:#B8860B;
     --red:#C0463A;
     --radius:14px;
@@ -36,10 +37,11 @@
   button{font-family:inherit;}
   /* ===================== 레이아웃 셸: 사이드바 + 메인 ===================== */
   #shell{display:flex;min-height:100vh;}
-  #sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--deep);color:var(--side-fg);
+  #sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--ivory);color:var(--side-fg);
+    border-right:1px solid var(--line);
     display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
   .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;
-    border-bottom:1px solid rgba(255,255,255,.12);}
+    border-bottom:1px solid rgba(46,42,31,.12);}
   .side-brand img{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
   .side-brand .names{line-height:1.35;}
   .side-brand .t1{font-size:15.5px;font-weight:800;letter-spacing:-0.2px;}
@@ -51,10 +53,10 @@
   .nav-item .nav-emoji{font-size:17px;width:19px;flex-shrink:0;text-align:center;line-height:1;
     filter:grayscale(15%);opacity:.9;}
   .nav-item:hover{background:rgba(127,127,127,.15);color:var(--side-fg);}
-  .nav-item.active{background:var(--yellow);color:#3B2F0B;}
+  .nav-item.active{background:var(--teal);color:#fff;}
   .nav-item.active .nav-emoji{opacity:1;}
   .side-foot{padding:16px 20px 20px;font-size:11px;color:var(--side-fg-dim);line-height:1.6;
-    border-top:1px solid rgba(255,255,255,.12);}
+    border-top:1px solid rgba(46,42,31,.12);}
   #main{flex:1;min-width:0;display:flex;flex-direction:column;}
   #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
     padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -379,8 +381,8 @@
     color:var(--ink);margin-bottom:2px;}
   .grades-stu-item .gs-meta{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
   .grades-stu-item:hover{background:var(--paper);}
-  .grades-stu-item.active{background:var(--deep);color:var(--side-fg);}
-  .grades-stu-item.active .gs-meta{color:var(--side-fg-soft);}
+  .grades-stu-item.active{background:var(--deep);color:#fff;}
+  .grades-stu-item.active .gs-meta{color:rgba(255,255,255,.78);}
   .grades-stu-empty{color:var(--ink-soft);font-size:13.5px;text-align:center;padding:30px 10px;}
   .grades-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:24px;margin-bottom:20px;}
@@ -443,7 +445,7 @@
     color:var(--side-fg);font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;}
   .theme-open-btn:hover{background:rgba(127,127,127,.22);}
   .theme-open-btn .theme-dot{width:12px;height:12px;border-radius:50%;background:var(--teal);
-    border:2px solid rgba(255,255,255,.7);flex-shrink:0;}
+    border:2px solid rgba(46,42,31,.25);flex-shrink:0;}
   #mobileMenuOverlay .theme-open-btn{margin:6px 10px 4px;width:calc(100% - 20px);}
   #themeModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;
     background:rgba(20,30,26,.45);}
@@ -457,7 +459,7 @@
   .tm-sec{font-size:13px;font-weight:700;color:var(--ink-soft);margin:16px 0 10px;}
   .tm-demo{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .tm-demo div{border-radius:10px;padding:13px 0;text-align:center;font-weight:700;font-size:14px;
-    color:var(--side-fg);background:var(--deep);transition:background .2s;}
+    color:#fff;background:var(--deep);transition:background .2s;}
   .tm-demo .d-btn{background:var(--teal);color:#fff;}
   .tm-demo .d-soft{background:var(--soft);color:var(--teal-dark);}
   .tm-swatches{display:flex;flex-wrap:wrap;gap:14px 12px;}
@@ -491,7 +493,7 @@
     /* 기존 가로 스크롤 사이드바 대신 축소된 로고 + 햄버거 버튼의 상단바를 사용 */
     #sidebar{display:none;}
     #mobileTopbar{display:flex;align-items:center;justify-content:space-between;
-      background:var(--deep);color:var(--side-fg);padding:10px 14px;position:sticky;top:0;z-index:50;}
+      background:var(--ivory);color:var(--side-fg);border-bottom:1px solid var(--line);padding:10px 14px;position:sticky;top:0;z-index:50;}
     #mobileTopbar .mt-brand{display:flex;align-items:center;gap:8px;min-width:0;}
     #mobileTopbar .mt-brand img{width:26px;height:26px;object-fit:contain;flex-shrink:0;border-radius:6px;}
     #mobileTopbar .mt-brand .t1{font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -500,10 +502,10 @@
     #mobileMenuBtn svg{width:22px;height:22px;}
     #mobileMenuOverlay.open{display:block;position:fixed;inset:0;z-index:100;}
     #mobileMenuOverlay .mmo-backdrop{position:absolute;inset:0;background:rgba(8,29,24,.45);}
-    #mobileMenuOverlay .mmo-panel{position:relative;background:var(--deep);color:var(--side-fg);
+    #mobileMenuOverlay .mmo-panel{position:relative;background:var(--ivory);color:var(--side-fg);
       padding:0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.18);}
     #mobileMenuOverlay .mmo-head{display:flex;align-items:center;justify-content:space-between;
-      padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12);}
+      padding:12px 14px;border-bottom:1px solid rgba(46,42,31,.12);}
     #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
     .mmo-brand-text{font-size:17px !important;font-weight:800;}
     #mobileMenuClose{background:none;border:none;color:var(--side-fg);cursor:pointer;width:32px;height:32px;
@@ -511,7 +513,7 @@
     #mobileMenuClose svg{width:20px;height:20px;}
     #mobileMenuOverlay .mmo-nav{padding:8px 10px;display:flex;flex-direction:column;gap:2px;}
     #mobileMenuOverlay .nav-item{color:var(--side-fg-soft);}
-    #mobileMenuOverlay .nav-item.active{background:var(--soft);color:var(--teal-dark);}
+    #mobileMenuOverlay .nav-item.active{background:var(--teal);color:#fff;}
     #mainTopbar{padding:16px 18px;}
     #mainTopbar h1{font-size:18px;}
     #pageContent{padding:18px;}
@@ -613,7 +615,7 @@
   .pb-card{background:#fff;border:1.5px solid var(--line);border-radius:var(--radius);overflow:hidden;
     cursor:pointer;transition:border-color .12s;position:relative;}
   .pb-card:hover{border-color:var(--teal);}
-  .pb-card.sel{border-color:var(--teal);box-shadow:0 0 0 2px rgba(1,136,117,.18);}
+  .pb-card.sel{border-color:var(--teal);box-shadow:0 0 0 2px rgba(140,110,62,.18);}
   .pb-card.hidden{display:none;}
   .pb-check{position:absolute;top:10px;left:10px;width:22px;height:22px;border-radius:6px;
     border:2px solid #fff;background:rgba(23,59,51,.35);z-index:2;display:flex;align-items:center;justify-content:center;}
@@ -719,8 +721,8 @@
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
 <div id="mobileTopbar">
   <div class="mt-brand">
-    <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고">
-    <span class="t1">이끌림수학학원</span>
+    <img src="assets/logo-rounded.png" alt="수학의 결 로고">
+    <span class="t1">수학의 결</span>
   </div>
   <button id="mobileMenuBtn" aria-label="메뉴 열기">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -731,8 +733,8 @@
   <div class="mmo-panel">
     <div class="mmo-head">
       <div class="mt-brand">
-        <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고">
-        <span class="t1 mmo-brand-text">이끌림수학학원</span>
+        <img src="assets/logo-rounded.png" alt="수학의 결 로고">
+        <span class="t1 mmo-brand-text">수학의 결</span>
       </div>
       <button id="mobileMenuClose" aria-label="메뉴 닫기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -779,15 +781,15 @@
       <button class="tm-close" id="themeClose" aria-label="닫기">×</button>
     </div>
     <div class="tm-body">
-      <div class="tm-demo"><div>사이드바</div><div class="d-btn">버튼</div><div class="d-soft">배지·강조</div></div>
+      <div class="tm-demo"><div>진한 강조</div><div class="d-btn">버튼</div><div class="d-soft">배지·강조</div></div>
       <div class="tm-sec">테마에서 고르기</div>
       <div class="tm-swatches" id="themeSwatches"></div>
       <div class="tm-sec">직접 고르기</div>
       <label class="tm-custom">
-        <input type="color" id="themeColorInput" value="#085041">
-        <div><b id="themeHex">#085041</b><br><small>원하는 색을 자유롭게 선택하세요</small></div>
+        <input type="color" id="themeColorInput" value="#8C6E3E">
+        <div><b id="themeHex">#8C6E3E</b><br><small>원하는 색을 자유롭게 선택하세요</small></div>
       </label>
-      <div class="tm-warn" id="themeWarn">⚠️ 밝은 색이라 사이드바 글자를 어두운 색으로 자동 전환합니다.</div>
+      <div class="tm-warn" id="themeWarn">⚠️ 너무 밝은 색은 배지·강조 영역의 흰 글자와 대비가 약해질 수 있어요.</div>
     </div>
     <div class="tm-foot">
       <small>모든 기기에 적용됩니다</small>
@@ -801,9 +803,9 @@
 <div id="shell">
   <div id="sidebar">
     <div class="side-brand">
-      <img src="assets/logo-rounded.png" alt="이끌림수학학원 로고">
+      <img src="assets/logo-rounded.png" alt="수학의 결 로고">
       <div class="names">
-        <div class="t1">이끌림수학학원</div>
+        <div class="t1">수학의 결</div>
         <div class="t2">학생 관리 시스템</div>
       </div>
     </div>
@@ -850,7 +852,7 @@
           <span class="sync-dot" id="syncDot"></span><span id="syncStatusText">동기화됨</span>
         </div>
         <div class="date-picker">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C7A72" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A6F5A" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
           <input type="date" id="datePick">
         </div>
         <button class="edit-toggle" id="toggleEdit">명단 편집</button>
@@ -3187,7 +3189,7 @@ function buildPbPrintView(){
       </div>`;
     });
     for(let k=chunk.length;k<4;k++) html += `<div class="ws-slot ws-empty"></div>`;
-    html += `</div>${pbFooterHTML(Math.floor(i/4)+1, '이끌림수학학원')}</div>`;
+    html += `</div>${pbFooterHTML(Math.floor(i/4)+1, '수학의 결')}</div>`;
   }
 
   const withSol = ids.filter(id => meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length);
@@ -3410,11 +3412,12 @@ function renderAll(){
 }
 /* ============ 색상 테마 ============ */
 // 기본 테마(딥그린)는 CSS 원래 값 그대로. 다른 색을 고르면 그 색 하나로부터
-// 사이드바(--deep)/버튼(--teal)/진한 글자(--teal-dark)/연한 배경(--soft)을 자동 계산한다.
+// 사이드바는 아이보리로 고정, 나머지 버튼(--teal)/진한 강조(--deep)/진한 글자(--teal-dark)/연한 배경(--soft)을 자동 계산한다.
 // 저장된 색은 시트의 "설정" 탭(action=settings)에 두어 모든 기기에서 같은 색이 보이고,
 // 로딩 순간의 깜빡임을 줄이기 위해 localStorage에도 마지막 값을 캐시해 둔다.
-const THEME_DEFAULT = '#085041';
+const THEME_DEFAULT = '#8C6E3E';
 const THEME_PRESETS = [
+  { hex:'#8C6E3E', label:'앤틱 브라스(기본)' },
   { hex:'#085041', label:'딥그린' },
   { hex:'#224F42', label:'틸' },
   { hex:'#018875', label:'밝은 틸' },
@@ -3451,16 +3454,13 @@ function applyTheme(hex){
   const valid = themeHexToRgb_(hex) ? hex.toUpperCase() : THEME_DEFAULT;
   if(valid === THEME_DEFAULT){
     // 기본 테마: CSS에 적힌 원래 값으로 되돌린다
-    ['--deep','--teal','--teal-dark','--soft','--side-fg','--side-fg-soft','--side-fg-dim'].forEach(k=>root.removeProperty(k));
+    ['--deep','--teal','--teal-dark','--soft'].forEach(k=>root.removeProperty(k));
   }else{
     root.setProperty('--deep', valid);
     root.setProperty('--teal', themeMix_(valid, 255, 0.12));
     root.setProperty('--teal-dark', themeMix_(valid, 0, 0.12));
     root.setProperty('--soft', themeMix_(valid, 255, 0.88));
-    const light = themeIsLight_(valid);
-    root.setProperty('--side-fg', light ? '#173B33' : '#FFFFFF');
-    root.setProperty('--side-fg-soft', light ? 'rgba(23,59,51,.78)' : 'rgba(255,255,255,.78)');
-    root.setProperty('--side-fg-dim', light ? 'rgba(23,59,51,.55)' : 'rgba(255,255,255,.55)');
+    // 사이드바는 이제 항상 아이보리 고정 배경이라 글자색(--side-fg)은 테마색을 따라 바뀌지 않습니다.
   }
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute('content', valid);
