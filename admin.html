@@ -58,7 +58,7 @@
   #sidebar::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
     background:radial-gradient(ellipse 200px 120px at 6% 4%, rgba(255,255,255,.14) 0%, transparent 65%);
     mix-blend-mode:screen;}
-  .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;
+  .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;box-sizing:border-box;
     border-bottom:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
   .side-brand img{width:64px;height:64px;object-fit:contain;flex-shrink:0;
     filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));}
@@ -3056,6 +3056,25 @@ function goldFlash(el){
 document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{
   btn.onclick = ()=>{ goldFlash(btn); switchPage(btn.getAttribute('data-page')); };
 });
+/* 사이드바 로고 영역 높이를 상단 헤더(#mainTopbar) 실제 높이에 항상 맞춤
+   — 날짜/버튼 줄바꿈, 폰트/브라우저 차이로 헤더 높이가 달라져도
+   좌우 구분선이 항상 일치하도록 실시간으로 동기화 (2026-09-04) */
+(function(){
+  function syncSideBrandHeight(){
+    const topbar = document.getElementById('mainTopbar');
+    const brand = document.querySelector('.side-brand');
+    if(!topbar || !brand) return;
+    const h = topbar.getBoundingClientRect().height;
+    if(h > 0) brand.style.height = h + 'px';
+  }
+  const topbarEl = document.getElementById('mainTopbar');
+  if(topbarEl && window.ResizeObserver){
+    new ResizeObserver(syncSideBrandHeight).observe(topbarEl);
+  }
+  window.addEventListener('resize', syncSideBrandHeight);
+  window.addEventListener('load', syncSideBrandHeight);
+  syncSideBrandHeight();
+})();
 /* ============ 문제은행 ============ */
 async function loadProblemBankData(){
   const rows = await apiGet({action:'problemBank'});
