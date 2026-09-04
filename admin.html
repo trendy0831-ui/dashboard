@@ -18,11 +18,11 @@
     --blue:#2A6F8C;
     --green:#3F8C63;
     --yellow:#E7C468;
-    --ink:#F3EEE3;
-    --ink-soft:#A9A89C;
-    --paper:#11645E;
-    --card:#188B83;
-    --line:rgba(255,255,255,.14);
+    --ink:#20261F;
+    --ink-soft:#6B7570;
+    --paper:#FBF6EC;
+    --card:#FFFDF6;
+    --line:#E3E7E2;
     --amber:#C98A2C;
     --red:#C0463A;
     --radius:14px;
@@ -136,14 +136,14 @@
     color:var(--ink-soft);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;
     display:flex;flex-direction:column;align-items:center;gap:3px;}
   .daytab .d{font-size:12px;font-weight:400;color:var(--ink-soft);}
-  .daytab.active{background:var(--paper);color:var(--teal-ondark);border-bottom-color:var(--teal);}
+  .daytab.active{background:var(--paper);color:var(--teal-dark);border-bottom-color:var(--teal);}
   .daytab.holiday span:not(.holiday-name),.daytab.holiday .d{color:var(--red);}
   .daytab.holiday.active{background:#FBEAE7;}
   .holiday-name{font-size:9.5px;color:var(--red);font-weight:400;line-height:1.2;text-align:center;
     max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .daypanel{background:var(--card);border:1px solid var(--line);border-top:none;
     border-radius:0 0 12px 12px;padding:24px;}
-  .time-label{font-size:13.5px;color:var(--teal-ondark);font-weight:800;margin:20px 0 12px;}
+  .time-label{font-size:13.5px;color:var(--teal-dark);font-weight:800;margin:20px 0 12px;}
   .time-label:first-child{margin-top:0;}
   .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
   .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px;}
@@ -233,7 +233,7 @@
   #editView{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:26px;}
   .edit-hint{font-size:13.5px;color:var(--ink-soft);margin-bottom:18px;line-height:1.6;}
-  .edit-day{font-size:16px;font-weight:800;margin:20px 0 10px;color:var(--teal-ondark);}
+  .edit-day{font-size:16px;font-weight:800;margin:20px 0 10px;color:var(--teal-dark);}
   .edit-day:first-child{margin-top:0;}
   .edit-block{background:var(--paper);border:1px solid var(--line);border-radius:10px;
     padding:12px 14px;margin-bottom:8px;}
@@ -263,7 +263,7 @@
   .dash-card .dc-value{font-size:30px;font-weight:800;color:var(--ink);line-height:1.2;}
   .dash-card .dc-value .unit{font-size:15px;font-weight:700;color:var(--ink-soft);margin-left:2px;}
   .dash-card.accent-red .dc-value{color:var(--red);}
-  .dash-card.accent-teal .dc-value{color:var(--teal-ondark);}
+  .dash-card.accent-teal .dc-value{color:var(--teal);}
   .dash-card.accent-blue .dc-value{color:var(--blue);}
   .weekly-attend-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;}
   .weekly-attend-cell{background:var(--paper);border-radius:9px;padding:10px 4px;}
@@ -309,7 +309,7 @@
   .cc-simple{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
   .cc-simple .cc-name{font-size:13.5px;font-weight:700;color:var(--ink);}
   .cc-simple .cc-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
-  .cc-simple .cc-sub{font-size:11.5px;color:var(--teal-ondark);font-weight:800;margin-top:6px;}
+  .cc-simple .cc-sub{font-size:11.5px;color:var(--teal-dark);font-weight:800;margin-top:6px;}
   .cc-note{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
   .cc-note .cc-badge{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;
     border-radius:6px;padding:2px 7px;margin-bottom:6px;background:var(--red);}
@@ -344,7 +344,7 @@
     font-weight:700;border-radius:8px;border:1px solid var(--line);background:var(--card);
     color:var(--ink-soft);cursor:pointer;text-align:center;}
   .sc-status-toggle:hover{border-color:var(--red);color:var(--red);}
-  .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-ondark);}
+  .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-dark);}
   .sc-textbook{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
   .sc-textbook-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
   .sc-textbook-current{display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -354,13 +354,13 @@
   .sc-textbook-delete{border:none;background:none;color:var(--red);padding:2px 4px;
     cursor:pointer;flex-shrink:0;font-size:13px;line-height:1;}
   .sc-textbook-input{width:100%;font-size:11.5px;color:var(--ink-soft);}
-  .sc-textbook-status{font-size:11.5px;color:var(--teal-ondark);margin-top:4px;}
+  .sc-textbook-status{font-size:11.5px;color:var(--teal-dark);margin-top:4px;}
   .sc-textbook-memo-row{display:flex;gap:6px;margin-top:8px;}
   .sc-textbook-memo{flex:1;min-width:0;font-size:11.5px;border:1px solid var(--line);border-radius:6px;
     padding:6px 8px;font-family:inherit;color:var(--ink);}
   .sc-textbook-memo-save{flex-shrink:0;padding:0 12px;font-size:11px;
     font-weight:700;border-radius:6px;border:1px solid var(--teal);background:var(--card);
-    color:var(--teal-ondark);cursor:pointer;}
+    color:var(--teal-dark);cursor:pointer;}
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:var(--soft);
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
@@ -385,7 +385,7 @@
   .notice-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:26px;max-width:560px;}
   .notice-field{margin-bottom:16px;}
-  .notice-field label{display:block;font-size:13px;font-weight:700;color:var(--teal-ondark);margin-bottom:6px;}
+  .notice-field label{display:block;font-size:13px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
   .notice-field input[type=text],.notice-field textarea{width:100%;border:1px solid var(--line);
     border-radius:9px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);
     background:var(--paper);}
@@ -395,7 +395,7 @@
   .notice-field input[type=date]{width:100%;border:1px solid var(--line);border-radius:9px;
     padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--paper);}
   .notice-field input[type=file]{width:100%;font-size:13px;color:var(--ink-soft);}
-  .notice-attach-status{font-size:12.5px;color:var(--teal-ondark);margin-top:6px;}
+  .notice-attach-status{font-size:12.5px;color:var(--teal-dark);margin-top:6px;}
   .notice-save-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;
     padding:12px 24px;font-size:14.5px;font-weight:700;cursor:pointer;}
   .notice-status-msg{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
@@ -406,7 +406,7 @@
     padding:14px 16px;}
   .notice-preview-card .np-title{font-size:14.5px;font-weight:700;margin-bottom:4px;}
   .notice-preview-card .np-body{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.5;}
-  .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-ondark);margin-top:8px;}
+  .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-dark);margin-top:8px;}
   .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
   /* ===================== 성적 관리(초등 테스트 기록) ===================== */
   .grades-layout{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;}
@@ -435,7 +435,7 @@
   .grades-test-item:last-child{border-bottom:none;}
   .gt-title{font-weight:700;}
   .gt-date{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
-  .gt-score{font-size:16px;font-weight:800;color:var(--teal-ondark);white-space:nowrap;}
+  .gt-score{font-size:16px;font-weight:800;color:var(--teal-dark);white-space:nowrap;}
   .gt-edit-btn{background:none;border:none;color:var(--ink-soft);font-size:14px;
     cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;}
   .gt-edit-btn:hover{background:var(--soft);color:var(--teal-dark);}
@@ -466,7 +466,7 @@
   .tuition-status-toggle.paid{border-color:var(--teal);color:var(--teal-dark);background:var(--soft);}
   .tuition-status-toggle.unpaid{border-color:var(--red);color:var(--red);background:#FBEAE7;}
   .tuition-row-save{flex-shrink:0;padding:8px 14px;font-size:12.5px;font-weight:700;
-    border-radius:8px;border:1px solid var(--teal);background:var(--card);color:var(--teal-ondark);cursor:pointer;}
+    border-radius:8px;border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);cursor:pointer;}
   .tuition-list-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
   /* ===================== 모바일 상단바 + 오버레이 메뉴 (기본은 숨김) ===================== */
   #mobileTopbar{display:none;}
@@ -618,7 +618,7 @@
   }
   /* ===================== 당겨서 새로고침(pull-to-refresh) ===================== */
   #ptrIndicator{display:flex;align-items:center;justify-content:center;
-    height:0;overflow:hidden;color:var(--teal-ondark);font-size:13px;font-weight:700;gap:8px;
+    height:0;overflow:hidden;color:var(--teal-dark);font-size:13px;font-weight:700;gap:8px;
     transition:height .15s;}
   #ptrIndicator svg{width:18px;height:18px;flex-shrink:0;}
   #ptrIndicator.ready svg{transform:rotate(180deg);}
@@ -649,8 +649,8 @@
 
   .result-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
   .result-count{font-size:13.5px;color:var(--ink-soft);}
-  .result-count b{color:var(--teal-ondark);}
-  .select-all{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--teal-ondark);cursor:pointer;}
+  .result-count b{color:var(--teal-dark);}
+  .select-all{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--teal-dark);cursor:pointer;}
   .select-all input{accent-color:var(--teal);width:16px;height:16px;}
 
   .pb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
@@ -667,7 +667,7 @@
   .pb-thumb{width:100%;aspect-ratio:280/230;object-fit:contain;
     background:var(--paper);display:block;border-bottom:1px solid var(--line);padding:6px;box-sizing:border-box;}
   .pb-body{padding:10px 12px 12px;}
-  .pb-id{font-size:11.5px;font-weight:800;color:var(--teal-ondark);letter-spacing:.02em;margin-bottom:6px;}
+  .pb-id{font-size:11.5px;font-weight:800;color:var(--teal-dark);letter-spacing:.02em;margin-bottom:6px;}
   .pb-tags{display:flex;flex-wrap:wrap;gap:5px;}
   .pb-tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--soft);color:var(--teal-dark);}
   .pb-tag.level3{background:#FDEDEA;color:#A8402F;}
@@ -3582,10 +3582,7 @@ function applyTheme(hex){
       root.setProperty('--side-fg-dim', 'rgba(255,255,255,.5)');
     }
   }
-  // 메인(오른쪽) 화면 배경·카드는 항상 현재 테마색과 같은 계열이면서, 원래 얼마나 밝은 색이든 상관없이
-  // 사이드바보다 한 단계~두 단계 밝은 "고정된 밝기"로 맞춘다 (밝은 색 테마를 골라도 화면이 너무 밝아지지 않게)
-  root.setProperty('--paper', themeSetLightness_(valid, 0.23));
-  root.setProperty('--card', themeSetLightness_(valid, 0.32));
+  // 메인(오른쪽) 화면은 사이드바 테마색과 상관없이 항상 기존에 쓰던 밝은 크림톤(--paper/--card 기본값) 유지
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute('content', valid);
   return valid;
