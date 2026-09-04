@@ -18,15 +18,20 @@
     --blue:#2A6F8C;
     --green:#3F8C63;
     --yellow:#E7C468;
-    --ink:#20261F;
-    --ink-soft:#6B7570;
-    --paper:#FAFAF8;
-    --card:#FFFFFF;
-    --line:#E3E7E2;
+    --ink:#F3EEE3;
+    --ink-soft:#A9A89C;
+    --paper:#071F1C;
+    --card:#0E332D;
+    --line:rgba(255,255,255,.14);
     --amber:#C98A2C;
     --red:#C0463A;
     --radius:14px;
     --sidebar-w:230px;
+    --teal-ondark:#6FC7A8;     /* 어두운 배경(카드/페이지) 위 틸 텍스트 — 다크 테마 전용 */
+    --gold:#C9A967;            /* 사이드바 포인트(골드) — 테마와 무관하게 고정 */
+    --gold-rgb:201,169,103;
+    --deep-rgb:12,70,66;       /* --deep(#0C4642)의 r,g,b — 유리 배경 그라데이션용, 테마 변경 시 JS가 갱신 */
+    --teal-rgb:34,79,66;       /* --teal(#224F42)의 r,g,b */
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
@@ -36,25 +41,57 @@
   button{font-family:inherit;}
   /* ===================== 레이아웃 셸: 사이드바 + 메인 ===================== */
   #shell{display:flex;min-height:100vh;}
-  #sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--deep);color:var(--side-fg);
-    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
+  /* 사이드바 뒤에 고정으로 깔리는 그라데이션 — 유리(사이드바)가 이걸 비춰서 은은하게 보이게 함 */
+  #sidebarBackdrop{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;z-index:0;pointer-events:none;
+    background-color:var(--deep);
+    background-image:
+      radial-gradient(circle at 20% 14%, rgba(var(--gold-rgb),.28) 0%, transparent 42%),
+      radial-gradient(circle at 80% 62%, rgba(var(--teal-rgb),.55) 0%, transparent 48%),
+      radial-gradient(circle at 35% 92%, rgba(var(--teal-rgb),.32) 0%, transparent 45%);}
+  #sidebar{width:var(--sidebar-w);flex-shrink:0;color:var(--side-fg);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:1;
+    background:rgba(255,255,255,.045);
+    backdrop-filter:blur(14px) saturate(130%);-webkit-backdrop-filter:blur(14px) saturate(130%);
+    border-right:1px solid rgba(255,255,255,.14);
+    box-shadow:inset -1px 0 0 rgba(255,255,255,.05);}
+  #sidebar::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(ellipse 200px 120px at 6% 4%, rgba(255,255,255,.14) 0%, transparent 65%);
+    mix-blend-mode:screen;}
   .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;
-    border-bottom:1px solid rgba(255,255,255,.12);}
-  .side-brand img{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
+    border-bottom:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
+  .side-brand img{width:64px;height:64px;object-fit:contain;flex-shrink:0;
+    filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));}
   .side-brand .names{line-height:1.35;}
   .side-brand .t1{font-size:15.5px;font-weight:800;letter-spacing:-0.2px;}
   .side-brand .t2{font-size:11.5px;color:var(--side-fg-soft);}
-  .side-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:3px;}
-  .nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;
-    font-size:14.5px;font-weight:700;color:var(--side-fg-soft);cursor:pointer;border:none;background:none;
-    width:100%;text-align:left;}
-  .nav-item .nav-emoji{font-size:17px;width:19px;flex-shrink:0;text-align:center;line-height:1;
-    filter:grayscale(15%);opacity:.9;}
+  .side-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:3px;position:relative;z-index:1;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;
+    font-size:14.5px;font-weight:700;color:var(--side-fg-soft);cursor:pointer;border:1px solid transparent;background:none;
+    width:100%;text-align:left;position:relative;overflow:hidden;}
+  .nav-item .nav-emoji{font-size:16px;width:34px;height:34px;flex-shrink:0;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;line-height:1;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);
+    filter:saturate(.65) brightness(1.05);}
   .nav-item:hover{background:rgba(127,127,127,.15);color:var(--side-fg);}
-  .nav-item.active{background:var(--teal);color:#fff;}
-  .nav-item.active .nav-emoji{opacity:1;}
+  .nav-item.active{
+    background:linear-gradient(90deg,rgba(var(--gold-rgb),.16),rgba(255,255,255,.03));
+    border-color:rgba(var(--gold-rgb),.35);
+    box-shadow:inset 3px 0 0 var(--gold);
+    color:#fff;}
+  .nav-item.active .nav-emoji{opacity:1;border-color:rgba(var(--gold-rgb),.3);}
+  .nav-item.new-badge{background:rgba(var(--gold-rgb),.08);border-color:rgba(var(--gold-rgb),.32);color:#f5dfaa;}
+  .nav-item.new-badge:hover{background:rgba(var(--gold-rgb),.14);}
+  .nav-item.new-badge .nav-emoji{color:var(--gold);}
   .side-foot{padding:16px 20px 20px;font-size:11px;color:var(--side-fg-dim);line-height:1.6;
-    border-top:1px solid rgba(255,255,255,.12);}
+    border-top:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
+  /* 클릭 순간 골드 플래시 */
+  .gold-flash{animation:navGoldFlash .5s ease;}
+  @keyframes navGoldFlash{
+    0%{box-shadow:0 0 0 rgba(var(--gold-rgb),0);}
+    45%{box-shadow:0 0 22px rgba(var(--gold-rgb),.5),0 0 4px rgba(var(--gold-rgb),.4);}
+    100%{box-shadow:0 0 0 rgba(var(--gold-rgb),0);}
+  }
+  .nav-item.active.gold-flash{box-shadow:inset 3px 0 0 var(--gold),0 0 22px rgba(var(--gold-rgb),.5);}
   #main{flex:1;min-width:0;display:flex;flex-direction:column;}
   #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
     padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -98,14 +135,14 @@
     color:var(--ink-soft);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;
     display:flex;flex-direction:column;align-items:center;gap:3px;}
   .daytab .d{font-size:12px;font-weight:400;color:var(--ink-soft);}
-  .daytab.active{background:var(--paper);color:var(--teal-dark);border-bottom-color:var(--teal);}
+  .daytab.active{background:var(--paper);color:var(--teal-ondark);border-bottom-color:var(--teal);}
   .daytab.holiday span:not(.holiday-name),.daytab.holiday .d{color:var(--red);}
   .daytab.holiday.active{background:#FBEAE7;}
   .holiday-name{font-size:9.5px;color:var(--red);font-weight:400;line-height:1.2;text-align:center;
     max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .daypanel{background:var(--card);border:1px solid var(--line);border-top:none;
     border-radius:0 0 12px 12px;padding:24px;}
-  .time-label{font-size:13.5px;color:var(--teal-dark);font-weight:800;margin:20px 0 12px;}
+  .time-label{font-size:13.5px;color:var(--teal-ondark);font-weight:800;margin:20px 0 12px;}
   .time-label:first-child{margin-top:0;}
   .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
   .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px;}
@@ -122,7 +159,7 @@
     display:flex;align-items:center;justify-content:center;}
   .icon-btn svg{width:18px;height:18px;}
   .icon-btn.on{color:var(--red);}
-  .memo-box{font-size:12px;color:var(--ink-soft);background:#fff;border-radius:7px;
+  .memo-box{font-size:12px;color:var(--ink-soft);background:var(--card);border-radius:7px;
     padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .memo-box span:first-child{flex:1;min-width:0;}
   .memo-box.att{color:var(--teal-dark);background:var(--soft);}
@@ -141,7 +178,7 @@
   /* ===================== 출결 상태 버튼 ===================== */
   .status-row{display:flex;gap:6px;}
   .status-btn{flex:1;font-size:13px;font-weight:700;padding:9px 0;border-radius:9px;
-    border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;}
+    border:1px solid var(--line);background:var(--card);color:var(--ink-soft);cursor:pointer;}
   .status-btn.present.active{background:#6FA05A;color:#fff;border-color:#6FA05A;}
   .status-btn.late.active{background:var(--amber);color:#fff;border-color:var(--amber);}
   .status-btn.absent.active{background:var(--red);color:#fff;border-color:var(--red);}
@@ -157,7 +194,7 @@
     text-align:center;text-decoration:underline;}
   /* ===================== 숙제 카드 (레거시 - 미사용) ===================== */
   .hw-status-btn{width:100%;display:flex;align-items:flex-start;justify-content:space-between;
-    background:#fff;border:1px solid var(--line);border-radius:9px;padding:11px 13px;
+    background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px 13px;
     cursor:pointer;text-align:left;margin-bottom:8px;}
   .hw-name{font-size:15px;font-weight:700;color:var(--ink);}
   .hw-status-label{font-size:12.5px;font-weight:700;color:var(--ink-soft);}
@@ -169,11 +206,11 @@
   /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) ===================== */
   .quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px;}
   .quad-btn{display:flex;align-items:center;justify-content:center;
-    border-radius:7px;padding:6px 2px;cursor:pointer;border:1px solid var(--line);background:#fff;
+    border-radius:7px;padding:6px 2px;cursor:pointer;border:1px solid var(--line);background:var(--card);
     font-family:inherit;position:relative;min-height:0;}
   .quad-btn .qi{display:none;}
   .quad-btn .ql{font-size:13px;font-weight:400;line-height:1.2;}
-  .quad-btn.memo{color:var(--ink-soft);border-color:var(--line);background:#fff;}
+  .quad-btn.memo{color:var(--ink-soft);border-color:var(--line);background:var(--card);}
   .quad-btn.memo.on{color:var(--teal-dark);border-color:var(--teal);background:var(--soft);}
   .quad-btn[disabled]{opacity:.4;cursor:default;}
   .quad-btn.chev::after{content:"";position:absolute;bottom:3px;right:5px;width:5px;height:5px;
@@ -195,7 +232,7 @@
   #editView{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:26px;}
   .edit-hint{font-size:13.5px;color:var(--ink-soft);margin-bottom:18px;line-height:1.6;}
-  .edit-day{font-size:16px;font-weight:800;margin:20px 0 10px;color:var(--teal-dark);}
+  .edit-day{font-size:16px;font-weight:800;margin:20px 0 10px;color:var(--teal-ondark);}
   .edit-day:first-child{margin-top:0;}
   .edit-block{background:var(--paper);border:1px solid var(--line);border-radius:10px;
     padding:12px 14px;margin-bottom:8px;}
@@ -225,7 +262,7 @@
   .dash-card .dc-value{font-size:30px;font-weight:800;color:var(--ink);line-height:1.2;}
   .dash-card .dc-value .unit{font-size:15px;font-weight:700;color:var(--ink-soft);margin-left:2px;}
   .dash-card.accent-red .dc-value{color:var(--red);}
-  .dash-card.accent-teal .dc-value{color:var(--teal-dark);}
+  .dash-card.accent-teal .dc-value{color:var(--teal-ondark);}
   .dash-card.accent-blue .dc-value{color:var(--blue);}
   .weekly-attend-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;}
   .weekly-attend-cell{background:var(--paper);border-radius:9px;padding:10px 4px;}
@@ -271,7 +308,7 @@
   .cc-simple{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
   .cc-simple .cc-name{font-size:13.5px;font-weight:700;color:var(--ink);}
   .cc-simple .cc-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
-  .cc-simple .cc-sub{font-size:11.5px;color:var(--teal-dark);font-weight:800;margin-top:6px;}
+  .cc-simple .cc-sub{font-size:11.5px;color:var(--teal-ondark);font-weight:800;margin-top:6px;}
   .cc-note{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
   .cc-note .cc-badge{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;
     border-radius:6px;padding:2px 7px;margin-bottom:6px;background:var(--red);}
@@ -303,26 +340,26 @@
   .student-card .sc-meta{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
   .student-card .sc-slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
   .sc-status-toggle{flex-shrink:0;padding:4px 10px;font-size:11px;
-    font-weight:700;border-radius:8px;border:1px solid var(--line);background:#fff;
+    font-weight:700;border-radius:8px;border:1px solid var(--line);background:var(--card);
     color:var(--ink-soft);cursor:pointer;text-align:center;}
   .sc-status-toggle:hover{border-color:var(--red);color:var(--red);}
-  .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-dark);}
+  .student-card-withdrawn .sc-status-toggle{border-color:var(--teal);color:var(--teal-ondark);}
   .sc-textbook{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
   .sc-textbook-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
   .sc-textbook-current{display:flex;align-items:center;justify-content:space-between;gap:8px;
-    background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:8px;}
+    background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:8px;}
   .sc-textbook-filename{font-size:11.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;
     white-space:nowrap;flex:1;min-width:0;}
   .sc-textbook-delete{border:none;background:none;color:var(--red);padding:2px 4px;
     cursor:pointer;flex-shrink:0;font-size:13px;line-height:1;}
   .sc-textbook-input{width:100%;font-size:11.5px;color:var(--ink-soft);}
-  .sc-textbook-status{font-size:11.5px;color:var(--teal-dark);margin-top:4px;}
+  .sc-textbook-status{font-size:11.5px;color:var(--teal-ondark);margin-top:4px;}
   .sc-textbook-memo-row{display:flex;gap:6px;margin-top:8px;}
   .sc-textbook-memo{flex:1;min-width:0;font-size:11.5px;border:1px solid var(--line);border-radius:6px;
     padding:6px 8px;font-family:inherit;color:var(--ink);}
   .sc-textbook-memo-save{flex-shrink:0;padding:0 12px;font-size:11px;
-    font-weight:700;border-radius:6px;border:1px solid var(--teal);background:#fff;
-    color:var(--teal-dark);cursor:pointer;}
+    font-weight:700;border-radius:6px;border:1px solid var(--teal);background:var(--card);
+    color:var(--teal-ondark);cursor:pointer;}
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:var(--soft);
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
@@ -347,7 +384,7 @@
   .notice-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:26px;max-width:560px;}
   .notice-field{margin-bottom:16px;}
-  .notice-field label{display:block;font-size:13px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
+  .notice-field label{display:block;font-size:13px;font-weight:700;color:var(--teal-ondark);margin-bottom:6px;}
   .notice-field input[type=text],.notice-field textarea{width:100%;border:1px solid var(--line);
     border-radius:9px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);
     background:var(--paper);}
@@ -357,7 +394,7 @@
   .notice-field input[type=date]{width:100%;border:1px solid var(--line);border-radius:9px;
     padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--paper);}
   .notice-field input[type=file]{width:100%;font-size:13px;color:var(--ink-soft);}
-  .notice-attach-status{font-size:12.5px;color:var(--teal-dark);margin-top:6px;}
+  .notice-attach-status{font-size:12.5px;color:var(--teal-ondark);margin-top:6px;}
   .notice-save-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;
     padding:12px 24px;font-size:14.5px;font-weight:700;cursor:pointer;}
   .notice-status-msg{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
@@ -368,7 +405,7 @@
     padding:14px 16px;}
   .notice-preview-card .np-title{font-size:14.5px;font-weight:700;margin-bottom:4px;}
   .notice-preview-card .np-body{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.5;}
-  .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-dark);margin-top:8px;}
+  .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-ondark);margin-top:8px;}
   .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
   /* ===================== 성적 관리(초등 테스트 기록) ===================== */
   .grades-layout{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;}
@@ -397,7 +434,7 @@
   .grades-test-item:last-child{border-bottom:none;}
   .gt-title{font-weight:700;}
   .gt-date{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
-  .gt-score{font-size:16px;font-weight:800;color:var(--teal-dark);white-space:nowrap;}
+  .gt-score{font-size:16px;font-weight:800;color:var(--teal-ondark);white-space:nowrap;}
   .gt-edit-btn{background:none;border:none;color:var(--ink-soft);font-size:14px;
     cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;}
   .gt-edit-btn:hover{background:var(--soft);color:var(--teal-dark);}
@@ -422,13 +459,13 @@
   .tuition-row .tr-meta{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
   .tuition-row input[type=number],.tuition-row input[type=date],.tuition-row input[type=text]{
     width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
-    font-size:13px;font-family:inherit;color:var(--ink);background:#fff;}
+    font-size:13px;font-family:inherit;color:var(--ink);background:var(--card);}
   .tuition-status-toggle{padding:8px 4px;font-size:12.5px;font-weight:700;border-radius:8px;
-    border:1px solid var(--line);background:#fff;cursor:pointer;text-align:center;white-space:nowrap;}
+    border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:center;white-space:nowrap;}
   .tuition-status-toggle.paid{border-color:var(--teal);color:var(--teal-dark);background:var(--soft);}
   .tuition-status-toggle.unpaid{border-color:var(--red);color:var(--red);background:#FBEAE7;}
   .tuition-row-save{flex-shrink:0;padding:8px 14px;font-size:12.5px;font-weight:700;
-    border-radius:8px;border:1px solid var(--teal);background:#fff;color:var(--teal-dark);cursor:pointer;}
+    border-radius:8px;border:1px solid var(--teal);background:var(--card);color:var(--teal-ondark);cursor:pointer;}
   .tuition-list-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
   /* ===================== 모바일 상단바 + 오버레이 메뉴 (기본은 숨김) ===================== */
   #mobileTopbar{display:none;}
@@ -491,7 +528,9 @@
     /* 기존 가로 스크롤 사이드바 대신 축소된 로고 + 햄버거 버튼의 상단바를 사용 */
     #sidebar{display:none;}
     #mobileTopbar{display:flex;align-items:center;justify-content:space-between;
-      background:var(--deep);color:var(--side-fg);padding:10px 14px;position:sticky;top:0;z-index:50;}
+      background:rgba(var(--deep-rgb),.82);color:var(--side-fg);padding:10px 14px;position:sticky;top:0;z-index:50;
+      backdrop-filter:blur(14px) saturate(130%);-webkit-backdrop-filter:blur(14px) saturate(130%);
+      border-bottom:1px solid rgba(255,255,255,.12);}
     #mobileTopbar .mt-brand{display:flex;align-items:center;gap:8px;min-width:0;}
     #mobileTopbar .mt-brand img{width:26px;height:26px;object-fit:contain;flex-shrink:0;border-radius:6px;}
     #mobileTopbar .mt-brand .t1{font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -500,8 +539,13 @@
     #mobileMenuBtn svg{width:22px;height:22px;}
     #mobileMenuOverlay.open{display:block;position:fixed;inset:0;z-index:100;}
     #mobileMenuOverlay .mmo-backdrop{position:absolute;inset:0;background:rgba(8,29,24,.45);}
-    #mobileMenuOverlay .mmo-panel{position:relative;background:var(--deep);color:var(--side-fg);
-      padding:0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.18);}
+    #mobileMenuOverlay .mmo-panel{position:relative;color:var(--side-fg);
+      padding:0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.3);
+      background-color:var(--deep);
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(var(--gold-rgb),.26) 0%, transparent 40%),
+        radial-gradient(circle at 85% 55%, rgba(var(--teal-rgb),.5) 0%, transparent 46%);
+      backdrop-filter:blur(14px) saturate(130%);-webkit-backdrop-filter:blur(14px) saturate(130%);}
     #mobileMenuOverlay .mmo-head{display:flex;align-items:center;justify-content:space-between;
       padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12);}
     #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
@@ -510,8 +554,6 @@
       display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     #mobileMenuClose svg{width:20px;height:20px;}
     #mobileMenuOverlay .mmo-nav{padding:8px 10px;display:flex;flex-direction:column;gap:2px;}
-    #mobileMenuOverlay .nav-item{color:var(--side-fg-soft);}
-    #mobileMenuOverlay .nav-item.active{background:var(--teal);color:#fff;}
     #mainTopbar{padding:16px 18px;}
     #mainTopbar h1{font-size:18px;}
     #pageContent{padding:18px;}
@@ -574,7 +616,7 @@
   }
   /* ===================== 당겨서 새로고침(pull-to-refresh) ===================== */
   #ptrIndicator{display:flex;align-items:center;justify-content:center;
-    height:0;overflow:hidden;color:var(--teal-dark);font-size:13px;font-weight:700;gap:8px;
+    height:0;overflow:hidden;color:var(--teal-ondark);font-size:13px;font-weight:700;gap:8px;
     transition:height .15s;}
   #ptrIndicator svg{width:18px;height:18px;flex-shrink:0;}
   #ptrIndicator.ready svg{transform:rotate(180deg);}
@@ -587,16 +629,16 @@
   #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   #saveToast svg{width:18px;height:18px;flex-shrink:0;}
   /* ===================== 문제은행 ===================== */
-  .fb{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;}
+  .fb{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;}
   .fb-row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;}
   .fb-group{display:flex;flex-direction:column;gap:6px;}
   .fb-group label{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
-  .fb-select{padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;
+  .fb-select{padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);
     font-size:13.5px;color:var(--ink);min-width:130px;}
   .fb-search{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper);
     font-size:13.5px;min-width:180px;}
   .chipset{display:flex;gap:6px;}
-  .chip{padding:7px 13px;border-radius:20px;border:1.4px solid var(--line);background:#fff;
+  .chip{padding:7px 13px;border-radius:20px;border:1.4px solid var(--line);background:var(--card);
     font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;user-select:none;}
   .chip.on{background:var(--teal);border-color:var(--teal);color:#fff;}
   .fb-check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);font-weight:600;cursor:pointer;}
@@ -605,12 +647,12 @@
 
   .result-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
   .result-count{font-size:13.5px;color:var(--ink-soft);}
-  .result-count b{color:var(--teal-dark);}
-  .select-all{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--teal-dark);cursor:pointer;}
+  .result-count b{color:var(--teal-ondark);}
+  .select-all{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--teal-ondark);cursor:pointer;}
   .select-all input{accent-color:var(--teal);width:16px;height:16px;}
 
   .pb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
-  .pb-card{background:#fff;border:1.5px solid var(--line);border-radius:var(--radius);overflow:hidden;
+  .pb-card{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);overflow:hidden;
     cursor:pointer;transition:border-color .12s;position:relative;}
   .pb-card:hover{border-color:var(--teal);}
   .pb-card.sel{border-color:var(--teal);box-shadow:0 0 0 2px rgba(34,79,66,.18);}
@@ -623,7 +665,7 @@
   .pb-thumb{width:100%;aspect-ratio:280/230;object-fit:contain;
     background:var(--paper);display:block;border-bottom:1px solid var(--line);padding:6px;box-sizing:border-box;}
   .pb-body{padding:10px 12px 12px;}
-  .pb-id{font-size:11.5px;font-weight:800;color:var(--teal-dark);letter-spacing:.02em;margin-bottom:6px;}
+  .pb-id{font-size:11.5px;font-weight:800;color:var(--teal-ondark);letter-spacing:.02em;margin-bottom:6px;}
   .pb-tags{display:flex;flex-wrap:wrap;gap:5px;}
   .pb-tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--soft);color:var(--teal-dark);}
   .pb-tag.level3{background:#FDEDEA;color:#A8402F;}
@@ -632,9 +674,8 @@
   .pb-tag.nosol{background:#EEF0F1;color:#6B7B77;}
   .pb-tag.grade{background:var(--teal);color:#fff;}
 
-  .nav-item.new-badge{position:relative;}
   .nav-item.new-badge::after{content:"NEW";position:absolute;right:10px;top:9px;font-size:8.5px;
-    font-weight:800;background:#fff;color:var(--teal-dark);padding:1px 5px;border-radius:20px;}
+    font-weight:800;background:var(--gold);color:#1d312b;padding:1px 5px;border-radius:20px;}
 
   #pbStickyBar{position:fixed;left:var(--sidebar-w);right:0;bottom:0;background:var(--deep);color:#fff;
     padding:14px 28px;display:none;align-items:center;justify-content:space-between;gap:14px;
@@ -648,7 +689,11 @@
     font-size:14px;font-weight:800;cursor:pointer;}
   .sb-make:hover{background:var(--teal-dark);}
 
-  #pbPrintView{position:fixed;inset:0;background:#5C6E69;display:none;z-index:30;overflow:auto;}
+  /* 문제은행 인쇄용 화면(시험지·해설지)은 실제 종이에 인쇄되므로, 다크 테마와 무관하게
+     항상 밝은 배경 + 어두운 글자를 쓴다. 아래에서 --ink/--ink-soft/--teal-dark/--line을
+     원래(라이트) 값으로 되돌려서, 이 안에서 var(--ink) 등을 쓰는 모든 요소에 그대로 적용되게 한다. */
+  #pbPrintView{position:fixed;inset:0;background:#5C6E69;display:none;z-index:30;overflow:auto;
+    --ink:#20261F;--ink-soft:#6B7570;--teal-dark:#17362D;--line:#E3E7E2;}
   #pbPrintView.show{display:block;}
   #pbPrintToolbar{position:sticky;top:0;background:var(--deep);color:#fff;padding:12px 20px;
     display:flex;justify-content:space-between;align-items:center;z-index:2;}
@@ -699,6 +744,12 @@
   .ws-solution .ws-sol-flow{column-count:2;column-gap:10mm;}
   .ws-sol-item{break-inside:avoid;margin-bottom:10mm;}
   .ws-sol-item img{width:100%;border-radius:6px;border:1px solid var(--line);margin-bottom:4mm;}
+
+  /* ===== 다크 테마 보정: 밝은 파스텔 배경 카드 위의 글자는 항상 어둡게 고정 ===== */
+  .quad-btn.att-late,.quad-btn.att-absent,.quad-btn.hw-partial,.quad-btn.hw-missing{color:#1B3A30;}
+  .cal-cell.present,.cal-cell.late,.cal-cell.absent{color:#1B3A30;}
+  .cc-exam.math-warn .cc-name,.cc-exam.math-warn .cc-math{color:#1B3A30;}
+  .daytab.holiday.active{color:#1B3A30;}
 
   @media (max-width:760px){
     #pbStickyBar{left:0;}
@@ -799,6 +850,7 @@
   </div>
 </div>
 <div id="shell">
+  <div id="sidebarBackdrop"></div>
   <div id="sidebar">
     <div class="side-brand">
       <img src="assets/logo-rounded.png" alt="수학의 결 로고">
@@ -2992,8 +3044,14 @@ function switchPage(page){
     renderProblemBankPage();
   }
 }
+function goldFlash(el){
+  el.classList.remove('gold-flash');
+  void el.offsetWidth; // 리플로우 강제 → 애니메이션 재시작
+  el.classList.add('gold-flash');
+  setTimeout(()=>el.classList.remove('gold-flash'), 500);
+}
 document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{
-  btn.onclick = ()=> switchPage(btn.getAttribute('data-page'));
+  btn.onclick = ()=>{ goldFlash(btn); switchPage(btn.getAttribute('data-page')); };
 });
 /* ============ 문제은행 ============ */
 async function loadProblemBankData(){
@@ -3453,12 +3511,18 @@ function applyTheme(hex){
   const valid = themeHexToRgb_(hex) ? hex.toUpperCase() : THEME_DEFAULT;
   if(valid === THEME_DEFAULT){
     // 기본 테마: CSS에 적힌 원래 값으로 되돌린다
-    ['--deep','--teal','--teal-dark','--soft','--side-fg','--side-fg-soft','--side-fg-dim'].forEach(k=>root.removeProperty(k));
+    ['--deep','--teal','--teal-dark','--soft','--side-fg','--side-fg-soft','--side-fg-dim','--deep-rgb','--teal-rgb'].forEach(k=>root.removeProperty(k));
   }else{
     root.setProperty('--deep', valid);
-    root.setProperty('--teal', themeMix_(valid, 255, 0.12));
+    const tealHex = themeMix_(valid, 255, 0.12);
+    root.setProperty('--teal', tealHex);
     root.setProperty('--teal-dark', themeMix_(valid, 0, 0.12));
     root.setProperty('--soft', themeMix_(valid, 255, 0.88));
+    // 사이드바 유리 배경 그라데이션도 테마색을 따라가도록 r,g,b 값을 같이 갱신
+    const deepRgb = themeHexToRgb_(valid);
+    if(deepRgb) root.setProperty('--deep-rgb', deepRgb.join(','));
+    const tealRgb = themeHexToRgb_(tealHex);
+    if(tealRgb) root.setProperty('--teal-rgb', tealRgb.join(','));
     // 사이드바 배경(--deep)이 테마색을 그대로 쓰므로, 밝은 색을 고르면 글자색도 어둡게 자동 전환한다
     if(themeIsLight_(valid)){
       root.setProperty('--side-fg', '#2E2A1F');
