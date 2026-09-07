@@ -99,6 +99,8 @@
   #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
     padding:30.5px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
   #mainTopbar h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-0.3px;}
+  .tb-titles{display:flex;flex-direction:column;gap:3px;}
+  .page-greeting{font-size:13px;font-weight:600;color:var(--teal-dark);}
   .topbar-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   .date-picker{display:flex;align-items:center;gap:9px;background:var(--paper);
     border:1px solid var(--line);border-radius:11px;padding:11px 16px;font-size:14.5px;font-weight:600;}
@@ -927,7 +929,10 @@
   </div>
   <div id="main">
     <div id="mainTopbar">
-      <h1 id="pageTitle">대시보드</h1>
+      <div class="tb-titles">
+        <h1 id="pageTitle">대시보드</h1>
+        <div class="page-greeting" id="dashGreeting"></div>
+      </div>
       <div class="topbar-actions" id="attendanceTopActions" style="display:none;">
         <div class="sync-status" id="syncStatus">
           <span class="sync-dot" id="syncDot"></span><span id="syncStatusText">동기화됨</span>
@@ -2983,6 +2988,48 @@ async function renderTuitionList(){
     };
   });
 }
+// ============ 대시보드 상단 오늘의 인사말 (2026-09) ============
+// 날짜(YYYY-MM-DD) 문자열을 해시해서 하루에 하나씩, 날짜가 바뀌기 전까지는 항상 같은 문구가 뜨도록 한다.
+const DASH_GREETINGS = [
+  "매일 생각해. '제일 가치 있는 건 나다.' 💎",
+  "이대로도 괜찮아. 지금도 충분히 잘하고 있고, 애쓰고 있어. 이대로도 충분해. 🤍",
+  "오늘을 제일 사랑할 수 있다면, 살아가는 모든 날이 최고가 된다. 🌻",
+  "오늘도 살아간다고 고생 많았어. 내일도 걸어가자~ 넌 분명 잘하고 있어. 잘될 거야! 🌤️",
+  "미래는 오늘 시작한다, 내일이 아니라. ⏳",
+  "인생은 곱셈이다. 어떤 기회가 오더라도 내가 0이면 아무런 의미가 없다. 🧮",
+  "포기하는 순간 핑곗거리를 찾게 되고, 할 수 있다고 생각하는 순간에 방법을 찾는다. 🔍",
+  "남보다 느려도 멈추지 않으면 된다. -공자- 🐢",
+  "당신이 할 수 있다고 믿든지, 할 수 없다고 믿든지, 그 믿음대로 될 것이다. -헨리 포드- 🧠",
+  "고통은 피할 수 없지만, 고통 속에서 무엇을 배우느냐는 선택이다. -빅터 프랭클- 🕯️",
+  "결국 성공하는 사람은 끝까지, 될 때까지 해내는 사람이다. 그러니 지금 힘들어도 멈추거나 포기하지 말자. 🔥",
+  "결국 당신은 잘 될 사람이고, 반드시 원하는 걸 이루고 행복할 사람이니까. 🌷",
+  "그러니까 감사. 그럼에도 감사. 그럴수록 감사. 그것까지 감사. 🙏",
+  "당신은 생각보다 훨씬 강한 사람입니다. 💪",
+  "오늘은 자신에게 조금 더 따뜻해지세요. 🫶",
+  "오늘 아무도 말해주지 않았다면, 제가 전해드릴게요. 정말 수고 많으셨습니다. 그리고 진심으로 응원합니다. 💌",
+  "힘들면 제대로 가고 있는 거다. 🧭",
+  "오늘도 웃는 얼굴로 아이들을 맞아주세요 😊",
+  "작은 성장도 눈여겨봐주는 오늘이 되길요 🌱",
+  "커피 한 잔의 여유, 잊지 마세요 ☕",
+  "아이들의 오늘 하루도, 원장님의 오늘 하루도 무탈하게 🍀",
+  "학생들에게 오늘도 좋은 선생님이 되어주셔서 감사해요 💚",
+  "원장님 덕분에 오늘도 한 명의 아이가 자라고 있어요 🌳",
+  "오늘 하루, 원장님이 제일 든든한 사람이에요 🛡️",
+  "원장님의 꾸준함이 학원의 가장 큰 힘이에요 🔑",
+  "작은 칭찬 한마디가 큰 힘이 되는 하루 되세요 🗣️",
+  "원장님이 웃어야 학원도 웃어요, 오늘도 활짝 😄",
+  "오늘 하루도 원장님의 진심이 아이들에게 닿기를 🌈",
+  "오늘도 참 애쓰고 계세요, 알아요 저는 🥹",
+  "10년 넘게 한 자리를 지켜온 원장님, 그 자체로 대단해요 🏫"
+];
+function renderDashGreeting(){
+  const el = document.getElementById('dashGreeting');
+  if(!el) return;
+  const todayKey = toDateStr(new Date());
+  let hash = 0;
+  for(let i=0;i<todayKey.length;i++){ hash = (hash*31 + todayKey.charCodeAt(i)) >>> 0; }
+  el.textContent = DASH_GREETINGS[hash % DASH_GREETINGS.length];
+}
 // ============ 대시보드 패널 접기/펼치기 (2026-09) ============
 // defaultCollapsed: 처음 방문(저장된 상태 없음) 시 접혀서 시작할지 여부.
 // 실제 펼침/접힘 상태는 localStorage(DASH_COLLAPSE_KEY 접두사)에 패널별로 저장해 다음 방문에도 유지한다.
@@ -3016,6 +3063,11 @@ function switchPage(page){
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-page')===page);
   });
+  const greetingEl = document.getElementById('dashGreeting');
+  if(greetingEl){
+    greetingEl.style.display = (page === 'dashboard') ? '' : 'none';
+    if(page === 'dashboard') renderDashGreeting();
+  }
   closeMobileMenu();
   const attPage = document.getElementById('attendancePage');
   const otherPage = document.getElementById('otherPage');
