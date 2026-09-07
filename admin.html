@@ -147,7 +147,7 @@
     border-radius:0 0 12px 12px;padding:24px;}
   .time-label{font-size:13.5px;color:var(--teal-dark);font-weight:800;margin:20px 0 12px;}
   .time-label:first-child{margin-top:0;}
-  .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+  .slot-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-items:start;}
   .slot-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px;}
   /* "종료된 시간대" 카드: 요일/시간이 바뀌어 더 이상 쓰지 않는 과거 슬롯을 시각적으로 옅게 구분 */
   .slot-card-ended{opacity:.6;border-style:dashed;}
@@ -209,10 +209,10 @@
   /* ===================== 4칸 그리드 (출석/숙제/태도메모/숙제메모) ===================== */
   .quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px;}
   .quad-btn{display:flex;align-items:center;justify-content:center;
-    border-radius:7px;padding:6px 2px;cursor:pointer;border:1px solid var(--line);background:var(--card);
-    font-family:inherit;position:relative;min-height:0;}
+    border-radius:7px;height:34px;padding:0 2px;cursor:pointer;border:1px solid var(--line);background:var(--card);
+    font-family:inherit;position:relative;}
   .quad-btn .qi{display:none;}
-  .quad-btn .ql{font-size:13px;font-weight:400;line-height:1.2;}
+  .quad-btn .ql{font-size:13px;font-weight:400;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   .quad-btn.memo{color:var(--ink-soft);border-color:var(--line);background:var(--card);}
   .quad-btn.memo.on{color:var(--teal-dark);border-color:var(--teal);background:var(--soft);}
   .quad-btn[disabled]{opacity:.4;cursor:default;}
@@ -1413,7 +1413,7 @@ function renderDayContent(){
       if(isAbsent){ hwCls="hw-off"; hwLabel="숙제"; }
       else if(hwState==="완료"){ hwCls="hw-done"; hwLabel="숙제 완료"; }
       else if(hwState==="미흡"){ hwCls="hw-partial"; hwLabel="숙제 미흡"; }
-      else if(hwState==="안함"){ hwCls="hw-missing"; hwLabel="숙제 미제출"; }
+      else if(hwState==="안함"){ hwCls="hw-missing"; hwLabel="숙제 X"; }
       else { hwCls="hw-unchecked"; hwLabel="숙제 미확인"; }
       const timesLine = (rec.checkIn || rec.checkOut)
         ? `<div class="slot-times">🛎️ 등원 ${rec.checkIn || '—'} · 하원 ${rec.checkOut || '—'}</div>` : '';
