@@ -275,6 +275,17 @@
   .quote-card .qc-text{font-size:14.5px;font-weight:700;color:var(--teal-dark);line-height:1.5;
     letter-spacing:-.01em;}
   @media (max-width: 900px){ .quote-card{grid-column:span 2;} }
+  /* 대시보드 패널 접기/펼치기 (2026-09) — 제목 줄을 누르면 본문을 접고, 상태는 localStorage에 기억한다 */
+  .dash-collapsible{padding:0;margin-bottom:14px;}
+  .dash-collapsible .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:20px 24px;cursor:pointer;user-select:none;margin:0;}
+  .dash-collapsible .panel-head:hover{background:var(--soft);}
+  .dash-collapsible .panel-head h2{margin:0;}
+  .dash-collapsible .chev{width:18px;height:18px;flex-shrink:0;color:var(--ink-soft);
+    transition:transform .18s ease;}
+  .dash-collapsible.collapsed .chev{transform:rotate(-90deg);}
+  .dash-collapsible .panel-body{padding:0 24px 20px;}
+  .dash-collapsible.collapsed .panel-body{display:none;}
   .weekly-attend-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;}
   .weekly-attend-cell{background:var(--paper);border-radius:9px;padding:10px 4px;}
   .weekly-attend-cell.weekly-attend-today{border:1.5px solid var(--teal);}
@@ -812,7 +823,7 @@
       </button>
     </div>
     <nav class="mmo-nav" id="mobileNav">
-      <button class="nav-item" data-page="dashboard">
+      <button class="nav-item active" data-page="dashboard">
         <span class="nav-emoji" aria-hidden="true">📊</span>
         대시보드
       </button>
@@ -820,7 +831,7 @@
         <span class="nav-emoji" aria-hidden="true">👥</span>
         학생 관리
       </button>
-      <button class="nav-item active" data-page="attendance">
+      <button class="nav-item" data-page="attendance">
         <span class="nav-emoji" aria-hidden="true">✅</span>
         출결 관리
       </button>
@@ -880,7 +891,7 @@
       <div class="side-brand-caption">학생 관리 시스템</div>
     </div>
     <nav class="side-nav" id="sideNav">
-      <button class="nav-item" data-page="dashboard">
+      <button class="nav-item active" data-page="dashboard">
         <span class="nav-emoji" aria-hidden="true">📊</span>
         대시보드
       </button>
@@ -888,7 +899,7 @@
         <span class="nav-emoji" aria-hidden="true">👥</span>
         학생 관리
       </button>
-      <button class="nav-item active" data-page="attendance">
+      <button class="nav-item" data-page="attendance">
         <span class="nav-emoji" aria-hidden="true">✅</span>
         출결 관리
       </button>
@@ -916,8 +927,8 @@
   </div>
   <div id="main">
     <div id="mainTopbar">
-      <h1 id="pageTitle">출결 관리</h1>
-      <div class="topbar-actions" id="attendanceTopActions">
+      <h1 id="pageTitle">대시보드</h1>
+      <div class="topbar-actions" id="attendanceTopActions" style="display:none;">
         <div class="sync-status" id="syncStatus">
           <span class="sync-dot" id="syncDot"></span><span id="syncStatusText">동기화됨</span>
         </div>
@@ -933,7 +944,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
         <span id="ptrIndicatorText">아래로 당겨서 새로고침</span>
       </div>
-      <div id="attendancePage">
+      <div id="attendancePage" style="display:none;">
         <div id="cardView">
           <div class="weekbar">
             <button id="prevWeek">‹</button>
@@ -968,7 +979,7 @@
         <div id="noticePageEl" style="display:none;"></div>
         <div id="problemBankPageEl" style="display:none;"></div>
       </div>
-      <div id="dashboardPage" style="display:none;"></div>
+      <div id="dashboardPage"></div>
     </div>
   </div>
 </div>
@@ -1913,7 +1924,7 @@ const PAGE_TITLES = {
   notice:     "공지사항",
   problemBank: "문제은행"
 };
-let currentPage = 'attendance';
+let currentPage = 'dashboard';
 function emptyPagePanel(icon, title, desc){
   return '<div class="empty-panel"><div class="big">'+icon+'</div><div class="title">'+title+'</div><div>'+desc+'</div></div>';
 }
@@ -2972,6 +2983,33 @@ async function renderTuitionList(){
     };
   });
 }
+// ============ 대시보드 패널 접기/펼치기 (2026-09) ============
+// defaultCollapsed: 처음 방문(저장된 상태 없음) 시 접혀서 시작할지 여부.
+// 실제 펼침/접힘 상태는 localStorage(DASH_COLLAPSE_KEY 접두사)에 패널별로 저장해 다음 방문에도 유지한다.
+const DASH_COLLAPSE_KEY = 'dashPanelCollapsed:';
+function dashPanelHtml(id, title, subHtml, bodyHtml, defaultCollapsed){
+  return `<div class="panel dash-collapsible${defaultCollapsed ? ' collapsed' : ''}" data-panel-id="${id}">
+    <div class="panel-head">
+      <h2>${title} ${subHtml}</h2>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="panel-body">${bodyHtml}</div>
+  </div>`;
+}
+function initDashCollapsibles(){
+  document.querySelectorAll('.dash-collapsible').forEach(panel=>{
+    const id = panel.dataset.panelId;
+    const stored = localStorage.getItem(DASH_COLLAPSE_KEY + id);
+    if(stored !== null){
+      panel.classList.toggle('collapsed', stored === '1');
+    }
+    const head = panel.querySelector('.panel-head');
+    head.onclick = ()=>{
+      const collapsed = panel.classList.toggle('collapsed');
+      try{ localStorage.setItem(DASH_COLLAPSE_KEY + id, collapsed ? '1' : '0'); }catch(e){}
+    };
+  });
+}
 function switchPage(page){
   currentPage = page;
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
@@ -3005,35 +3043,15 @@ function switchPage(page){
           <h2>🛎️ 오늘 등하원 현황 <span class="sub" id="checkInCountLabel"></span></h2>
           <div class="reason-feed" id="checkInFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
         </div>
-        <div class="panel" style="margin-bottom:20px;">
-          <h2>이번 달 미납 학생 <span class="sub" id="tuitionUnpaidCountLabel"></span></h2>
-          <div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>
-        <div class="panel" style="margin-bottom:20px;">
-          <h2>최근 7일 출석률</h2>
-          <div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>
-        <div class="panel" style="margin-bottom:20px;">
-          <h2>다가오는 시험 <span class="sub" id="examCountLabel"></span></h2>
-          <div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>
-        <div class="panel" style="margin-bottom:20px;">
-          <h2>이번 달 보강 대기 <span class="sub" id="makeupCountLabel"></span></h2>
-          <div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>
-        <div class="panel" style="margin-bottom:20px;">
-          <h2>숙제 미흡·미제출 누적 <span class="sub">(최근 4주)</span></h2>
-          <div class="reason-feed" id="homeworkRankFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>
-        <div class="panel" style="margin-bottom:20px;">
-          <h2>보강 대기 <span class="sub">(결석일 오래된 순)</span></h2>
-          <div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>
-        <div class="panel">
-          <h2>최근 지각·결석 사유 <span class="sub">(최근 2주)</span></h2>
-          <div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>
-        </div>`;
+        ${dashPanelHtml('tuition', '이번 달 미납 학생', '<span class="sub" id="tuitionUnpaidCountLabel"></span>', '<div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', false)}
+        ${dashPanelHtml('weekly', '최근 7일 출석률', '', '<div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>', false)}
+        ${dashPanelHtml('exam', '다가오는 시험', '<span class="sub" id="examCountLabel"></span>', '<div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
+        ${dashPanelHtml('makeup', '이번 달 보강 대기', '<span class="sub" id="makeupCountLabel"></span>', '<div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
+        ${dashPanelHtml('hwrank', '숙제 미흡·미제출 누적', '<span class="sub">(최근 4주)</span>', '<div class="reason-feed" id="homeworkRankFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
+        ${dashPanelHtml('makeupold', '보강 대기', '<span class="sub">(결석일 오래된 순)</span>', '<div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
+        ${dashPanelHtml('reason', '최근 지각·결석 사유', '<span class="sub">(최근 2주)</span>', '<div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}`;
       dashPage.dataset.built = '1';
+      initDashCollapsibles();
     }
     renderDashboard();
     return;
@@ -3679,6 +3697,7 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   populateStudentSelect();
   renderAll();
   renderCalendar();
+  switchPage('dashboard'); // 2026-09: 첫 화면을 출결 관리 대신 대시보드로 시작 (사용자 요청)
   setSyncStatus('ok');
   startAutoRefresh();
   loadHolidays().then(()=>{ if(!editMode) renderCardView(); });
