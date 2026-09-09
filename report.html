@@ -509,6 +509,20 @@
     font-size:13px;
     padding:28px 0;
   }
+  .log-toggle-btn{
+    display:block;
+    width:100%;
+    margin-top:4px;
+    padding:11px 0 2px;
+    border:none;
+    border-top:1px solid var(--line);
+    background:none;
+    font-family:inherit;
+    font-size:13px;
+    font-weight:700;
+    color:var(--teal-dark);
+    cursor:pointer;
+  }
 
   .footer-note{
     text-align:center;
@@ -805,11 +819,14 @@
           </div>
         </div>
 
-        <div class="section-title spaced">🗓️ 최근 출결 <span style="font-weight:500;color:var(--ink-soft);font-size:12px;">(최근 10건)</span></div>
-        <div class="card" id="log-card">
-          <div class="skel skel-row"></div>
-          <div class="skel skel-row"></div>
-          <div class="skel skel-row"></div>
+        <div class="section-title spaced">🗓️ 최근 출결</div>
+        <div class="card">
+          <div id="log-card">
+            <div class="skel skel-row"></div>
+            <div class="skel skel-row"></div>
+            <div class="skel skel-row"></div>
+          </div>
+          <button type="button" id="log-toggle-btn" class="log-toggle-btn" style="display:none;"></button>
         </div>
       </div>
 
@@ -1052,45 +1069,73 @@
     `;
   }
 
+  // 2026-09: 최근 출결은 처음엔 5건만 보여주고, "더 보기"를 눌러야 나머지(최대 10건)가 펼쳐진다.
+  // 서버(studentReportSummary)가 이미 10건을 다 내려주기 때문에 펼칠 때 추가 요청은 없다.
+  const LOG_COLLAPSED_COUNT = 5;
+  let allRecentRecords = [];
+  let logExpanded = false;
+
+  function logItemHtml(r){
+    const d = parseDate(r.date);
+    const st = statusLabel(r.status);
+    const hwMemo = r.homeworkContent || '';
+    const reason = r.statusMemo || r.attitudeMemo || '';
+    const isAbsent = r.status === 'absent';
+    const hwState = hwStateOf(r);
+    // 결석한 날은 숙제 확인 자체가 이뤄지지 않으므로 항상 "미확인"으로 표시
+    const effState = isAbsent ? '미확인' : hwState;
+    const hwTagCls = effState === '완료' ? 'done'
+                    : effState === '미흡' ? 'partial'
+                    : effState === '안함' ? 'missing'
+                    : 'unchecked';
+    const hwTagText = '숙제 ' + hwStateDisplayLabel(effState);
+    return `
+      <div class="log-item">
+        <div class="log-date">
+          <b>${d ? fmtMD(d) : '-'}</b>
+          ${d ? DOW[d.getDay()]+'요일' : ''}
+        </div>
+        <div class="log-body">
+          <div class="log-status-row">
+            <span class="status-pill ${st.cls}">${st.text}</span>
+            <span class="hw-tag ${hwTagCls}">${hwTagText}</span>
+          </div>
+          ${hwMemo ? `<div class="log-hw-memo">${escapeHtml(hwMemo)}</div>` : ''}
+          ${reason ? `<div class="log-reason">${escapeHtml(reason)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
   function renderLog(records){
+    allRecentRecords = records || [];
+    logExpanded = false;
+    renderLogList();
+  }
+
+  function renderLogList(){
     const logCard = document.getElementById('log-card');
-    const list = records || [];
+    const toggleBtn = document.getElementById('log-toggle-btn');
+    const list = allRecentRecords;
     if(!list.length){
       logCard.innerHTML = '<div class="log-empty">출결 기록이 아직 없어요</div>';
+      toggleBtn.style.display = 'none';
       return;
     }
-    logCard.innerHTML = list.map(r=>{
-      const d = parseDate(r.date);
-      const st = statusLabel(r.status);
-      const hwMemo = r.homeworkContent || '';
-      const reason = r.statusMemo || r.attitudeMemo || '';
-      const isAbsent = r.status === 'absent';
-      const hwState = hwStateOf(r);
-      // 결석한 날은 숙제 확인 자체가 이뤄지지 않으므로 항상 "미확인"으로 표시
-      const effState = isAbsent ? '미확인' : hwState;
-      const hwTagCls = effState === '완료' ? 'done'
-                      : effState === '미흡' ? 'partial'
-                      : effState === '안함' ? 'missing'
-                      : 'unchecked';
-      const hwTagText = '숙제 ' + hwStateDisplayLabel(effState);
-      return `
-        <div class="log-item">
-          <div class="log-date">
-            <b>${d ? fmtMD(d) : '-'}</b>
-            ${d ? DOW[d.getDay()]+'요일' : ''}
-          </div>
-          <div class="log-body">
-            <div class="log-status-row">
-              <span class="status-pill ${st.cls}">${st.text}</span>
-              <span class="hw-tag ${hwTagCls}">${hwTagText}</span>
-            </div>
-            ${hwMemo ? `<div class="log-hw-memo">${escapeHtml(hwMemo)}</div>` : ''}
-            ${reason ? `<div class="log-reason">${escapeHtml(reason)}</div>` : ''}
-          </div>
-        </div>
-      `;
-    }).join('');
+    const shown = logExpanded ? list : list.slice(0, LOG_COLLAPSED_COUNT);
+    logCard.innerHTML = shown.map(logItemHtml).join('');
+    if(list.length > LOG_COLLAPSED_COUNT){
+      toggleBtn.style.display = '';
+      toggleBtn.textContent = logExpanded ? '접기' : `최근 ${list.length}건 중 ${list.length - LOG_COLLAPSED_COUNT}건 더 보기`;
+    } else {
+      toggleBtn.style.display = 'none';
+    }
   }
+
+  document.getElementById('log-toggle-btn').addEventListener('click', ()=>{
+    logExpanded = !logExpanded;
+    renderLogList();
+  });
 
   // 보강 탭 + "확인할 내용" 카드가 공용으로 쓰는 보강 목록 렌더링.
   // 예정일이 없는 대기 건은 "일정 조율 중"으로 명확히 표시한다.
