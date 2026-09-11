@@ -387,6 +387,20 @@
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:var(--soft);
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
+  /* 학생 카드 - 수강료 결제 방식 설정 (월정액 결제기준일 / 회차제 결제회차) */
+  .sc-tuition{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
+  .sc-tuition-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .sc-tuition-tabs{display:flex;gap:6px;margin-bottom:8px;}
+  .sc-tuition-tab{flex:1;text-align:center;padding:6px 0;border-radius:7px;border:1px solid var(--line);
+    background:var(--card);font-size:11px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+  .sc-tuition-tab.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .sc-tuition-row{display:flex;gap:6px;align-items:center;}
+  .sc-tuition-row input{width:56px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;
+    font-size:12.5px;text-align:center;font-family:inherit;color:var(--ink);}
+  .sc-tuition-row span{font-size:11.5px;color:var(--ink-soft);}
+  .sc-tuition-row button{flex-shrink:0;border:1px solid var(--teal);background:var(--card);
+    color:var(--teal-dark);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;}
+  .sc-tuition-status{margin-top:6px;font-size:11px;color:var(--teal-dark);}
   /* ===================== 학생 리포트 탭 ===================== */
   .report-search-row{margin-bottom:18px;max-width:340px;}
   .report-search-row .fb-search{width:100%;}
@@ -498,9 +512,13 @@
     border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:center;white-space:nowrap;}
   .tuition-status-toggle.paid{border-color:var(--teal);color:var(--teal-dark);background:var(--soft);}
   .tuition-status-toggle.unpaid{border-color:var(--red);color:var(--red);background:#FBEAE7;}
+  /* 결제 기준일/회차가 아직 안 지난 "결제 예정" — 미납처럼 보이지 않도록 경고색 대신 틸 톤 유지 */
+  .tuition-status-toggle.upcoming{border-color:var(--teal);color:var(--teal-dark);background:var(--card);
+    border-style:dashed;}
   .tuition-row-save{flex-shrink:0;padding:8px 14px;font-size:12.5px;font-weight:700;
     border-radius:8px;border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);cursor:pointer;}
   .tuition-list-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
+  .tuition-summary .upcoming-count{color:var(--teal-dark);font-weight:700;}
   /* ===================== 모바일 상단바 + 오버레이 메뉴 (기본은 숨김) ===================== */
   #mobileTopbar{display:none;}
   #mobileMenuOverlay{display:none;}
@@ -2405,6 +2423,17 @@ function studentTextbookOf(name){
   if(!found) return null;
   return { fileName: found.textbookImageName || '', memo: found.textbookMemo || '' };
 }
+function studentTuitionSettingsOf(name){
+  const found = studentInfoList.find(s => s.name === name);
+  if(!found) return { billingType: '월정액', dueDay: '', sessionCount: '', sessionBaselineDate: '', sessionBaselineCount: '' };
+  return {
+    billingType: found.billingType === '회차' ? '회차' : '월정액',
+    dueDay: found.dueDay || '',
+    sessionCount: found.sessionCount || '',
+    sessionBaselineDate: found.sessionBaselineDate || '',
+    sessionBaselineCount: found.sessionBaselineCount || ''
+  };
+}
 function slotsByStudent(){
   const map = {};
   DAYS.forEach(day=>{
@@ -2437,6 +2466,8 @@ async function renderStudentGrid(){
     const isWithdrawn = status === '퇴원';
     const textbook = studentTextbookOf(stu.name);
     const hasImage = !!(textbook && textbook.fileName);
+    const tuitionInfo = studentTuitionSettingsOf(stu.name);
+    const isSessionBilling = tuitionInfo.billingType === '회차';
     return `<div class="student-card${isWithdrawn?' student-card-withdrawn':''}" data-name="${raw}">
       <div class="sc-top">
         <div>
@@ -2448,6 +2479,30 @@ async function renderStudentGrid(){
         </button>
       </div>
       <div class="sc-slots">${badges}</div>
+      <div class="sc-tuition" data-student-name="${stu.name}">
+        <label class="sc-tuition-label">💳 수강료 결제 방식</label>
+        <div class="sc-tuition-tabs">
+          <div class="sc-tuition-tab sc-billing-monthly${isSessionBilling?'':' on'}" data-billing="월정액">월정액</div>
+          <div class="sc-tuition-tab sc-billing-session${isSessionBilling?' on':''}" data-billing="회차">회차 결제</div>
+        </div>
+        <div class="sc-tuition-row sc-tuition-monthly-row" style="${isSessionBilling?'display:none;':''}">
+          <input type="number" class="sc-tuition-dueday" min="1" max="31" placeholder="1" value="${tuitionInfo.dueDay || ''}">
+          <span>일마다 (빈칸=1일)</span>
+        </div>
+        <div class="sc-tuition-row sc-tuition-session-row" style="${isSessionBilling?'':'display:none;'}">
+          <input type="number" class="sc-tuition-sessioncount" min="1" placeholder="예: 8" value="${tuitionInfo.sessionCount || ''}">
+          <span>회 결제 (선불 — 완료 후 다음 수업 전 결제)</span>
+        </div>
+        <div class="sc-tuition-row sc-tuition-session-row" style="${isSessionBilling?'':'display:none;'}">
+          <input type="date" class="sc-tuition-baselinedate" value="${tuitionInfo.sessionBaselineDate || ''}">
+          <input type="number" class="sc-tuition-baselinecount" min="0" placeholder="0" value="${tuitionInfo.sessionBaselineCount || ''}">
+          <span>기준일 시점 진행 회차 (처음 설정 시 1번만 맞춰주면 이후 자동 계산)</span>
+        </div>
+        <div class="sc-tuition-row">
+          <button type="button" class="sc-tuition-save" data-student-name="${stu.name}">저장</button>
+        </div>
+        <div class="sc-tuition-status"></div>
+      </div>
       <div class="sc-textbook">
         <label class="sc-textbook-label">📘 준비 교재</label>
         ${hasImage ? `
@@ -2482,6 +2537,49 @@ async function renderStudentGrid(){
         showSaveFailToast('재원 상태 변경에 실패했어요. 인터넷 연결을 확인해주세요.');
       }
       await renderStudentGrid();
+    };
+  });
+  el.querySelectorAll('.sc-tuition').forEach(box=>{
+    const monthlyTab = box.querySelector('.sc-billing-monthly');
+    const sessionTab = box.querySelector('.sc-billing-session');
+    const monthlyRow = box.querySelector('.sc-tuition-monthly-row');
+    const sessionRow = box.querySelector('.sc-tuition-session-row');
+    function selectBilling(type){
+      monthlyTab.classList.toggle('on', type==='월정액');
+      sessionTab.classList.toggle('on', type==='회차');
+      monthlyRow.style.display = type==='회차' ? 'none' : '';
+      sessionRow.style.display = type==='회차' ? '' : 'none';
+    }
+    monthlyTab.onclick = ()=> selectBilling('월정액');
+    sessionTab.onclick = ()=> selectBilling('회차');
+  });
+  el.querySelectorAll('.sc-tuition-save').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const name = btn.getAttribute('data-student-name');
+      const box = btn.closest('.sc-tuition');
+      const billingType = box.querySelector('.sc-billing-session').classList.contains('on') ? '회차' : '월정액';
+      const dueDay = box.querySelector('.sc-tuition-dueday').value.trim();
+      const sessionCount = box.querySelector('.sc-tuition-sessioncount').value.trim();
+      const sessionBaselineDate = box.querySelector('.sc-tuition-baselinedate').value;
+      const sessionBaselineCount = box.querySelector('.sc-tuition-baselinecount').value.trim();
+      const statusEl = box.querySelector('.sc-tuition-status');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '저장 중...';
+      try{
+        await apiPost({ action:'setTuitionSettings', name, billingType, dueDay, sessionCount, sessionBaselineDate, sessionBaselineCount });
+        await new Promise(r=>setTimeout(r, 800));
+        await loadStudentInfoList();
+        statusEl.textContent = '저장됨';
+        btn.textContent = original;
+        btn.disabled = false;
+        setTimeout(()=>{ statusEl.textContent = ''; }, 2000);
+      }catch(err){
+        showSaveFailToast('수강료 설정 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+        btn.textContent = original;
+        btn.disabled = false;
+      }
     };
   });
   el.querySelectorAll('.sc-textbook-input').forEach(input=>{
@@ -2961,32 +3059,36 @@ async function renderGradesTestList(){
   }
 }
 /* ============ 수강료 관리 ============ */
+// 결제기준일(월정액)/회차(회차제)를 반영해 "오늘 기준" 진짜 미납/결제예정/완납을 서버에서 계산해온다.
+// 대시보드 카드와 수강료 탭(이번 달)에서 공용으로 사용 — 결제 기준이 아직 안 지난 학생을 "미납"으로
+// 잘못 보여주지 않기 위한 핵심 데이터다.
+async function loadTuitionStatusToday(){
+  try{
+    const rows = await apiGet({action:'tuitionStatusToday'});
+    return Array.isArray(rows) ? rows : [];
+  }catch(e){
+    return [];
+  }
+}
 async function renderTuitionSummary(){
   const el = document.getElementById('tuitionUnpaidFeed');
   const labelEl = document.getElementById('tuitionUnpaidCountLabel');
   if(!el) return;
   await loadStudentInfoList();
-  const yearMonth = toYearMonth(new Date());
-  let rows;
-  try{
-    rows = await apiGet({action:'tuition', yearMonth});
-    if(!Array.isArray(rows)) rows = [];
-  }catch(e){
-    el.innerHTML = `<div class="reason-feed-empty">수강료 현황을 불러오지 못했어요.</div>`;
-    return;
-  }
-  const rowByName = {};
-  rows.forEach(r=>{ rowByName[r.name] = r; });
+  const statusRows = await loadTuitionStatusToday();
+  const statusByName = {};
+  statusRows.forEach(r=>{ statusByName[r.name] = r; });
   const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
-  const unpaid = active.filter(s=> !(rowByName[s.name] && rowByName[s.name].status === '완납'));
-  if(labelEl) labelEl.innerHTML = unpaid.length ? `<span class="badge-count">${unpaid.length}명</span>` : '';
-  if(!unpaid.length){
+  // "결제 예정"(기준일/회차가 아직 안 지남)은 진짜 미납이 아니므로 이 카드 집계에서 제외한다.
+  const overdue = active.filter(s=> (statusByName[s.name] || {}).status === 'overdue');
+  if(labelEl) labelEl.innerHTML = overdue.length ? `<span class="badge-count">${overdue.length}명</span>` : '';
+  if(!overdue.length){
     el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">이번 달 미납 학생이 없어요.</div>`;
     return;
   }
   el.className = 'compact-grid';
-  el.innerHTML = unpaid.map(s=>{
+  el.innerHTML = overdue.map(s=>{
     const meta = [s.school, s.grade].filter(Boolean).join(' · ');
     return `<div class="cc-unpaid">
       <div class="cc-name">${s.name}</div>
@@ -3025,33 +3127,59 @@ async function renderTuitionList(){
   if(!listEl) return;
   await loadStudentInfoList();
   const yearMonth = toYearMonth(tuitionMonth);
+  const isCurrentMonth = (yearMonth === toYearMonth(new Date()));
   let rows;
   try{
     rows = await apiGet({action:'tuition', yearMonth});
     if(!Array.isArray(rows)) rows = [];
     const rowByName = {};
     rows.forEach(r=>{ rowByName[r.name] = r; });
+    // 결제기준일/회차 기준 "오늘" 상태는 이번 달을 보고 있을 때만 의미가 있다(과거·미래 달은 기존처럼 완납/미납만 표시).
+    const statusByName = {};
+    if(isCurrentMonth){
+      (await loadTuitionStatusToday()).forEach(r=>{ statusByName[r.name] = r; });
+    }
     const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
     if(!active.length){
       listEl.innerHTML = `<div class="tuition-list-empty">재원 중인 학생이 없어요.</div>`;
       if(summaryEl) summaryEl.textContent = '';
       return;
     }
-    const paidCount = active.filter(s => rowByName[s.name] && rowByName[s.name].status === '완납').length;
     if(summaryEl){
-      summaryEl.innerHTML = `완납 ${paidCount}명 · <span class="unpaid-count">미납 ${active.length - paidCount}명</span>`;
+      if(isCurrentMonth){
+        const paidCount = active.filter(s => (statusByName[s.name]||{}).status === 'paid').length;
+        const upcomingCount = active.filter(s => (statusByName[s.name]||{}).status === 'upcoming').length;
+        const overdueCount = active.length - paidCount - upcomingCount;
+        summaryEl.innerHTML = `완납 ${paidCount}명`
+          + (upcomingCount ? ` · <span class="upcoming-count">결제예정 ${upcomingCount}명</span>` : '')
+          + ` · <span class="unpaid-count">미납 ${overdueCount}명</span>`;
+      } else {
+        const paidCount = active.filter(s => rowByName[s.name] && rowByName[s.name].status === '완납').length;
+        summaryEl.innerHTML = `완납 ${paidCount}명 · <span class="unpaid-count">미납 ${active.length - paidCount}명</span>`;
+      }
     }
     listEl.innerHTML = active.map(s=>{
       const rec = rowByName[s.name] || {};
-      const status = rec.status === '완납' ? '완납' : '미납';
+      const computed = statusByName[s.name]; // 이번 달일 때만 존재
+      const rawStatus = rec.status === '완납' ? '완납' : '미납';
+      // 버튼 표시: 이번 달이고 아직 결제 기준(날짜/회차)이 안 지났으면 "결제예정"으로 부드럽게 표시,
+      // 그 외에는 기존처럼 완납/미납 그대로. 저장되는 data-status는 항상 완납/미납 둘 중 하나다(토글 클릭 시 그대로 사용).
+      let btnClass = rawStatus === '완납' ? 'paid' : 'unpaid';
+      let btnLabel = rawStatus;
+      let dueNote = '';
+      if(isCurrentMonth && computed && rawStatus !== '완납'){
+        if(computed.status === 'upcoming'){ btnClass = 'upcoming'; btnLabel = '결제예정'; dueNote = computed.label; }
+        else if(computed.status === 'overdue'){ dueNote = computed.label !== '미납' ? computed.label : ''; }
+      }
       const meta = [s.school, s.grade].filter(Boolean).join(' · ');
       return `<div class="tuition-row" data-name="${s.name}">
         <div>
           <div class="tr-name">${s.name}</div>
           ${meta ? `<div class="tr-meta">${meta}</div>` : ''}
+          ${dueNote ? `<div class="tr-meta">${dueNote}</div>` : ''}
         </div>
         <input type="number" class="tuition-amount" placeholder="금액" value="${rec.amount || ''}">
-        <button type="button" class="tuition-status-toggle ${status==='완납'?'paid':'unpaid'}" data-status="${status}">${status}</button>
+        <button type="button" class="tuition-status-toggle ${btnClass}" data-status="${rawStatus}">${btnLabel}</button>
         <input type="date" class="tuition-paiddate" value="${rec.paidDate || ''}">
         <input type="text" class="tuition-memo" placeholder="메모 (선택)" value="${(rec.memo||'').replace(/"/g,'&quot;')}">
         <button type="button" class="tuition-row-save">저장</button>
@@ -3067,6 +3195,7 @@ async function renderTuitionList(){
       const next = btn.getAttribute('data-status') === '완납' ? '미납' : '완납';
       btn.setAttribute('data-status', next);
       btn.textContent = next;
+      btn.classList.remove('upcoming'); // 관리자가 직접 클릭해 바꾼 뒤부터는 결제예정 표시 대신 완납/미납만 보여준다.
       btn.classList.toggle('paid', next==='완납');
       btn.classList.toggle('unpaid', next==='미납');
       const row = btn.closest('.tuition-row');
