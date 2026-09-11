@@ -387,6 +387,16 @@
   .slot-badge{font-size:11.5px;font-weight:700;color:var(--teal-dark);background:var(--soft);
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
+  /* ===================== 학생 리포트 탭 ===================== */
+  .report-search-row{margin-bottom:18px;max-width:340px;}
+  .report-search-row .fb-search{width:100%;}
+  .report-link-btn{display:block;width:100%;margin-top:12px;padding:10px 0;border-radius:9px;
+    border:none;background:var(--teal);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;text-align:center;}
+  .report-link-btn:hover{background:var(--teal-dark);}
+  .report-link-btn-disabled{display:block;width:100%;margin-top:12px;padding:10px 0;border-radius:9px;
+    border:1px dashed var(--line);background:var(--card);color:var(--ink-soft);font-size:12.5px;
+    font-weight:700;text-align:center;}
+  .report-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
   .cal-head button{border:none;background:var(--paper);border-radius:8px;width:32px;height:32px;
     color:var(--teal);cursor:pointer;font-size:15px;}
@@ -849,6 +859,10 @@
         <span class="nav-emoji" aria-hidden="true">📢</span>
         공지사항
       </button>
+      <button class="nav-item" data-page="report">
+        <span class="nav-emoji" aria-hidden="true">🧾</span>
+        리포트
+      </button>
       <button class="nav-item new-badge" data-page="problemBank">
         <span class="nav-emoji" aria-hidden="true">🧮</span>
         문제은행
@@ -889,7 +903,7 @@
   <div id="sidebar">
     <div class="side-brand side-brand-wordmark">
       <img src="assets/logo-wordmark.png" alt="수학의 결">
-    
+
       <div class="side-brand-caption">학생 관리 시스템</div>
     </div>
     <nav class="side-nav" id="sideNav">
@@ -916,6 +930,10 @@
       <button class="nav-item" data-page="notice">
         <span class="nav-emoji" aria-hidden="true">📢</span>
         공지사항
+      </button>
+      <button class="nav-item" data-page="report">
+        <span class="nav-emoji" aria-hidden="true">🧾</span>
+        리포트
       </button>
       <button class="nav-item new-badge" data-page="problemBank">
         <span class="nav-emoji" aria-hidden="true">🧮</span>
@@ -982,6 +1000,7 @@
         <div id="gradesPageEl" style="display:none;"></div>
         <div id="tuitionPageEl" style="display:none;"></div>
         <div id="noticePageEl" style="display:none;"></div>
+        <div id="reportPageEl" style="display:none;"></div>
         <div id="problemBankPageEl" style="display:none;"></div>
       </div>
       <div id="dashboardPage"></div>
@@ -1949,6 +1968,7 @@ const PAGE_TITLES = {
   grades:     "성적 관리",
   tuition:    "수강료 관리",
   notice:     "공지사항",
+  report:     "학생 리포트",
   problemBank: "문제은행"
 };
 let currentPage = 'dashboard';
@@ -2529,6 +2549,57 @@ async function renderStudentGrid(){
         btn.textContent = originalText;
         btn.disabled = false;
       }
+    };
+  });
+}
+/* ============ 학생 리포트 (검색 후 report.html 새 탭으로 열기) ============ */
+async function renderReportPage(){
+  const el = document.getElementById('reportPageEl');
+  if(!el.dataset.built){
+    el.innerHTML = `
+      <div class="report-search-row">
+        <input class="fb-search" id="reportSearchInput" placeholder="학생 이름으로 검색...">
+      </div>
+      <div class="student-grid" id="reportStudentGrid"></div>
+    `;
+    document.getElementById('reportSearchInput').addEventListener('input', renderReportGrid);
+    el.dataset.built = '1';
+  }
+  await loadStudentInfoList();
+  renderReportGrid();
+}
+function renderReportGrid(){
+  const gridEl = document.getElementById('reportStudentGrid');
+  const searchInput = document.getElementById('reportSearchInput');
+  if(!gridEl) return;
+  const q = (searchInput ? searchInput.value : '').trim();
+  const active = studentInfoList
+    .filter(s => s.status === '재원')
+    .filter(s => !q || s.name.indexOf(q) !== -1)
+    .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  if(!active.length){
+    gridEl.innerHTML = `<div class="report-grid-empty">${q ? '검색 결과가 없어요.' : '재원 중인 학생이 없어요.'}</div>`;
+    return;
+  }
+  gridEl.innerHTML = active.map(s=>{
+    const meta = [s.school, s.grade].filter(Boolean).join(' · ');
+    const linkBtn = s.reportId
+      ? `<button class="report-link-btn" data-report-id="${s.reportId}">🔗 리포트 보기</button>`
+      : `<div class="report-link-btn-disabled">리포트 ID 미발급</div>`;
+    return `<div class="student-card">
+      <div class="sc-top">
+        <div>
+          <div class="sc-name">${s.name}</div>
+          ${meta ? `<div class="sc-meta">${meta}</div>` : ''}
+        </div>
+      </div>
+      ${linkBtn}
+    </div>`;
+  }).join('');
+  gridEl.querySelectorAll('.report-link-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.getAttribute('data-report-id');
+      window.open('report.html?id=' + encodeURIComponent(id), '_blank');
     };
   });
 }
@@ -3155,10 +3226,10 @@ function switchPage(page){
   }
   dashPage.style.display = 'none';
   otherPage.style.display = '';
-  // 학생관리/성적관리/수강료/공지사항/문제은행도 대시보드와 같은 방식으로,
+  // 학생관리/성적관리/수강료/공지사항/리포트/문제은행도 대시보드와 같은 방식으로,
   // 각자 자기만의 화면을 유지한 채(탭을 오갈 때 지우지 않고) 다시 방문할 때마다
   // 조용히 최신 내용으로 갱신한다 (2026-09-02, 사용자 요청)
-  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','problemBankPageEl'].forEach(id=>{
+  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','reportPageEl','problemBankPageEl'].forEach(id=>{
     document.getElementById(id).style.display = 'none';
   });
   if(page === 'students'){
@@ -3178,6 +3249,9 @@ function switchPage(page){
   } else if(page === 'notice'){
     document.getElementById('noticePageEl').style.display = '';
     renderNoticePage();
+  } else if(page === 'report'){
+    document.getElementById('reportPageEl').style.display = '';
+    renderReportPage();
   } else if(page === 'problemBank'){
     document.getElementById('problemBankPageEl').style.display = '';
     renderProblemBankPage();
