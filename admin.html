@@ -2407,12 +2407,19 @@ async function renderReasonFeed(cache){
   }).join("");
 }
 let studentInfoList = [];
-async function loadStudentInfoList(){
+let studentInfoListLoaded = false; // 2026-09: 탭 전환마다 매번 새로 받아오던 것을 캐시로 바꿔 로딩 속도 개선
+// 학생정보는 관리자가 직접 수정할 때 말고는 거의 안 바뀌는 데이터라, 이미 한 번 받아왔으면 그걸 재사용한다.
+// force=true를 주면(학생정보를 실제로 수정/저장한 직후) 무조건 다시 받아온다.
+async function loadStudentInfoList(force){
+  if(studentInfoListLoaded && !force) return studentInfoList;
   try{
     studentInfoList = await apiGet({action:"studentInfoList"});
+    studentInfoListLoaded = true;
   }catch(e){
     studentInfoList = [];
+    studentInfoListLoaded = false;
   }
+  return studentInfoList;
 }
 function studentStatusOf(name){
   const found = studentInfoList.find(s => s.name === name);
@@ -2536,6 +2543,7 @@ async function renderStudentGrid(){
       }catch(err){
         showSaveFailToast('재원 상태 변경에 실패했어요. 인터넷 연결을 확인해주세요.');
       }
+      await loadStudentInfoList(true); // 방금 바뀐 상태를 캐시에도 반영
       await renderStudentGrid();
     };
   });
@@ -2570,7 +2578,7 @@ async function renderStudentGrid(){
       try{
         await apiPost({ action:'setTuitionSettings', name, billingType, dueDay, sessionCount, sessionBaselineDate, sessionBaselineCount });
         await new Promise(r=>setTimeout(r, 800));
-        await loadStudentInfoList();
+        await loadStudentInfoList(true);
         statusEl.textContent = '저장됨';
         btn.textContent = original;
         btn.disabled = false;
@@ -2603,7 +2611,7 @@ async function renderStudentGrid(){
         });
         await apiPost({ action:'uploadTextbookImage', name, fileName: file.name, base64Data, mimeType: file.type });
         await new Promise(r=>setTimeout(r, 4000));
-        await loadStudentInfoList();
+        await loadStudentInfoList(true);
         await renderStudentGrid();
       }catch(err){
         statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
@@ -2620,7 +2628,7 @@ async function renderStudentGrid(){
       try{
         await apiPost({ action:'deleteTextbookImage', name });
         await new Promise(r=>setTimeout(r, 1500));
-        await loadStudentInfoList();
+        await loadStudentInfoList(true);
         await renderStudentGrid();
       }catch(err){
         showSaveFailToast('이미지 삭제에 실패했어요. 인터넷 연결을 확인해주세요.');
@@ -2640,6 +2648,7 @@ async function renderStudentGrid(){
       try{
         await apiPost({ action:'setTextbookMemo', name, memo });
         await new Promise(r=>setTimeout(r, 1000));
+        await loadStudentInfoList(true);
         btn.textContent = '저장됨';
         setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 1500);
       }catch(err){
@@ -3074,8 +3083,8 @@ async function renderTuitionSummary(){
   const el = document.getElementById('tuitionUnpaidFeed');
   const labelEl = document.getElementById('tuitionUnpaidCountLabel');
   if(!el) return;
-  await loadStudentInfoList();
-  const statusRows = await loadTuitionStatusToday();
+  // 서로 의존관계 없는 두 요청을 동시에 보낸다 (기존엔 순서대로 보내서 왕복시간이 두 배로 걸렸음).
+  const [, statusRows] = await Promise.all([loadStudentInfoList(), loadTuitionStatusToday()]);
   const statusByName = {};
   statusRows.forEach(r=>{ statusByName[r.name] = r; });
   const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
@@ -3125,20 +3134,22 @@ async function renderTuitionList(){
   const listEl = document.getElementById('tuitionList');
   const summaryEl = document.getElementById('tuitionSummaryLine');
   if(!listEl) return;
-  await loadStudentInfoList();
   const yearMonth = toYearMonth(tuitionMonth);
   const isCurrentMonth = (yearMonth === toYearMonth(new Date()));
   let rows;
   try{
-    rows = await apiGet({action:'tuition', yearMonth});
-    if(!Array.isArray(rows)) rows = [];
+    // 서로 의존관계 없는 요청들을 동시에 보낸다 (기존엔 순서대로 보내서 왕복시간이 최대 3배 걸렸음).
+    const [, tuitionRows, statusRows] = await Promise.all([
+      loadStudentInfoList(),
+      apiGet({action:'tuition', yearMonth}),
+      isCurrentMonth ? loadTuitionStatusToday() : Promise.resolve([])
+    ]);
+    rows = Array.isArray(tuitionRows) ? tuitionRows : [];
     const rowByName = {};
     rows.forEach(r=>{ rowByName[r.name] = r; });
     // 결제기준일/회차 기준 "오늘" 상태는 이번 달을 보고 있을 때만 의미가 있다(과거·미래 달은 기존처럼 완납/미납만 표시).
     const statusByName = {};
-    if(isCurrentMonth){
-      (await loadTuitionStatusToday()).forEach(r=>{ statusByName[r.name] = r; });
-    }
+    statusRows.forEach(r=>{ statusByName[r.name] = r; });
     const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
     if(!active.length){
       listEl.innerHTML = `<div class="tuition-list-empty">재원 중인 학생이 없어요.</div>`;
