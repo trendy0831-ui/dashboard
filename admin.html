@@ -4006,7 +4006,13 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   populateStudentSelect();
   renderAll();
   renderCalendar();
-  switchPage('dashboard'); // 2026-09: 첫 화면을 출결 관리 대신 대시보드로 시작 (사용자 요청)
+  // 2026-09: 첫 화면을 출결 관리 대신 대시보드로 시작 (사용자 요청) — 단, 이 초기 로딩이
+  // 끝나기 전에 사용자가 이미 다른 탭(학생관리/수강료 등)을 눌렀다면 그 클릭을 덮어쓰지 않는다.
+  // (버그: 예전엔 무조건 대시보드로 되돌려서, 로딩 중 탭을 누르면 화면이 다시 대시보드로
+  // 리셋되어 "그 탭이 영영 안 열린다/느리다"처럼 보였음 — 2026-09-13 수정)
+  if(currentPage === 'dashboard'){
+    switchPage('dashboard');
+  }
   setSyncStatus('ok');
   startAutoRefresh();
   loadHolidays().then(()=>{ if(!editMode) renderCardView(); });
