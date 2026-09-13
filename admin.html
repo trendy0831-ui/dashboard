@@ -898,7 +898,7 @@
     </div>
     <div class="tm-body">
       <div class="tm-demo"><div>사이드바</div><div class="d-btn">버튼</div><div class="d-soft">배지·강조</div></div>
-      <div class="tm-sec">테마에서 고르기</div>
+      <div class="tm-sec">최근 사용한 색상</div>
       <div class="tm-swatches" id="themeSwatches"></div>
       <div class="tm-sec">직접 고르기</div>
       <label class="tm-custom">
@@ -3842,19 +3842,12 @@ function renderAll(){
 // 저장된 색은 시트의 "설정" 탭(action=settings)에 두어 모든 기기에서 같은 색이 보이고,
 // 로딩 순간의 깜빡임을 줄이기 위해 localStorage에도 마지막 값을 캐시해 둔다.
 const THEME_DEFAULT = '#0C4642';
-const THEME_PRESETS = [
-  { hex:'#0C4642', label:'딥틸(기본)' },
-  { hex:'#224F42', label:'틸' },
-  { hex:'#0F3D3A', label:'짙은 틸' },
-  { hex:'#155E52', label:'포레스트 틸' },
-  { hex:'#018875', label:'밝은 틸' },
-  { hex:'#027A94', label:'청록' },
-  { hex:'#2F5D8A', label:'남색' },
-  { hex:'#5B4B8A', label:'보라' },
-  { hex:'#8A5A2B', label:'브라운' },
-  { hex:'#37474F', label:'먹색' }
-];
+// 2026-09: 고정 프리셋 대신 "최근에 실제로 저장한 색"을 서버(Code.gs)에서 받아와 스와치로 보여준다
+// (최대 10개, 최근순). 처음 로딩 때 깜빡임 없이 뭔가 보이도록 기본값으로 하나 채워두고,
+// loadTheme()이 서버에서 실제 이력을 받아오면 이 배열을 교체한다.
+let THEME_RECENT = [THEME_DEFAULT];
 const THEME_LS_KEY = 'ikk_theme_color';
+const THEME_RECENT_LS_KEY = 'ikk_theme_recent';
 let themeCurrent = THEME_DEFAULT;   // 저장돼 있는(적용 중인) 색
 let themePreview = THEME_DEFAULT;   // 모달에서 고르는 중인 색
 
@@ -3946,14 +3939,25 @@ function themeSetPreview_(hex){
   const warn = document.getElementById('themeWarn');
   if(warn) warn.classList.toggle('show', themeIsLight_(themePreview));
 }
-function openThemeModal(){
+// "최근 사용한 색상" 스와치 목록을 다시 그린다 — 모달을 열 때, 그리고 새 색을 저장한 직후에도
+// 최신 상태로 갱신해야 하므로(고정 프리셋이 아니라 계속 바뀌는 목록이라) 매번 통째로 다시 그린다.
+function renderThemeSwatches(){
   const wrap = document.getElementById('themeSwatches');
-  if(wrap && !wrap.children.length){
-    wrap.innerHTML = THEME_PRESETS.map(p=>
-      `<button type="button" class="tm-sw" data-hex="${p.hex}"><i style="background:${p.hex}"></i><span>${p.label}</span></button>`
-    ).join('');
-    wrap.querySelectorAll('.tm-sw').forEach(b=>{ b.onclick = ()=> themeSetPreview_(b.getAttribute('data-hex')); });
-  }
+  if(!wrap) return;
+  wrap.innerHTML = THEME_RECENT.map(hex=>
+    `<button type="button" class="tm-sw" data-hex="${hex}"><i style="background:${hex}"></i><span>${hex}</span></button>`
+  ).join('');
+  wrap.querySelectorAll('.tm-sw').forEach(b=>{ b.onclick = ()=> themeSetPreview_(b.getAttribute('data-hex')); });
+}
+// 새로 저장한 색을 THEME_RECENT 맨 앞으로 올리고(중복 제거), 최대 10개까지만 남긴다.
+// — 서버(Code.gs saveSettings_)와 같은 규칙이라, 서버 응답을 다시 안 받아와도 화면이 바로 최신 상태로 보인다.
+function themeRecentAdd_(hex){
+  const upper = hex.toUpperCase();
+  THEME_RECENT = [upper, ...THEME_RECENT.filter(c=>c.toUpperCase()!==upper)].slice(0,10);
+  try{ localStorage.setItem(THEME_RECENT_LS_KEY, JSON.stringify(THEME_RECENT)); }catch(e){}
+}
+function openThemeModal(){
+  renderThemeSwatches();
   themeSetPreview_(themeCurrent);
   document.getElementById('themeModal').classList.add('open');
   const overlay = document.getElementById('mobileMenuOverlay');
@@ -3969,6 +3973,8 @@ async function saveTheme(){
   try{
     await apiPost({ action:'saveSettings', settings:{ themeColor: themePreview } });
     themeCurrent = themePreview;
+    themeRecentAdd_(themeCurrent);
+    renderThemeSwatches();
     try{ localStorage.setItem(THEME_LS_KEY, themeCurrent); }catch(e){}
     closeThemeModal(false);
   }catch(e){
@@ -3981,6 +3987,10 @@ async function loadTheme(){
   try{
     const data = await apiGet({action:'settings'});
     const hex = data && data.themeColor ? String(data.themeColor) : THEME_DEFAULT;
+    if(data && Array.isArray(data.recentColors) && data.recentColors.length){
+      THEME_RECENT = data.recentColors.map(c=>String(c).toUpperCase()).slice(0,10);
+      try{ localStorage.setItem(THEME_RECENT_LS_KEY, JSON.stringify(THEME_RECENT)); }catch(e){}
+    }
     themeCurrent = applyTheme(hex);
     try{ localStorage.setItem(THEME_LS_KEY, themeCurrent); }catch(e){}
   }catch(e){
@@ -3991,6 +4001,8 @@ async function loadTheme(){
 try{
   const cached = localStorage.getItem(THEME_LS_KEY);
   if(cached){ themeCurrent = applyTheme(cached); }
+  const cachedRecent = localStorage.getItem(THEME_RECENT_LS_KEY);
+  if(cachedRecent){ const arr = JSON.parse(cachedRecent); if(Array.isArray(arr) && arr.length) THEME_RECENT = arr; }
 }catch(e){}
 document.querySelectorAll('[data-theme-open]').forEach(b=>{ b.onclick = openThemeModal; });
 document.getElementById('themeClose').onclick = ()=> closeThemeModal(true);
