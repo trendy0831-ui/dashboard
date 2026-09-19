@@ -796,7 +796,13 @@
   .ws-section-label{color:#fff;font-size:12.5px;font-weight:700;opacity:.8;margin-top:6px;}
 
   .ws-page{width:210mm;min-height:297mm;background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.28);
-    padding:8mm;position:relative;box-sizing:border-box;}
+    padding:8mm;position:relative;box-sizing:border-box;
+    /* 2026-09-19: 문제지 인쇄 시 이미지가 큰 문제가 있으면 내용이 하단 로고/페이지 영역과
+       겹치던 문제 수정. 기존에는 .ws-foot이 position:absolute로 페이지 하단에 고정되어
+       있어서, .ws-grid 내용이 페이지 높이를 넘어가면 그 위로 겹쳐 보였다. .ws-page를
+       flex column으로 바꾸고 .ws-foot을 일반 흐름(margin-top:auto)으로 옮겨서, 내용이
+       길어지면 페이지 자체가 아래로 더 늘어나고 footer는 항상 내용 "다음"에 오도록 함. */
+    display:flex;flex-direction:column;}
   .ws-cover{display:flex;flex-direction:column;}
   .ws-cover-title{font-size:32px;font-weight:900;color:var(--ink);margin-top:130px;}
   .ws-cover-sub2{font-size:16px;color:var(--ink-soft);margin-top:8px;}
@@ -823,8 +829,8 @@
   .ws-badge{position:absolute;top:6px;left:6px;background:var(--teal);color:#fff;font-size:12px;
     font-weight:800;width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;z-index:2;}
   .ws-badge.sm{position:static;margin-bottom:8px;width:auto;height:auto;padding:4px 9px;border-radius:7px;display:inline-flex;}
-  .ws-foot{position:absolute;bottom:5mm;left:8mm;right:8mm;display:flex;align-items:center;
-    justify-content:space-between;font-size:11px;color:var(--ink-soft);}
+  .ws-foot{display:flex;align-items:center;justify-content:space-between;
+    font-size:11px;color:var(--ink-soft);margin-top:auto;padding-top:6mm;flex-shrink:0;}
   .ws-foot-spacer{width:26mm;}
   .ws-foot-page{flex:1;text-align:center;}
   .ws-foot-logo{width:26mm;display:flex;justify-content:flex-end;}
