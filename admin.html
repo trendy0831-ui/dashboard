@@ -3722,6 +3722,7 @@ function buildPbPrintView(){
 
   const withSol = ids.filter(id => meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length);
   if(withSol.length){
+    const worksheetPageCount = Math.ceil(ids.length / 4); // 2026-09-19: 해설지 페이지 번호를 문제지 뒤에 이어서 매기기 위해 필요
     html += `<div class="ws-section-label">해설지 (교사용 · 배포 전 분리)</div>`;
     html += `<div class="ws-page ws-solution"><div class="ws-head"><span>수학 · 선택 문제 해설</span></div><div class="ws-sol-flow">`;
     ids.forEach((id,k)=>{
@@ -3732,7 +3733,7 @@ function buildPbPrintView(){
       });
       html += `</div>`;
     });
-    html += `</div>${pbFooterHTML('', '교사용 · 배포 전 분리')}</div>`;
+    html += `</div>${pbFooterHTML(worksheetPageCount + 1, '교사용 · 배포 전 분리')}</div>`;
   }
 
   document.getElementById('pbPrintPages').innerHTML = html;
