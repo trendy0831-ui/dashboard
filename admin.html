@@ -574,6 +574,22 @@
   .tm-btn.primary{background:var(--teal);color:#fff;border-color:var(--teal);}
   .tm-btn:disabled{opacity:.6;cursor:default;}
 
+  /* 2026-09-19: 해설 "조판 편집" 모달 — 테마 설정 모달(.tm-*)과 같은 박스 스타일을 그대로 쓴다. */
+  #pbTypesetModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;
+    background:rgba(20,30,26,.45);}
+  #pbTypesetModal.open{display:flex;}
+  .pts-box{width:720px;}
+  .pts-src{display:flex;gap:14px;margin-bottom:14px;}
+  .pts-src img{width:140px;border-radius:8px;border:1px solid var(--line);flex-shrink:0;object-fit:contain;background:var(--paper);}
+  .pts-src .pts-hint{font-size:12.5px;color:var(--ink-soft);line-height:1.7;}
+  .pts-textarea{width:100%;min-height:220px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    font-size:14px;line-height:1.8;font-family:inherit;resize:vertical;box-sizing:border-box;}
+  .pts-textarea:focus{outline:none;border-color:var(--teal);}
+  .pts-preview{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--paper);
+    font-size:13.5px;line-height:1.85;min-height:40px;}
+  .pts-preview .ts-answer{margin-top:6px;font-weight:800;color:var(--teal-dark);background:var(--soft);
+    padding:4px 9px;border-radius:7px;display:inline-block;}
+
   @media (max-width: 860px){
     :root{--sidebar-w:100%;font-size:15px;}
     #shell{flex-direction:column;}
@@ -763,6 +779,11 @@
   .pb-tag.level1{background:var(--soft);color:var(--teal-dark);}
   .pb-tag.nosol{background:#EEF0F1;color:#6B7B77;}
   .pb-tag.grade{background:var(--teal);color:#fff;}
+  /* 2026-09-19: 해설을 손글씨 사진 대신 텍스트/수식으로 옮겨 적을 수 있는 "조판" 편집 버튼.
+     아직 안 옮긴 문제는 점선 테두리로, 이미 옮긴 문제는 틸 색으로 채워서 한눈에 구분되게 함. */
+  .pb-tag.pb-typeset-btn{cursor:pointer;background:var(--card);border:1px dashed var(--line);color:var(--ink-soft);}
+  .pb-tag.pb-typeset-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
+  .pb-tag.pb-typeset-btn.on{background:var(--soft);color:var(--teal-dark);border:1px solid var(--teal);}
 
   .nav-item.new-badge::after{content:"NEW";position:absolute;right:10px;top:9px;font-size:8.5px;
     font-weight:800;background:var(--gold);color:#1d312b;padding:1px 5px;border-radius:20px;}
@@ -856,6 +877,12 @@
   .ws-solution .ws-sol-col{flex:1;min-width:0;}
   .ws-sol-item{margin-bottom:10mm;}
   .ws-sol-item img{width:100%;border-radius:6px;border:1px solid var(--line);margin-bottom:4mm;}
+  /* 2026-09-19: 손글씨 사진 대신 텍스트/수식으로 조판한 해설 스타일 (문제은행 "조판해설" 필드가
+     채워진 문제만 이 스타일로 인쇄되고, 없는 문제는 기존처럼 사진으로 인쇄됨) */
+  .ws-sol-item.typeset{font-size:12.5px;line-height:1.85;color:var(--ink);}
+  .ws-sol-item.typeset .ts-step{margin-bottom:5px;}
+  .ws-sol-item.typeset .ts-answer{margin-top:7px;font-weight:800;color:var(--teal-dark);
+    background:var(--soft);padding:5px 10px;border-radius:7px;display:inline-block;}
 
   /* ===== 다크 테마 보정: 밝은 파스텔 배경 카드 위의 글자는 항상 어둡게 고정 ===== */
   .quad-btn.att-late,.quad-btn.att-absent,.quad-btn.hw-partial,.quad-btn.hw-missing{color:#1B3A30;}
@@ -878,6 +905,15 @@
     .ws-page{box-shadow:none;page-break-after:always;margin:0 auto;}
   }
 </style>
+<!-- 2026-09-19: 해설을 손글씨 사진 대신 텍스트/수식으로 "조판"한 경우(문제은행 조판해설 필드),
+     인쇄 미리보기에서 수식을 깔끔하게 렌더링하기 위한 라이브러리. startup.typeset:false로
+     페이지 로드시 자동으로 전체 문서를 훑지 않도록 막아두고(다른 화면 텍스트의 "$" 기호가
+     실수로 수식으로 인식되는 걸 방지), 조판 해설을 그릴 때만 MathJax.typesetPromise로
+     해당 영역만 지정해서 렌더링한다. -->
+<script>
+  window.MathJax = { tex: { inlineMath: [['$','$']] }, startup: { typeset: false } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
 </head>
 <body>
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
@@ -3564,7 +3600,9 @@ function renderPbCards(){
           <span class="pb-tag">${p.unitSub || ''}</span>
           <span class="pb-tag ${pbLevelClass(p.lv)}">${p.level || ''} · LV${p.lv || ''}</span>
           <span class="pb-tag">${p.type || ''}</span>
-          ${p.hasSolution ? '' : '<span class="pb-tag nosol">해설 준비중</span>'}
+          ${p.hasSolution
+            ? `<span class="pb-tag pb-typeset-btn${p.solutionTypeset && p.solutionTypeset.trim() ? ' on' : ''}" data-id="${p.id}">${p.solutionTypeset && p.solutionTypeset.trim() ? '✓ 조판됨' : '✎ 조판 편집'}</span>`
+            : '<span class="pb-tag nosol">해설 준비중</span>'}
         </div>
       </div>
     </div>
@@ -3579,8 +3617,55 @@ function renderPbCards(){
       card.classList.toggle('sel');
       updatePbSticky();
     };
+    const tsBtn = card.querySelector('.pb-typeset-btn');
+    if(tsBtn){
+      tsBtn.onclick = (e)=>{ e.stopPropagation(); openPbTypesetModal(card.dataset.id); };
+    }
   });
   applyPbFilters();
+}
+// 2026-09-19: 해설 "조판 편집" 모달. 손글씨 이미지를 옆에 보여주면서 텍스트/수식으로
+// 옮겨 적게 하고, 저장 시 no-cors POST로 서버(시트)에 직접 기록한다(파일 업로드와 동일한
+// 방식 — 응답을 읽을 수 없으니 결과를 기다리지 않고 서버가 바로 기록).
+let pbTypesetTargetId = null;
+function openPbTypesetModal(id){
+  const p = pbProblems.find(x=>x.id===id);
+  if(!p) return;
+  pbTypesetTargetId = id;
+  const thumb = document.getElementById('ptsThumb');
+  // 손글씨 원본과 비교하면서 옮길 수 있도록, 해설 이미지가 있으면 그걸(없으면 문제 이미지) 보여준다.
+  thumb.src = (p.solutionPrintUrls && p.solutionPrintUrls[0]) || p.thumbUrl || '';
+  document.getElementById('ptsTextarea').value = p.solutionTypeset || '';
+  updatePbTypesetPreview();
+  document.getElementById('pbTypesetModal').classList.add('open');
+}
+function closePbTypesetModal(){
+  document.getElementById('pbTypesetModal').classList.remove('open');
+  pbTypesetTargetId = null;
+}
+function updatePbTypesetPreview(){
+  const text = document.getElementById('ptsTextarea').value;
+  const preview = document.getElementById('ptsPreview');
+  preview.innerHTML = text.trim() ? renderSolutionTypesetBody(text) : '<span style="color:var(--ink-soft)">미리보기가 여기 나와요</span>';
+  waitForMathJaxTypeset(preview);
+}
+async function savePbTypesetModal(){
+  if(!pbTypesetTargetId) return;
+  const id = pbTypesetTargetId;
+  const text = document.getElementById('ptsTextarea').value.trim();
+  const btn = document.getElementById('ptsSave');
+  btn.disabled = true; btn.textContent = '저장 중...';
+  try{
+    await apiPost({ action:'saveProblemSolutionTypeset', id, text });
+    const p = pbProblems.find(x=>x.id===id);
+    if(p) p.solutionTypeset = text;
+    closePbTypesetModal();
+    renderPbCards();
+  }catch(err){
+    showSaveFailToast('조판 해설 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+  }finally{
+    btn.disabled = false; btn.textContent = '저장';
+  }
 }
 function pbVisibleIds(){
   return Array.from(document.querySelectorAll('#pbGrid .pb-card:not(.hidden)')).map(c=>c.dataset.id);
@@ -3694,15 +3779,61 @@ function pbFooterHTML(pageLabel, rightText){
   const logoPart = `<img src="${PB_LOGO_URL}">`;
   return `<div class="ws-foot"><div class="ws-foot-spacer"></div><div class="ws-foot-page">${pageLabel}</div><div class="ws-foot-logo">${logoPart}</div></div>`;
 }
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+// 2026-09-19: 해설 텍스트("조판해설")를 줄 단위로 나눠서 HTML로 바꾼다. "정답"으로
+// 시작하는 줄은 강조 박스로 보여준다. 수식 자체($...$)는 여기서 건드리지 않고 그대로
+// 두었다가, MathJax가 나중에 한 번에 렌더링한다.
+function renderSolutionTypesetBody(text){
+  return String(text || '').split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{
+    const cls = /^정답/.test(line) ? 'ts-answer' : 'ts-step';
+    return `<div class="${cls}">${escapeHtml(line)}</div>`;
+  }).join('');
+}
+// 문제 하나의 해설 항목 HTML을 만든다. 조판 텍스트가 있으면 그걸로, 없으면 기존처럼
+// 손글씨 사진으로 — 문제은행 전체에서 아직 일부만 조판돼 있어도 자연스럽게 섞여서 인쇄된다.
+function pbSolutionItemHTML(id, meta, num){
+  const p = meta[id];
+  const hasTypeset = p.solutionTypeset && p.solutionTypeset.trim();
+  if(hasTypeset){
+    return {
+      cls: 'ws-sol-item typeset',
+      body: `<div class="ws-badge sm">${num}</div>${renderSolutionTypesetBody(p.solutionTypeset)}`,
+      isTypeset: true
+    };
+  }
+  return {
+    cls: 'ws-sol-item',
+    body: `<div class="ws-badge sm">${num}</div>` + (p.solutionPrintUrls || []).map(u=>`<img src="${u}">`).join(''),
+    isTypeset: false
+  };
+}
+// MathJax 스크립트가 아직 로딩 중일 수 있으므로(startup.typeset:false로 자동 렌더링은
+// 꺼뒀음), 준비될 때까지 기다렸다가 지정한 요소 안의 수식만 렌더링한다.
+function waitForMathJaxTypeset(el){
+  return new Promise(resolve=>{
+    const run = ()=>{
+      if(window.MathJax && MathJax.typesetPromise){
+        MathJax.typesetPromise([el]).then(resolve).catch(resolve);
+      } else {
+        setTimeout(run, 100);
+      }
+    };
+    run();
+  });
+}
 // 2026-09-19: 해설지는 문제지처럼 "몇 개씩" 딱 정해서 페이지를 끊지 않고, 내용을 계속
 // 이어 붙이다가 실제 여백이 다 차는 지점에서 자동으로 다음 페이지로 넘어가야 함 — 대신 그렇게
 // 나뉜 모든 페이지가 진짜 별도의 .ws-page가 되어야 각 페이지에 정확한 번호가 붙는다.
 // 문제는 해설 이미지 개수/높이가 문제마다 달라서 "몇 개가 한 페이지에 들어갈지" 미리 알 수
 // 없다는 점 — 그래서 실제로 화면 밖(숨김)에 한 번 렌더링해서 각 해설 항목의 실제 높이를
 // 측정한 뒤, 그 값을 기준으로 페이지를 나눈다. 화면에 보이는 2단 배치/로고 등 디자인은
-// 그대로 유지되고, 페이지를 나누는 지점과 페이지 번호만 정확해지는 방식.
+// 그대로 유지되고, 페이지를 나누는 지점과 페이지 번호만 정확해지는 방식. (조판된 해설은
+// 이미지 대신 텍스트/수식으로 렌더링되고, 높이 측정 전에 MathJax 렌더링까지 끝내고 잰다.)
 async function layoutPbSolutionPages(ids, meta, startPageNum){
-  const solIds = ids.filter(id => meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length);
+  const solIds = ids.filter(id => (meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length) ||
+    (meta[id].solutionTypeset && meta[id].solutionTypeset.trim()));
   if(!solIds.length) return '';
 
   const MM_PX = 96 / 25.4; // CSS 스펙상 1mm = 96/25.4px로 항상 고정 (화면 배율과 무관)
@@ -3713,19 +3844,24 @@ async function layoutPbSolutionPages(ids, meta, startPageNum){
   const probe = document.createElement('div');
   probe.style.cssText = `position:fixed;left:-9999px;top:0;visibility:hidden;width:${colWidthMm}mm;`;
   document.body.appendChild(probe);
+  let anyTypeset = false;
   const itemMeta = solIds.map(id=>{
     const wrap = document.createElement('div');
-    wrap.className = 'ws-sol-item';
-    wrap.innerHTML = `<div class="ws-badge sm">${ids.indexOf(id)+1}</div>` +
-      meta[id].solutionPrintUrls.map(u=>`<img src="${u}">`).join('');
+    const info = pbSolutionItemHTML(id, meta, ids.indexOf(id)+1);
+    if(info.isTypeset) anyTypeset = true;
+    wrap.className = info.cls;
+    wrap.innerHTML = info.body;
     probe.appendChild(wrap);
     return { id, el: wrap };
   });
 
-  // 이미지 로딩이 끝나야 실제 높이를 알 수 있으므로 전부 로드될 때까지 대기
+  // 이미지 로딩(있으면)과 MathJax 수식 렌더링(있으면)이 끝나야 실제 높이를 알 수 있다.
   const imgs = Array.from(probe.querySelectorAll('img'));
-  await Promise.all(imgs.map(img => img.complete ? Promise.resolve() :
-    new Promise(res => { img.onload = res; img.onerror = res; })));
+  await Promise.all([
+    Promise.all(imgs.map(img => img.complete ? Promise.resolve() :
+      new Promise(res => { img.onload = res; img.onerror = res; }))),
+    anyTypeset ? waitForMathJaxTypeset(probe) : Promise.resolve()
+  ]);
 
   const heights = itemMeta.map(({el})=>{
     const rect = el.getBoundingClientRect();
@@ -3775,8 +3911,8 @@ async function layoutPbSolutionPages(ids, meta, startPageNum){
 
   const renderCol = (colIds)=> colIds.map(id=>{
     const num = ids.indexOf(id) + 1;
-    const imgs = meta[id].solutionPrintUrls.map(u=>`<img src="${u}">`).join('');
-    return `<div class="ws-sol-item"><div class="ws-badge sm">${num}</div>${imgs}</div>`;
+    const info = pbSolutionItemHTML(id, meta, num);
+    return `<div class="${info.cls}">${info.body}</div>`;
   }).join('');
 
   let out = '';
@@ -3830,7 +3966,8 @@ async function buildPbPrintView(){
     html += `</div>${pbFooterHTML(Math.floor(i/4)+1, '수학의 결')}</div>`;
   }
 
-  const withSol = ids.filter(id => meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length);
+  const withSol = ids.filter(id => (meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length) ||
+    (meta[id].solutionTypeset && meta[id].solutionTypeset.trim()));
   if(withSol.length){
     const worksheetPageCount = Math.ceil(ids.length / 4); // 해설지 페이지 번호를 문제지 뒤에 이어서 매기기 위해 필요
     html += `<div class="ws-section-label">해설지 (교사용 · 배포 전 분리)</div>`;
@@ -3838,7 +3975,12 @@ async function buildPbPrintView(){
     document.getElementById('pbPrintPages').innerHTML = html;
     document.getElementById('pbPrintView').classList.add('show');
     const solHtml = await layoutPbSolutionPages(ids, meta, worksheetPageCount + 1);
-    document.getElementById('pbPrintPages').insertAdjacentHTML('beforeend', solHtml);
+    const pagesEl = document.getElementById('pbPrintPages');
+    pagesEl.insertAdjacentHTML('beforeend', solHtml);
+    // 조판된(텍스트/수식) 해설이 있으면, 실제로 화면에 꽂힌 뒤에 MathJax로 수식을 그려준다.
+    if(withSol.some(id => meta[id].solutionTypeset && meta[id].solutionTypeset.trim())){
+      await waitForMathJaxTypeset(pagesEl);
+    }
     return;
   }
 
@@ -3932,6 +4074,26 @@ async function renderProblemBankPage(){
         </div>
         <div id="pbPrintPages"></div>
       </div>
+      <div id="pbTypesetModal" role="dialog" aria-modal="true">
+        <div class="tm-box pts-box">
+          <div class="tm-head"><h2>해설 조판 편집</h2><button class="tm-close" id="ptsClose">&times;</button></div>
+          <div class="tm-body">
+            <div class="pts-src">
+              <img id="ptsThumb" src="" alt="">
+              <div class="pts-hint">손글씨 해설을 보면서 텍스트/수식으로 옮겨 적어주세요. 수식은 <code>$ $</code> 사이에 넣으면 돼요 (예: <code>$\\frac{1}{2}x^2$</code>). 줄을 바꾸면 한 단계씩 나뉘어 보이고, "정답"으로 시작하는 줄은 강조 박스로 표시돼요.<br><br>비워두고 저장하면 기존처럼 손글씨 사진으로 인쇄돼요.</div>
+            </div>
+            <textarea class="pts-textarea" id="ptsTextarea" placeholder="예)&#10;점 A(6,0)을 대입하면&#10;$0=\\frac{1}{4}\\cdot 36+6a \\Rightarrow a=-\\frac{3}{2}$&#10;정답 ① $\\frac{27}{4}$"></textarea>
+            <div class="pts-preview" id="ptsPreview"></div>
+          </div>
+          <div class="tm-foot">
+            <small>이 문제에만 적용돼요</small>
+            <div class="acts">
+              <button class="tm-btn" id="ptsCancel">취소</button>
+              <button class="tm-btn primary" id="ptsSave">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
     document.getElementById('pbFGrade').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
     document.getElementById('pbFSemester').addEventListener('change', ()=>{ populatePbUnitFilters(); applyPbFilters(); });
@@ -3973,6 +4135,13 @@ async function renderProblemBankPage(){
       document.getElementById('pbPrintView').classList.remove('show');
     };
     document.getElementById('pbPrintNow').onclick = ()=>{ window.print(); };
+    document.getElementById('ptsClose').onclick = closePbTypesetModal;
+    document.getElementById('ptsCancel').onclick = closePbTypesetModal;
+    document.getElementById('pbTypesetModal').addEventListener('click', (e)=>{
+      if(e.target.id === 'pbTypesetModal') closePbTypesetModal();
+    });
+    document.getElementById('ptsTextarea').addEventListener('input', updatePbTypesetPreview);
+    document.getElementById('ptsSave').onclick = savePbTypesetModal;
     el.dataset.built = '1';
   }
 
