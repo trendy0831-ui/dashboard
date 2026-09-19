@@ -1073,7 +1073,7 @@ const pbAutoAdded = new Set(); // 자동 구성으로 추가된 문제 id (뱃�
 // 필터링/선택 처리에서는 이 맵을 바로 조회한다. (2026-09-19)
 let pbCardMap = new Map();
 const PB_LOGO_URL = "assets/logo-rounded.png"; // 2026-09: 초기 로딩 속도 개선 -- 대형 base64 문자열 대신 파일 URL 사용 (문제은행 인쇄 시에만 쓰임)
-const PB_WORDMARK_URL = "assets/pb-wordmark.png"; // 2026-09: 위와 동일한 이유로 base64 -> 파일 URL 전환
+const PB_WORDMARK_URL = "assets/logo-wordmark.png"; // 2026-09: 위와 동일한 이유로 base64 -> 파일 URL 전환 (2026-09-19: 실제 저장소 파일명(logo-wordmark.png)과 다르게 적혀 있어 표지 이미지가 깨지던 것을 수정)
 const DAYS = ["월","화","수","목","금","토"];
 const BLOCKS = ["10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
 const SUB = 4;
