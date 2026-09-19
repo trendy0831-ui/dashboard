@@ -3688,7 +3688,94 @@ function pbFooterHTML(pageLabel, rightText){
   const logoPart = `<img src="${PB_LOGO_URL}">`;
   return `<div class="ws-foot"><div class="ws-foot-spacer"></div><div class="ws-foot-page">${pageLabel}</div><div class="ws-foot-logo">${logoPart}</div></div>`;
 }
-function buildPbPrintView(){
+// 2026-09-19: 해설지는 문제지처럼 "몇 개씩" 딱 정해서 페이지를 끊지 않고, 내용을 계속
+// 이어 붙이다가 실제 여백이 다 차는 지점에서 자동으로 다음 페이지로 넘어가야 함 — 대신 그렇게
+// 나뉜 모든 페이지가 진짜 별도의 .ws-page가 되어야 각 페이지에 정확한 번호가 붙는다.
+// 문제는 해설 이미지 개수/높이가 문제마다 달라서 "몇 개가 한 페이지에 들어갈지" 미리 알 수
+// 없다는 점 — 그래서 실제로 화면 밖(숨김)에 한 번 렌더링해서 각 해설 항목의 실제 높이를
+// 측정한 뒤, 그 값을 기준으로 페이지를 나눈다. 화면에 보이는 2단 배치/로고 등 디자인은
+// 그대로 유지되고, 페이지를 나누는 지점과 페이지 번호만 정확해지는 방식.
+async function layoutPbSolutionPages(ids, meta, startPageNum){
+  const solIds = ids.filter(id => meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length);
+  if(!solIds.length) return '';
+
+  const MM_PX = 96 / 25.4; // CSS 스펙상 1mm = 96/25.4px로 항상 고정 (화면 배율과 무관)
+  const PAGE_W_MM = 210, PAGE_PAD_MM = 8, COL_GAP_MM = 10, SAFETY_MM = 6;
+  const colWidthMm = (PAGE_W_MM - PAGE_PAD_MM*2 - COL_GAP_MM) / 2;
+
+  // 실제 해설 항목과 동일한 폭(컬럼 1개 너비)의 숨김 컨테이너에 항목을 하나씩 그려서 높이를 잰다.
+  const probe = document.createElement('div');
+  probe.style.cssText = `position:fixed;left:-9999px;top:0;visibility:hidden;width:${colWidthMm}mm;`;
+  document.body.appendChild(probe);
+  const itemMeta = solIds.map(id=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'ws-sol-item';
+    wrap.innerHTML = `<div class="ws-badge sm">${ids.indexOf(id)+1}</div>` +
+      meta[id].solutionPrintUrls.map(u=>`<img src="${u}">`).join('');
+    probe.appendChild(wrap);
+    return { id, el: wrap };
+  });
+
+  // 이미지 로딩이 끝나야 실제 높이를 알 수 있으므로 전부 로드될 때까지 대기
+  const imgs = Array.from(probe.querySelectorAll('img'));
+  await Promise.all(imgs.map(img => img.complete ? Promise.resolve() :
+    new Promise(res => { img.onload = res; img.onerror = res; })));
+
+  const heights = itemMeta.map(({el})=>{
+    const rect = el.getBoundingClientRect();
+    const mb = parseFloat(getComputedStyle(el).marginBottom) || 0;
+    return rect.height + mb;
+  });
+  document.body.removeChild(probe);
+
+  // 머리말/꼬리말이 실제로 차지하는 높이도 재서 페이지당 남는 여백을 계산
+  const headProbe = document.createElement('div');
+  headProbe.className = 'ws-head';
+  headProbe.style.cssText = `position:fixed;left:-9999px;top:0;visibility:hidden;width:${PAGE_W_MM - PAGE_PAD_MM*2}mm;`;
+  headProbe.innerHTML = '<span>수학 · 선택 문제 해설</span>';
+  document.body.appendChild(headProbe);
+  const headPx = headProbe.getBoundingClientRect().height + (parseFloat(getComputedStyle(headProbe).marginBottom) || 0);
+  document.body.removeChild(headProbe);
+
+  const footWrap = document.createElement('div');
+  footWrap.style.cssText = `position:fixed;left:-9999px;top:0;visibility:hidden;width:${PAGE_W_MM - PAGE_PAD_MM*2}mm;`;
+  footWrap.innerHTML = pbFooterHTML(1, '교사용 · 배포 전 분리');
+  document.body.appendChild(footWrap);
+  const footEl = footWrap.firstElementChild;
+  const footPx = footEl.getBoundingClientRect().height + (parseFloat(getComputedStyle(footEl).paddingTop) || 0);
+  document.body.removeChild(footWrap);
+
+  const colBudgetPx = (297 - PAGE_PAD_MM*2 - SAFETY_MM) * MM_PX - headPx - footPx;
+  const pageBudgetPx = colBudgetPx * 2; // 2단(컬럼) 합산 여유 공간
+
+  // 순서를 유지한 채, 누적 높이가 한 페이지 여유 공간을 넘기기 직전에서 다음 페이지로 끊는다.
+  const pages = [];
+  let current = [], sum = 0;
+  itemMeta.forEach(({id}, idx)=>{
+    const h = heights[idx];
+    if(current.length && sum + h > pageBudgetPx){
+      pages.push(current);
+      current = []; sum = 0;
+    }
+    current.push(id);
+    sum += h;
+  });
+  if(current.length) pages.push(current);
+
+  let out = '';
+  pages.forEach((pageIds, pageIdx)=>{
+    out += `<div class="ws-page ws-solution"><div class="ws-head"><span>수학 · 선택 문제 해설</span></div><div class="ws-sol-flow">`;
+    pageIds.forEach(id=>{
+      const num = ids.indexOf(id) + 1;
+      out += `<div class="ws-sol-item"><div class="ws-badge sm">${num}</div>`;
+      meta[id].solutionPrintUrls.forEach(u=>{ out += `<img src="${u}">`; });
+      out += `</div>`;
+    });
+    out += `</div>${pbFooterHTML(startPageNum + pageIdx, '교사용 · 배포 전 분리')}</div>`;
+  });
+  return out;
+}
+async function buildPbPrintView(){
   if(pbSelected.size === 0){ alert('먼저 문제지에 넣을 문제를 선택해주세요.'); return; }
   const meta = {};
   pbProblems.forEach(p=>{ meta[p.id]=p; });
@@ -3732,18 +3819,14 @@ function buildPbPrintView(){
 
   const withSol = ids.filter(id => meta[id].solutionPrintUrls && meta[id].solutionPrintUrls.length);
   if(withSol.length){
-    const worksheetPageCount = Math.ceil(ids.length / 4); // 2026-09-19: 해설지 페이지 번호를 문제지 뒤에 이어서 매기기 위해 필요
+    const worksheetPageCount = Math.ceil(ids.length / 4); // 해설지 페이지 번호를 문제지 뒤에 이어서 매기기 위해 필요
     html += `<div class="ws-section-label">해설지 (교사용 · 배포 전 분리)</div>`;
-    html += `<div class="ws-page ws-solution"><div class="ws-head"><span>수학 · 선택 문제 해설</span></div><div class="ws-sol-flow">`;
-    ids.forEach((id,k)=>{
-      if(!meta[id].solutionPrintUrls || !meta[id].solutionPrintUrls.length) return;
-      html += `<div class="ws-sol-item"><div class="ws-badge sm">${k+1}</div>`;
-      meta[id].solutionPrintUrls.forEach(u=>{
-        html += `<img src="${u}">`;
-      });
-      html += `</div>`;
-    });
-    html += `</div>${pbFooterHTML(worksheetPageCount + 1, '교사용 · 배포 전 분리')}</div>`;
+    // 문제지를 먼저 화면에 그려서 보여준 뒤, 해설 페이지는 실제 높이를 측정해서 비동기로 이어붙인다.
+    document.getElementById('pbPrintPages').innerHTML = html;
+    document.getElementById('pbPrintView').classList.add('show');
+    const solHtml = await layoutPbSolutionPages(ids, meta, worksheetPageCount + 1);
+    document.getElementById('pbPrintPages').insertAdjacentHTML('beforeend', solHtml);
+    return;
   }
 
   document.getElementById('pbPrintPages').innerHTML = html;
