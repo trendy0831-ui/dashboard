@@ -847,8 +847,14 @@
   .ws-foot-logo img{max-height:10mm;max-width:26mm;object-fit:contain;}
   .ws-foot-text{font-size:11px;color:var(--ink-soft);}
 
-  .ws-solution .ws-sol-flow{column-count:2;column-gap:10mm;}
-  .ws-sol-item{break-inside:avoid;margin-bottom:10mm;}
+  /* 2026-09-19: 예전엔 CSS column-count:2로 브라우저가 알아서 2단을 "균형 있게" 나누도록
+     맡겼는데, 페이지 안에 들어가는 해설 항목 수가 적을 때(예: 큰 항목 1개뿐일 때) 브라우저가
+     오른쪽 컬럼을 통째로 비워버리는 문제가 있었음. 그래서 JS(layoutPbSolutionPages)에서
+     각 항목을 실제 높이 기준으로 왼쪽/오른쪽 컬럼에 직접 순서대로 나눠 담고, CSS는 그 결과를
+     단순히 2단 flex로 나란히 배치만 하도록 바꿈. */
+  .ws-solution .ws-sol-flow{display:flex;gap:10mm;align-items:flex-start;}
+  .ws-solution .ws-sol-col{flex:1;min-width:0;}
+  .ws-sol-item{margin-bottom:10mm;}
   .ws-sol-item img{width:100%;border-radius:6px;border:1px solid var(--line);margin-bottom:4mm;}
 
   /* ===== 다크 테마 보정: 밝은 파스텔 배경 카드 위의 글자는 항상 어둡게 고정 ===== */
@@ -3746,32 +3752,39 @@ async function layoutPbSolutionPages(ids, meta, startPageNum){
   document.body.removeChild(footWrap);
 
   const colBudgetPx = (297 - PAGE_PAD_MM*2 - SAFETY_MM) * MM_PX - headPx - footPx;
-  const pageBudgetPx = colBudgetPx * 2; // 2단(컬럼) 합산 여유 공간
-
-  // 순서를 유지한 채, 누적 높이가 한 페이지 여유 공간을 넘기기 직전에서 다음 페이지로 끊는다.
+  // 순서를 유지한 채 왼쪽 컬럼부터 채우고, 왼쪽이 다 차면 오른쪽 컬럼으로, 오른쪽마저 다
+  // 차면 새 페이지로 넘어간다. (브라우저의 CSS 컬럼 자동 균형 배분에 맡기면 페이지에 항목이
+  // 적을 때 오른쪽이 통째로 비어버리는 문제가 있어서 직접 좌/우를 나눠 담음)
   const pages = [];
-  let current = [], sum = 0;
+  let cur = { col0: [], col1: [] };
+  let col0Sum = 0, col1Sum = 0, activeCol = 0;
   itemMeta.forEach(({id}, idx)=>{
     const h = heights[idx];
-    if(current.length && sum + h > pageBudgetPx){
-      pages.push(current);
-      current = []; sum = 0;
+    if(activeCol === 0 && cur.col0.length && col0Sum + h > colBudgetPx){
+      activeCol = 1;
     }
-    current.push(id);
-    sum += h;
+    if(activeCol === 1 && cur.col1.length && col1Sum + h > colBudgetPx){
+      pages.push(cur);
+      cur = { col0: [], col1: [] };
+      col0Sum = 0; col1Sum = 0; activeCol = 0;
+    }
+    if(activeCol === 0){ cur.col0.push(id); col0Sum += h; }
+    else { cur.col1.push(id); col1Sum += h; }
   });
-  if(current.length) pages.push(current);
+  if(cur.col0.length || cur.col1.length) pages.push(cur);
+
+  const renderCol = (colIds)=> colIds.map(id=>{
+    const num = ids.indexOf(id) + 1;
+    const imgs = meta[id].solutionPrintUrls.map(u=>`<img src="${u}">`).join('');
+    return `<div class="ws-sol-item"><div class="ws-badge sm">${num}</div>${imgs}</div>`;
+  }).join('');
 
   let out = '';
-  pages.forEach((pageIds, pageIdx)=>{
-    out += `<div class="ws-page ws-solution"><div class="ws-head"><span>수학 · 선택 문제 해설</span></div><div class="ws-sol-flow">`;
-    pageIds.forEach(id=>{
-      const num = ids.indexOf(id) + 1;
-      out += `<div class="ws-sol-item"><div class="ws-badge sm">${num}</div>`;
-      meta[id].solutionPrintUrls.forEach(u=>{ out += `<img src="${u}">`; });
-      out += `</div>`;
-    });
-    out += `</div>${pbFooterHTML(startPageNum + pageIdx, '교사용 · 배포 전 분리')}</div>`;
+  pages.forEach((page, pageIdx)=>{
+    out += `<div class="ws-page ws-solution"><div class="ws-head"><span>수학 · 선택 문제 해설</span></div><div class="ws-sol-flow">
+      <div class="ws-sol-col">${renderCol(page.col0)}</div>
+      <div class="ws-sol-col">${renderCol(page.col1)}</div>
+    </div>${pbFooterHTML(startPageNum + pageIdx, '교사용 · 배포 전 분리')}</div>`;
   });
   return out;
 }
