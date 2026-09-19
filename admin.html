@@ -1061,6 +1061,11 @@ let pbProblems = [];
 let pbLoaded = false;
 const pbSelected = new Set();
 const pbAutoAdded = new Set(); // 자동 구성으로 추가된 문제 id (뱃지 표시용)
+// id -> 카드 DOM요소 매핑. 738개 문제를 필터링할 때마다 매번
+// document.querySelector로 DOM을 뒤지면 (특히 학교명 검색창처럼 타이핑마다
+// 실행되는 경우) 무거워지므로, 카드를 새로 그릴 때 한 번만 채워두고
+// 필터링/선택 처리에서는 이 맵을 바로 조회한다. (2026-09-19)
+let pbCardMap = new Map();
 const PB_LOGO_URL = "assets/logo-rounded.png"; // 2026-09: 초기 로딩 속도 개선 -- 대형 base64 문자열 대신 파일 URL 사용 (문제은행 인쇄 시에만 쓰임)
 const PB_WORDMARK_URL = "assets/pb-wordmark.png"; // 2026-09: 위와 동일한 이유로 base64 -> 파일 URL 전환
 const DAYS = ["월","화","수","목","금","토"];
@@ -3542,7 +3547,9 @@ function renderPbCards(){
       </div>
     </div>
   `).join('');
+  pbCardMap = new Map();
   gridEl.querySelectorAll('.pb-card').forEach(card=>{
+    pbCardMap.set(card.dataset.id, card);
     card.onclick = ()=>{
       const id = card.dataset.id;
       if(pbSelected.has(id)){ pbSelected.delete(id); pbAutoAdded.delete(id); card.classList.remove('auto'); }
@@ -3651,7 +3658,7 @@ function applyPbFilters(){
 
   let visible = 0;
   pbProblems.forEach(p=>{
-    const card = document.querySelector(`#pbGrid .pb-card[data-id="${p.id}"]`);
+    const card = pbCardMap.get(p.id);
     if(!card) return;
     const ok = pbMatchesFilters(p, filters);
     card.classList.toggle('hidden', !ok);
@@ -3827,13 +3834,13 @@ async function renderProblemBankPage(){
       if(e.target.checked){
         ids.forEach(id=>{
           pbSelected.add(id);
-          const c = document.querySelector(`#pbGrid .pb-card[data-id="${id}"]`);
+          const c = pbCardMap.get(id);
           if(c) c.classList.add('sel');
         });
       }else{
         ids.forEach(id=>{
           pbSelected.delete(id);
-          const c = document.querySelector(`#pbGrid .pb-card[data-id="${id}"]`);
+          const c = pbCardMap.get(id);
           if(c) c.classList.remove('sel');
         });
       }
