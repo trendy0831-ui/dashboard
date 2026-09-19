@@ -707,6 +707,34 @@
   .fb-check input{accent-color:var(--teal);width:15px;height:15px;}
   .fb-divider{width:1px;align-self:stretch;background:var(--line);margin:0 2px;}
 
+  /* ---- 자동 구성 (조건 입력 → 랜덤 추출) ---- */
+  .ab{background:var(--card);border:1.5px dashed var(--teal);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;}
+  .ab-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .ab-icon{width:26px;height:26px;border-radius:8px;background:var(--teal);color:#fff;display:flex;align-items:center;
+    justify-content:center;font-size:14px;flex:none;}
+  .ab-title{font-size:14px;font-weight:800;color:var(--teal-dark);}
+  .ab-desc{font-size:12px;color:var(--ink-soft);margin:2px 0 14px 34px;line-height:1.5;}
+  .ab-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;margin-left:34px;}
+  .ab-count-group{display:flex;gap:10px;}
+  .ab-count{display:flex;flex-direction:column;gap:6px;align-items:center;}
+  .ab-count label{font-size:11.5px;font-weight:800;}
+  .ab-count.lv-상 label{color:#A8402F;}
+  .ab-count.lv-중 label{color:#8A6D1A;}
+  .ab-count.lv-하 label{color:var(--teal-dark);}
+  .ab-count input{width:56px;padding:7px 6px;text-align:center;border-radius:8px;border:1px solid var(--line);
+    background:var(--paper);font-size:14px;font-weight:700;}
+  .ab-run{margin-left:auto;background:var(--teal);color:#fff;border:none;border-radius:10px;padding:11px 22px;
+    font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap;}
+  .ab-run:hover{background:var(--teal-dark);}
+  .ab-run:active{transform:translateY(1px);}
+  .ab-note{margin:12px 0 0 34px;font-size:12px;color:var(--ink-soft);}
+  .ab-result{margin:12px 0 0 34px;font-size:12.5px;font-weight:700;color:var(--teal-dark);
+    background:var(--soft);padding:7px 12px;border-radius:8px;display:none;}
+  .ab-result.show{display:inline-block;}
+  .ab-result.warn{background:#FFF6E2;color:#8A6D1A;}
+  .pb-card.auto::after{content:"자동";position:absolute;top:10px;right:10px;background:var(--yellow);color:#1d312b;
+    font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;z-index:2;}
+
   .result-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
   .result-count{font-size:13.5px;color:var(--ink-soft);}
   .result-count b{color:var(--teal-dark);}
@@ -1032,6 +1060,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSVS9mzGr116jePeDPK
 let pbProblems = [];
 let pbLoaded = false;
 const pbSelected = new Set();
+const pbAutoAdded = new Set(); // 자동 구성으로 추가된 문제 id (뱃지 표시용)
 const PB_LOGO_URL = "assets/logo-rounded.png"; // 2026-09: 초기 로딩 속도 개선 -- 대형 base64 문자열 대신 파일 URL 사용 (문제은행 인쇄 시에만 쓰임)
 const PB_WORDMARK_URL = "assets/pb-wordmark.png"; // 2026-09: 위와 동일한 이유로 base64 -> 파일 URL 전환
 const DAYS = ["월","화","수","목","금","토"];
@@ -3497,7 +3526,7 @@ function renderPbCards(){
     return;
   }
   gridEl.innerHTML = pbProblems.map(p=>`
-    <div class="pb-card${pbSelected.has(p.id)?' sel':''}" data-id="${p.id}">
+    <div class="pb-card${pbSelected.has(p.id)?' sel':''}${pbSelected.has(p.id)&&pbAutoAdded.has(p.id)?' auto':''}" data-id="${p.id}">
       <div class="pb-check"><svg viewBox="0 0 24 24"><polyline points="5 13 10 18 19 7"/></svg></div>
       <img class="pb-thumb" src="${p.thumbUrl}" loading="lazy" alt="${p.id}">
       <div class="pb-body">
@@ -3516,7 +3545,8 @@ function renderPbCards(){
   gridEl.querySelectorAll('.pb-card').forEach(card=>{
     card.onclick = ()=>{
       const id = card.dataset.id;
-      if(pbSelected.has(id)) pbSelected.delete(id); else pbSelected.add(id);
+      if(pbSelected.has(id)){ pbSelected.delete(id); pbAutoAdded.delete(id); card.classList.remove('auto'); }
+      else pbSelected.add(id);
       card.classList.toggle('sel');
       updatePbSticky();
     };
@@ -3535,36 +3565,95 @@ function updatePbSticky(){
   if(barEl) barEl.classList.toggle('show', n>0);
   if(allEl) allEl.checked = n>0 && n===pbVisibleIds().length;
 }
-function applyPbFilters(){
+function pbCurrentFilters(){
   const gEl = document.getElementById('pbFGrade');
   const semEl = document.getElementById('pbFSemester');
   const umEl = document.getElementById('pbFUnitMain');
   const usEl = document.getElementById('pbFUnitSub');
   const schoolEl = document.getElementById('pbFSchool');
   const hasSolEl = document.getElementById('pbFHasSol');
+  return {
+    grade: gEl ? gEl.value : '',
+    sem: semEl ? semEl.value : '',
+    um: umEl ? umEl.value : '',
+    us: usEl ? usEl.value : '',
+    levels: Array.from(document.querySelectorAll('#pbFLevel .chip.on')).map(c=>c.dataset.v),
+    types: Array.from(document.querySelectorAll('#pbFType .chip.on')).map(c=>c.dataset.v),
+    school: schoolEl ? schoolEl.value.trim() : '',
+    needSol: hasSolEl ? hasSolEl.checked : false,
+  };
+}
+// 문제 하나가 현재 필터 조건에 맞는지 판정 -- 화면 표시(applyPbFilters)와
+// 자동 구성(pbRunAutoBuild) 양쪽에서 재사용한다.
+function pbMatchesFilters(p, f){
+  if(f.grade && p.grade !== f.grade) return false;
+  if(f.sem && p.semester !== f.sem) return false;
+  if(f.um && p.unitMain !== f.um) return false;
+  if(f.us && p.unitSub !== f.us) return false;
+  if(f.levels.length && !f.levels.includes(p.level)) return false;
+  if(f.types.length && !f.types.includes(p.type)) return false;
+  if(f.school && !(p.school||'').includes(f.school)) return false;
+  if(f.needSol && !p.hasSolution) return false;
+  return true;
+}
+function pbShuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function pbRunAutoBuild(){
+  const resEl = document.getElementById('pbAbResult');
+  const filters = pbCurrentFilters();
+  const pool = pbProblems.filter(p => pbMatchesFilters(p, filters));
+  const wantByLevel = {
+    '상': parseInt(document.getElementById('pbAbCnt상').value, 10) || 0,
+    '중': parseInt(document.getElementById('pbAbCnt중').value, 10) || 0,
+    '하': parseInt(document.getElementById('pbAbCnt하').value, 10) || 0,
+  };
+  const totalWant = wantByLevel['상'] + wantByLevel['중'] + wantByLevel['하'];
+  if(totalWant <= 0){
+    if(resEl){ resEl.textContent = '상/중/하 중 최소 한 난이도에 개수를 입력해주세요.'; resEl.className = 'ab-result show warn'; }
+    return;
+  }
+  let totalAdded = 0;
+  const shortages = [];
+  ['상','중','하'].forEach(lv=>{
+    const want = wantByLevel[lv];
+    if(want <= 0) return;
+    // 이미 선택되어 있는 문제는 다시 뽑지 않는다 -- 손으로 골라둔 선택은 그대로 유지
+    const candidates = pbShuffle(pool.filter(p => p.level === lv && !pbSelected.has(p.id)));
+    const picked = candidates.slice(0, want);
+    picked.forEach(p=>{ pbSelected.add(p.id); pbAutoAdded.add(p.id); });
+    totalAdded += picked.length;
+    if(picked.length < want) shortages.push(`${lv} ${picked.length}/${want}개`);
+  });
+  renderPbCards();
+  if(resEl){
+    if(shortages.length){
+      resEl.textContent = `⚠ ${shortages.join(', ')}만 찾았어요 — 현재 필터 조건에 맞는 문제가 부족해요. 총 ${totalAdded}문제를 추가했어요.`;
+      resEl.className = 'ab-result show warn';
+    }else{
+      resEl.textContent = `✓ 상 ${wantByLevel['상']} · 중 ${wantByLevel['중']} · 하 ${wantByLevel['하']} — 총 ${totalAdded}문제를 추가했어요.`;
+      resEl.className = 'ab-result show';
+    }
+  }
+}
+function applyPbFilters(){
+  const umEl = document.getElementById('pbFUnitMain');
+  const usEl = document.getElementById('pbFUnitSub');
+  const schoolEl = document.getElementById('pbFSchool');
+  const hasSolEl = document.getElementById('pbFHasSol');
   if(!umEl || !usEl || !schoolEl || !hasSolEl) return;
-  const grade = gEl ? gEl.value : '';
-  const sem = semEl ? semEl.value : '';
-  const um = umEl.value;
-  const us = usEl.value;
-  const levels = Array.from(document.querySelectorAll('#pbFLevel .chip.on')).map(c=>c.dataset.v);
-  const types = Array.from(document.querySelectorAll('#pbFType .chip.on')).map(c=>c.dataset.v);
-  const school = schoolEl.value.trim();
-  const needSol = hasSolEl.checked;
+  const filters = pbCurrentFilters();
 
   let visible = 0;
   pbProblems.forEach(p=>{
     const card = document.querySelector(`#pbGrid .pb-card[data-id="${p.id}"]`);
     if(!card) return;
-    let ok = true;
-    if(grade && p.grade !== grade) ok = false;
-    if(sem && p.semester !== sem) ok = false;
-    if(um && p.unitMain !== um) ok = false;
-    if(us && p.unitSub !== us) ok = false;
-    if(levels.length && !levels.includes(p.level)) ok = false;
-    if(types.length && !types.includes(p.type)) ok = false;
-    if(school && !(p.school||'').includes(school)) ok = false;
-    if(needSol && !p.hasSolution) ok = false;
+    const ok = pbMatchesFilters(p, filters);
     card.classList.toggle('hidden', !ok);
     if(ok) visible++;
   });
@@ -3685,6 +3774,22 @@ async function renderProblemBankPage(){
           </div>
         </div>
       </div>
+      <div class="ab">
+        <div class="ab-top">
+          <div class="ab-icon">🎲</div>
+          <div class="ab-title">자동 구성</div>
+        </div>
+        <div class="ab-desc">위 필터(학년·학기·단원·유형·해설유무)에 맞는 문제들 중에서, 난이도별로 원하는 개수만큼 무작위로 뽑아 선택 목록에 추가해요. 이미 선택해둔 문제는 그대로 유지돼요.</div>
+        <div class="ab-row">
+          <div class="ab-count-group">
+            <div class="ab-count lv-상"><label>상</label><input type="number" min="0" value="0" id="pbAbCnt상"></div>
+            <div class="ab-count lv-중"><label>중</label><input type="number" min="0" value="0" id="pbAbCnt중"></div>
+            <div class="ab-count lv-하"><label>하</label><input type="number" min="0" value="0" id="pbAbCnt하"></div>
+          </div>
+          <button class="ab-run" id="pbAbRun">🎲 자동 추출</button>
+        </div>
+        <div class="ab-result" id="pbAbResult"></div>
+      </div>
       <div class="result-bar">
         <div class="result-count">총 <b id="pbTotalCount">0</b>문제 중 <b id="pbVisibleCount">0</b>개 표시</div>
         <label class="select-all"><input type="checkbox" id="pbSelectAll">전체 선택</label>
@@ -3736,9 +3841,13 @@ async function renderProblemBankPage(){
     });
     document.getElementById('pbSbClear').onclick = ()=>{
       pbSelected.clear();
-      document.querySelectorAll('#pbGrid .pb-card.sel').forEach(c=>c.classList.remove('sel'));
+      pbAutoAdded.clear();
+      document.querySelectorAll('#pbGrid .pb-card.sel').forEach(c=>{ c.classList.remove('sel'); c.classList.remove('auto'); });
+      const resEl = document.getElementById('pbAbResult');
+      if(resEl) resEl.className = 'ab-result';
       updatePbSticky();
     };
+    document.getElementById('pbAbRun').onclick = pbRunAutoBuild;
     document.getElementById('pbSbMake').onclick = buildPbPrintView;
     document.getElementById('pbPrintClose').onclick = ()=>{
       document.getElementById('pbPrintView').classList.remove('show');
