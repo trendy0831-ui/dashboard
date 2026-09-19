@@ -800,8 +800,10 @@
     /* 2026-09-19: 문제지 인쇄 시 이미지가 큰 문제가 있으면 내용이 하단 로고/페이지 영역과
        겹치던 문제 수정. 기존에는 .ws-foot이 position:absolute로 페이지 하단에 고정되어
        있어서, .ws-grid 내용이 페이지 높이를 넘어가면 그 위로 겹쳐 보였다. .ws-page를
-       flex column으로 바꾸고 .ws-foot을 일반 흐름(margin-top:auto)으로 옮겨서, 내용이
-       길어지면 페이지 자체가 아래로 더 늘어나고 footer는 항상 내용 "다음"에 오도록 함. */
+       flex column으로 바꾸고 .ws-foot을 일반 흐름(margin-top:auto)으로 옮겨서, footer는
+       항상 내용 "다음"에 오도록 함. 표지/해설지처럼 내용 길이가 유동적인 페이지는 기존처럼
+       min-height라 필요하면 페이지가 더 늘어나고, 문제지(.ws-worksheet)는 아래에서
+       height:297mm로 고정해 이미지가 자동 축소되며 항상 한 페이지 안에 들어가도록 함. */
     display:flex;flex-direction:column;}
   .ws-cover{display:flex;flex-direction:column;}
   .ws-cover-title{font-size:32px;font-weight:900;color:var(--ink);margin-top:130px;}
@@ -816,12 +818,20 @@
   .ws-cover-fields{display:flex;gap:24px;margin-top:auto;padding-top:60px;}
   .ws-field{flex:1;border-top:1.4px solid var(--line);padding-top:8px;font-size:12px;color:var(--ink-soft);}
   .ws-cover-logo{text-align:center;margin-top:26px;}
-  .ws-cover-logo img{width:70mm;height:auto;image-rendering:-webkit-optimize-contrast;}
+  .ws-cover-logo img{width:40mm;height:auto;image-rendering:-webkit-optimize-contrast;} /* 2026-09-19: 70mm -> 40mm, 표지에서 너무 크게 보이던 것 축소 */
 
   .ws-head{font-size:11px;color:var(--ink-soft);
     border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:4mm;}
+  /* 2026-09-19: 문제지 페이지(.ws-worksheet)는 항상 A4 한 장(297mm) 안에 딱 맞도록 높이를
+     고정하고, .ws-grid가 남는 공간을 꽉 채우도록(flex:1) 만든 뒤, 각 문제 슬롯을 그 안의
+     정확히 1/2 높이로 나눠(grid-template-rows:1fr 1fr) 이미지가 항상 그 공간 안에서
+     자동으로 축소(object-fit:contain)되도록 함. 이러면 문제 이미지가 아무리 커도 페이지를
+     넘어가거나 footer가 다음 페이지로 밀리는 일이 없음. (표지/해설지는 기존처럼 내용 길이에
+     따라 자연스럽게 늘어나야 하므로 이 규칙 대상에서 제외 — 아래 .ws-worksheet 전용 규칙 참고) */
+  .ws-worksheet{height:297mm;}
   .ws-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;row-gap:56mm;column-gap:4mm;
     align-content:start;}
+  .ws-worksheet .ws-grid{flex:1;min-height:0;grid-template-rows:1fr 1fr;row-gap:8mm;align-content:stretch;}
   .ws-slot{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;
     display:flex;align-items:center;justify-content:center;padding:1.5mm;box-sizing:border-box;}
   .ws-slot.ws-empty{border:1px dashed var(--line);}
