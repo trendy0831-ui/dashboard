@@ -3896,7 +3896,19 @@ function escapeHtml(s){
 // (숫자/간단한 식 등) 세로로 한 줄씩 나열하는 대신 가로로 나란히 배치해 공간을 아낀다.
 // 보기 내용이 길면(문장형 보기 등) 기존처럼 한 줄씩 세로로 유지한다.
 const TS_CHOICE_RE = /^[①②③④⑤⑥⑦⑧⑨⑩]/;
-const TS_CHOICE_SHORT_MAX = 12; // 원문자 뒤 내용 길이가 이보다 짧으면 가로 배치 대상
+const TS_CHOICE_SHORT_MAX = 12; // 눈에 보이는 길이가 이보다 짧으면 가로 배치 대상
+// 2026-09-20 수정: 길이를 잴 때 LaTeX 원본 그대로("\dfrac{7}{2}"처럼 마크업까지 포함) 세면
+// 실제로는 짧은 분수 보기(예: x=7/2)도 코드 길이 때문에 "길다"고 오판돼 계속 세로로 나오는
+// 문제가 있었다. \dfrac{a}{b}/\frac{a}{b}를 "a/b"로, \left \right는 제거해서 실제 눈에
+// 보이는 글자 수 기준으로 판정하도록 고침.
+function tsVisualLength(s){
+  return String(s || '')
+    .replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2')
+    .replace(/\\left|\\right/g, '')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/[\$\{\}]/g, '')
+    .trim().length;
+}
 function renderSolutionTypesetBody(text){
   const lines = String(text || '').split(/\n+/).map(line=>line.trim()).filter(Boolean);
   const out = [];
@@ -3909,7 +3921,7 @@ function renderSolutionTypesetBody(text){
         group.push(lines[j]);
         j++;
       }
-      const allShort = group.every(g => g.replace(TS_CHOICE_RE, '').trim().length <= TS_CHOICE_SHORT_MAX);
+      const allShort = group.every(g => tsVisualLength(g.replace(TS_CHOICE_RE, '')) <= TS_CHOICE_SHORT_MAX);
       if(allShort && group.length > 1){
         out.push(`<div class="ts-choices">${group.map(g=>`<span class="ts-choice">${escapeHtml(g)}</span>`).join('')}</div>`);
       } else {
