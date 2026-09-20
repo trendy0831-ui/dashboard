@@ -589,6 +589,9 @@
     font-size:13.5px;line-height:1.85;min-height:40px;}
   .pts-preview .ts-answer{margin-top:6px;font-weight:800;color:var(--teal-dark);background:var(--soft);
     padding:4px 9px;border-radius:7px;display:inline-block;}
+  /* 2026-09-20: 보기(①~⑤)가 짧을 때 가로로 나열 — 편집 모달 미리보기와 실제 인쇄본 둘 다 적용 */
+  .ts-choices{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:5px;}
+  .ts-choices .ts-choice{white-space:nowrap;}
 
   /* 2026-09-19: 조판 해설을 [문제ID] 블록 여러 개로 한번에 붙여넣어 저장하는 "일괄 붙여넣기" 기능.
      문제마다 카드를 하나씩 찾아 편집 모달을 여는 게 비효율적이라는 피드백에 대응. */
@@ -3889,11 +3892,37 @@ function escapeHtml(s){
 // 2026-09-19: 해설 텍스트("조판해설")를 줄 단위로 나눠서 HTML로 바꾼다. "정답"으로
 // 시작하는 줄은 강조 박스로 보여준다. 수식 자체($...$)는 여기서 건드리지 않고 그대로
 // 두었다가, MathJax가 나중에 한 번에 렌더링한다.
+// 2026-09-20: ①~⑩로 시작하는 보기 줄이 연속으로 나오면, 각 보기 내용이 짧을 때
+// (숫자/간단한 식 등) 세로로 한 줄씩 나열하는 대신 가로로 나란히 배치해 공간을 아낀다.
+// 보기 내용이 길면(문장형 보기 등) 기존처럼 한 줄씩 세로로 유지한다.
+const TS_CHOICE_RE = /^[①②③④⑤⑥⑦⑧⑨⑩]/;
+const TS_CHOICE_SHORT_MAX = 12; // 원문자 뒤 내용 길이가 이보다 짧으면 가로 배치 대상
 function renderSolutionTypesetBody(text){
-  return String(text || '').split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{
-    const cls = /^정답/.test(line) ? 'ts-answer' : 'ts-step';
-    return `<div class="${cls}">${escapeHtml(line)}</div>`;
-  }).join('');
+  const lines = String(text || '').split(/\n+/).map(line=>line.trim()).filter(Boolean);
+  const out = [];
+  let i = 0;
+  while(i < lines.length){
+    if(TS_CHOICE_RE.test(lines[i])){
+      const group = [];
+      let j = i;
+      while(j < lines.length && TS_CHOICE_RE.test(lines[j])){
+        group.push(lines[j]);
+        j++;
+      }
+      const allShort = group.every(g => g.replace(TS_CHOICE_RE, '').trim().length <= TS_CHOICE_SHORT_MAX);
+      if(allShort && group.length > 1){
+        out.push(`<div class="ts-choices">${group.map(g=>`<span class="ts-choice">${escapeHtml(g)}</span>`).join('')}</div>`);
+      } else {
+        group.forEach(g => out.push(`<div class="ts-step">${escapeHtml(g)}</div>`));
+      }
+      i = j;
+    } else {
+      const cls = /^정답/.test(lines[i]) ? 'ts-answer' : 'ts-step';
+      out.push(`<div class="${cls}">${escapeHtml(lines[i])}</div>`);
+      i++;
+    }
+  }
+  return out.join('');
 }
 // 문제 하나의 해설 항목 HTML을 만든다. 조판 텍스트가 있으면 그걸로, 없으면 기존처럼
 // 손글씨 사진으로 — 문제은행 전체에서 아직 일부만 조판돼 있어도 자연스럽게 섞여서 인쇄된다.
@@ -3924,7 +3953,7 @@ function waitForMathJaxTypeset(el){
   return new Promise(resolve=>{
     const run = ()=>{
       if(window.MathJax && MathJax.typesetPromise){
-        const lines = el.querySelectorAll ? el.querySelectorAll('.ts-step, .ts-answer') : [];
+        const lines = el.querySelectorAll ? el.querySelectorAll('.ts-step, .ts-answer, .ts-choice') : [];
         const targets = lines.length ? Array.from(lines) : [el];
         MathJax.typesetPromise(targets).then(resolve).catch(resolve);
       } else {
