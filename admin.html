@@ -927,6 +927,11 @@
 
   @page{size:A4;margin:0;}
   @media print{
+    /* 2026-09-20: 브라우저는 기본적으로 인쇄 시 배경색을 생략한다("배경 그래픽" 옵션이
+       꺼져 있으면). 그 옵션과 무관하게 항상 배경색이 인쇄되도록 강제 — 이게 없어서 해설번호
+       배지(.ws-badge)의 틸 배경, 정답 강조박스(.ts-answer)의 연한 틸 배경이 인쇄 결과물에서만
+       사라지고(화면 미리보기는 정상) 텍스트 색만 남아 안 보이는 문제가 있었다. */
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
     body *{visibility:hidden;}
     #pbPrintView, #pbPrintView *{visibility:visible;}
     #pbPrintView{position:absolute;inset:0;background:#fff;overflow:visible;}
@@ -3994,26 +3999,35 @@ async function layoutPbSolutionPages(ids, meta, startPageNum){
   document.body.removeChild(footWrap);
 
   const colBudgetPx = (297 - PAGE_PAD_MM*2 - SAFETY_MM) * MM_PX - headPx - footPx;
-  // 순서를 유지한 채 왼쪽 컬럼부터 채우고, 왼쪽이 다 차면 오른쪽 컬럼으로, 오른쪽마저 다
-  // 차면 새 페이지로 넘어간다. (브라우저의 CSS 컬럼 자동 균형 배분에 맡기면 페이지에 항목이
-  // 적을 때 오른쪽이 통째로 비어버리는 문제가 있어서 직접 좌/우를 나눠 담음)
+  // 2026-09-20: 원래는 순서를 그대로 유지한 채 앞에서부터 채우다가, 다음 항목이 남은
+  // 공간에 안 들어가면 그 컬럼/페이지를 그대로 끝내버렸다. 그런데 사진 해설처럼 유독 큰
+  // 항목 바로 앞뒤로 짧은 항목들이 있으면, "큰 항목이 안 들어간다"는 이유만으로 페이지에
+  // 아직 남은 공간을 그대로 비워둔 채 넘어가버려 해설 사이 빈칸이 크게 남는 문제가 있었다.
+  // 이제는 다음 항목이 안 들어가면 건너뛰고(대기열에 남겨두고), 대기열 중 지금 남은 공간에
+  // 들어갈 수 있는 "가장 앞선" 항목을 먼저 당겨와 채운다 — 건너뛴 큰 항목은 대기열 맨 앞에
+  // 그대로 남아 다음 컬럼/페이지에서 다시 시도된다. 해설번호 배지는 원래 문제 순번을 그대로
+  // 쓰므로(ids.indexOf 기준), 인쇄 순서가 살짝 섞여도 몇 번 해설인지는 항상 명확하다.
+  const pending = itemMeta.map(({id}, idx)=>({ id, h: heights[idx] }));
   const pages = [];
-  let cur = { col0: [], col1: [] };
-  let col0Sum = 0, col1Sum = 0, activeCol = 0;
-  itemMeta.forEach(({id}, idx)=>{
-    const h = heights[idx];
-    if(activeCol === 0 && cur.col0.length && col0Sum + h > colBudgetPx){
-      activeCol = 1;
+  const fillColumn = (colIds, budget)=>{
+    let sum = 0;
+    while(true){
+      let pickIdx = -1;
+      for(let i=0;i<pending.length;i++){
+        if(colIds.length === 0 || sum + pending[i].h <= budget){ pickIdx = i; break; }
+      }
+      if(pickIdx === -1) break;
+      const item = pending.splice(pickIdx, 1)[0];
+      colIds.push(item.id);
+      sum += item.h;
     }
-    if(activeCol === 1 && cur.col1.length && col1Sum + h > colBudgetPx){
-      pages.push(cur);
-      cur = { col0: [], col1: [] };
-      col0Sum = 0; col1Sum = 0; activeCol = 0;
-    }
-    if(activeCol === 0){ cur.col0.push(id); col0Sum += h; }
-    else { cur.col1.push(id); col1Sum += h; }
-  });
-  if(cur.col0.length || cur.col1.length) pages.push(cur);
+  };
+  while(pending.length){
+    const cur = { col0: [], col1: [] };
+    fillColumn(cur.col0, colBudgetPx);
+    fillColumn(cur.col1, colBudgetPx);
+    pages.push(cur);
+  }
 
   const renderCol = (colIds)=> colIds.map(id=>{
     const num = ids.indexOf(id) + 1;
