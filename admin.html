@@ -907,10 +907,12 @@
   .ws-sol-item.typeset .ts-answer{margin-top:7px;font-weight:800;color:var(--teal-dark);
     background:var(--soft);padding:5px 10px;border-radius:7px;display:inline-block;
     max-width:100%;overflow-wrap:break-word;word-break:break-word;}
-  /* MathJax가 그린 수식(mjx-container)은 기본적으로 한 덩어리라 줄바꿈이 안 되는데,
-     컬럼 폭보다 넓어지면 옆 단을 침범하므로 폭을 컬럼 안으로 강제로 맞추고, 그래도 넘치는
-     아주 긴 수식은 확대/축소 없이 그 안에서만 가로 스크롤 없이 잘리지 않게 줄어들도록 함. */
-  .ws-sol-item.typeset mjx-container{display:inline-block !important;max-width:100% !important;overflow-x:hidden;vertical-align:middle;}
+  /* MathJax가 그린 수식(mjx-math)은 기본적으로 white-space:nowrap이라 한 줄로 굳어져
+     컬럼 폭을 넘으면 옆 단을 침범/겹침이 생김. 이를 normal로 풀어주면 수식 내부의 각
+     항(분수, 연산자 등) 단위로 자연스럽게 줄바꿈되어, 내용이 잘리거나 옆 컬럼을 침범하지
+     않고 같은 컬럼 안에서 다음 줄로 넘어감. */
+  .ws-sol-item.typeset mjx-math{white-space:normal !important;}
+  .ws-sol-item.typeset mjx-container{max-width:100% !important;}
   .ws-sol-item.typeset mjx-container[display="true"]{display:block !important;}
 
   /* ===== 다크 테마 보정: 밝은 파스텔 배경 카드 위의 글자는 항상 어둡게 고정 ===== */
