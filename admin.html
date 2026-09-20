@@ -4062,11 +4062,24 @@ async function layoutPbSolutionPages(ids, meta, startPageNum){
       colIds.push(item.id);
       sum += item.h;
     }
+    return sum;
   };
+  // 2026-09-20 추가: 위 fillColumn까지 마쳤는데도 대기열에 항목이 남아 있고, 그 이유가
+  // "남은 항목들이 하나같이 커서 안 들어갔다"는 것뿐이라면 — 즉 이 페이지가 실제로는
+  // 절반도 못 채운 채 끝나버리는 상황이라면 — 다음 페이지로 그냥 넘기지 않고 그 큰 항목을
+  // 억지로 더 채운다. .ws-solution 페이지는 min-height:297mm라 내용이 길면 실제 인쇄
+  // 시 한 장을 살짝 넘어가도 되도록 설계돼 있으므로(위 주석 참고), 페이지 절반이 통째로
+  // 비는 것보다는 약간 넘치더라도 채우는 쪽이 낫다.
+  const FORCE_FILL_RATIO = 0.55;
   while(pending.length){
     const cur = { col0: [], col1: [] };
-    fillColumn(cur.col0, colBudgetPx);
-    fillColumn(cur.col1, colBudgetPx);
+    let sum0 = fillColumn(cur.col0, colBudgetPx);
+    let sum1 = fillColumn(cur.col1, colBudgetPx);
+    while(pending.length && (sum0 + sum1) < FORCE_FILL_RATIO * colBudgetPx * 2){
+      const item = pending.shift();
+      if(sum0 <= sum1){ cur.col0.push(item.id); sum0 += item.h; }
+      else { cur.col1.push(item.id); sum1 += item.h; }
+    }
     pages.push(cur);
   }
 
