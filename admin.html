@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>학생 관리 시스템 | 수학의 결</title>
 <link rel="apple-touch-icon" href="assets/logo-180.png">
-<meta name="theme-color" content="#0C4642">
+<meta name="theme-color" content="#2F493C">
 <style>
   :root{
-    --teal:#224F42;            /* 학원 기준 틸 — 메인 포인트색(버튼·활성탭) */
-    --teal-dark:#17362D;       /* 진한 틸 — 밝은 배경 위 텍스트/포인트 */
-    --deep:#0C4642;            /* 가장 진한 틸 — 사이드바 배경 등 강한 강조면 */
+    --teal:#2F493C;            /* 학원 기준 틸 — 메인 포인트색(버튼·활성탭) (2026-09: #224F42 -> #2F493C 변경) */
+    --teal-dark:#203229;       /* 진한 틸 — 밝은 배경 위 텍스트/포인트 */
+    --teal-light:#3C5B4B;      /* 밝은 틸 — 사이드바 활성 메뉴 배경 */
+    --deep:#2F493C;            /* 사이드바 배경 — 그라데이션 없이 --teal과 동일한 단색 사용 */
     --soft:var(--soft);            /* 테마색의 연한 배경(배지·강조) — 색상 테마 선택 시 자동 계산 */
     --side-fg:#FFFFFF;         /* 사이드바 글자색(어두운 배경 위, 테마 밝기에 따라 자동 전환) */
     --side-fg-soft:rgba(255,255,255,.72);
@@ -30,8 +31,9 @@
     --teal-ondark:#6FC7A8;     /* 어두운 배경(카드/페이지) 위 틸 텍스트 — 다크 테마 전용 */
     --gold:#C9A967;            /* 사이드바 포인트(골드) — 테마와 무관하게 고정 */
     --gold-rgb:201,169,103;
-    --deep-rgb:12,70,66;       /* --deep(#0C4642)의 r,g,b — 유리 배경 그라데이션용, 테마 변경 시 JS가 갱신 */
-    --teal-rgb:34,79,66;       /* --teal(#224F42)의 r,g,b */
+    --logo-gold:#F0D9A0;       /* "수학의 결" 로고 전용 라이트 골드 (2026-09 추가) */
+    --deep-rgb:47,73,60;       /* --deep(#2F493C)의 r,g,b — 테마 변경 시 JS가 갱신 */
+    --teal-rgb:47,73,60;       /* --teal(#2F493C)의 r,g,b */
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
@@ -43,47 +45,36 @@
   #shell{display:flex;min-height:100vh;}
   /* 사이드바 뒤에 고정으로 깔리는 그라데이션 — 유리(사이드바)가 이걸 비춰서 은은하게 보이게 함 */
   #sidebarBackdrop{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;z-index:0;pointer-events:none;
-    background-color:var(--deep);
-    background-image:
-      linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4)),
-      radial-gradient(circle at 20% 14%, rgba(var(--gold-rgb),.24) 0%, transparent 42%),
-      radial-gradient(circle at 80% 62%, rgba(var(--teal-rgb),.48) 0%, transparent 48%),
-      radial-gradient(circle at 35% 92%, rgba(var(--teal-rgb),.28) 0%, transparent 45%);}
+    background-color:var(--teal);}
   #sidebar{width:var(--sidebar-w);flex-shrink:0;color:var(--side-fg);
     display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:1;
-    background:rgba(255,255,255,.045);
-    backdrop-filter:blur(14px) saturate(130%);-webkit-backdrop-filter:blur(14px) saturate(130%);
-    border-right:1px solid rgba(255,255,255,.14);
-    box-shadow:inset -1px 0 0 rgba(255,255,255,.05);}
-  #sidebar::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
-    background:radial-gradient(ellipse 200px 120px at 6% 4%, rgba(255,255,255,.14) 0%, transparent 65%);
-    mix-blend-mode:screen;}
+    background:var(--teal);
+    border-right:1px solid rgba(255,255,255,.10);}
   .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;box-sizing:border-box;
     border-bottom:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
-  .side-brand img{width:64px;height:64px;object-fit:contain;flex-shrink:0;
-    filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));}
+  .side-brand img{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
   .side-brand .names{line-height:1.35;}
   .side-brand .t1{font-size:15.5px;font-weight:800;letter-spacing:-0.2px;}
   .side-brand .t2{font-size:11.5px;color:var(--side-fg-soft);}
-  .side-brand-wordmark{flex-direction:column;justify-content:center;gap:8px;padding:22px 18px 18px;}
-  .side-brand-wordmark img{width:150px;height:auto;flex-shrink:0;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));}
-  .side-brand-caption{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--side-fg-soft);text-align:center;}
-  .side-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:3px;position:relative;z-index:1;}
-  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;
-    font-size:14.5px;font-weight:800;color:var(--side-fg);cursor:pointer;border:1px solid transparent;background:none;
-    width:100%;text-align:left;position:relative;overflow:hidden;}
-  .nav-item .nav-emoji{font-size:16px;width:34px;height:34px;flex-shrink:0;border-radius:10px;
-    display:flex;align-items:center;justify-content:center;line-height:1;
-    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);
-    filter:saturate(.65) brightness(1.05);}
-  .nav-item:hover{background:rgba(127,127,127,.15);color:var(--side-fg);}
+  .side-brand-wordmark{flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:24px 18px 16px;
+    border-bottom:1px solid rgba(255,255,255,.12);}
+  .side-brand-wordmark img{width:100px;height:auto;flex-shrink:0;filter:brightness(1.12) saturate(.72);}
+  .side-brand-caption{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--side-fg-soft);text-align:center;}
+  .side-brand-divider{width:30px;height:2px;background:var(--logo-gold);border-radius:2px;margin-top:8px;}
+  .side-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;
+    font-size:14px;font-weight:700;color:var(--side-fg);cursor:pointer;border:none;background:none;
+    width:100%;text-align:left;position:relative;overflow:hidden;opacity:.82;}
+  .nav-item .nav-emoji{font-size:15px;width:20px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;line-height:1;}
+  .nav-item:hover{opacity:1;background:rgba(255,255,255,.06);color:var(--side-fg);}
   .nav-item.active{
-    background:linear-gradient(90deg,rgba(var(--gold-rgb),.16),rgba(255,255,255,.03));
-    border-color:rgba(var(--gold-rgb),.35);
+    opacity:1;
+    background:var(--teal-light);
     color:#fff;}
-  .nav-item.active .nav-emoji{opacity:1;border-color:rgba(var(--gold-rgb),.3);}
-  .nav-item.new-badge{background:rgba(var(--gold-rgb),.08);border-color:rgba(var(--gold-rgb),.32);color:#f5dfaa;}
-  .nav-item.new-badge:hover{background:rgba(var(--gold-rgb),.14);}
+  .nav-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--gold);}
+  .nav-item.new-badge{opacity:1;background:none;color:#f5dfaa;}
+  .nav-item.new-badge:hover{background:rgba(255,255,255,.06);}
   .nav-item.new-badge .nav-emoji{color:var(--gold);}
   .side-foot{padding:16px 20px 20px;font-size:11px;color:var(--side-fg-dim);line-height:1.6;
     border-top:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
@@ -627,7 +618,7 @@
     #mobileTopbar .mt-brand .t1{font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     #mobileTopbar .mt-brand.mt-brand-wordmark{flex-direction:column;align-items:flex-start;gap:2px;}
     #mobileTopbar .mt-brand.mt-brand-wordmark img{width:auto;height:34px;object-fit:contain;border-radius:0;
-      filter:drop-shadow(0 2px 5px rgba(0,0,0,.3));}
+      filter:brightness(1.12) saturate(.72);}
     #mobileTopbar .mt-brand-caption{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--side-fg-soft);}
     #mobileMenuBtn{display:flex;align-items:center;justify-content:center;
       width:34px;height:34px;border:none;background:none;color:var(--side-fg);cursor:pointer;flex-shrink:0;}
@@ -636,20 +627,16 @@
     #mobileMenuOverlay .mmo-backdrop{position:absolute;inset:0;background:rgba(8,29,24,.45);}
     #mobileMenuOverlay .mmo-panel{position:relative;color:var(--side-fg);
       padding:0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.3);
-      background-color:var(--deep);
-      background-image:
-        linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4)),
-        radial-gradient(circle at 15% 10%, rgba(var(--gold-rgb),.26) 0%, transparent 40%),
-        radial-gradient(circle at 85% 55%, rgba(var(--teal-rgb),.5) 0%, transparent 46%);
-      backdrop-filter:blur(14px) saturate(130%);-webkit-backdrop-filter:blur(14px) saturate(130%);}
-    #mobileMenuOverlay .mmo-head{display:flex;align-items:center;justify-content:space-between;
-      padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12);}
+      background-color:var(--teal);}
+    #mobileMenuOverlay .mmo-head{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:20px 14px 14px;border-bottom:1px solid rgba(255,255,255,.12);position:relative;}
     #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
     .mmo-brand-text{font-size:17px !important;font-weight:800;}
-    #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark{flex-direction:column;align-items:flex-start;gap:4px;}
-    #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark img{width:auto;height:52px;border-radius:0;
-      filter:drop-shadow(0 2px 6px rgba(0,0,0,.3));}
-    .mmo-brand-caption{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--side-fg-soft);}
+    #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark{flex-direction:column;align-items:center;gap:6px;}
+    #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark img{width:100px;height:auto;border-radius:0;
+      filter:brightness(1.12) saturate(.72);}
+    .mmo-brand-caption{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--side-fg-soft);}
+    #mobileMenuClose{position:absolute;right:14px;top:16px;}
     #mobileMenuClose{background:none;border:none;color:var(--side-fg);cursor:pointer;width:32px;height:32px;
       display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     #mobileMenuClose svg{width:20px;height:20px;}
@@ -807,7 +794,7 @@
   .pb-tag.pb-typeset-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
   .pb-tag.pb-typeset-btn.on{background:var(--soft);color:var(--teal-dark);border:1px solid var(--teal);}
 
-  .nav-item.new-badge::after{content:"NEW";position:absolute;right:10px;top:9px;font-size:8.5px;
+  .nav-item.new-badge::after{content:"NEW";position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:8.5px;
     font-weight:800;background:var(--gold);color:#1d312b;padding:1px 5px;border-radius:20px;}
 
   #pbStickyBar{position:fixed;left:var(--sidebar-w);right:0;bottom:0;background:var(--deep);color:#fff;
@@ -826,7 +813,7 @@
      항상 밝은 배경 + 어두운 글자를 쓴다. 아래에서 --ink/--ink-soft/--teal-dark/--line을
      원래(라이트) 값으로 되돌려서, 이 안에서 var(--ink) 등을 쓰는 모든 요소에 그대로 적용되게 한다. */
   #pbPrintView{position:fixed;inset:0;background:#5C6E69;display:none;z-index:30;overflow:auto;
-    --ink:#20261F;--ink-soft:#6B7570;--teal-dark:#17362D;--line:#E3E7E2;}
+    --ink:#20261F;--ink-soft:#6B7570;--teal-dark:#203229;--line:#E3E7E2;}
   #pbPrintView.show{display:block;}
   #pbPrintToolbar{position:sticky;top:0;background:var(--deep);color:#fff;padding:12px 20px;
     display:flex;justify-content:space-between;align-items:center;z-index:2;}
@@ -978,7 +965,8 @@
     <div class="mmo-head">
       <div class="mt-brand mt-brand-wordmark">
         <img src="assets/logo-wordmark.png" alt="수학의 결">
-        <div class="mmo-brand-caption">학생 관리 시스템</div>
+        <div class="mmo-brand-caption">Math Standard</div>
+        <div class="side-brand-divider"></div>
       </div>
       <button id="mobileMenuClose" aria-label="메뉴 닫기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -1034,8 +1022,8 @@
       <div class="tm-swatches" id="themeSwatches"></div>
       <div class="tm-sec">직접 고르기</div>
       <label class="tm-custom">
-        <input type="color" id="themeColorInput" value="#0C4642">
-        <div><b id="themeHex">#0C4642</b><br><small>원하는 색을 자유롭게 선택하세요</small></div>
+        <input type="color" id="themeColorInput" value="#2F493C">
+        <div><b id="themeHex">#2F493C</b><br><small>원하는 색을 자유롭게 선택하세요</small></div>
       </label>
       <div class="tm-warn" id="themeWarn">⚠️ 너무 밝은 색은 배지·강조 영역의 흰 글자와 대비가 약해질 수 있어요.</div>
     </div>
@@ -1053,8 +1041,8 @@
   <div id="sidebar">
     <div class="side-brand side-brand-wordmark">
       <img src="assets/logo-wordmark.png" alt="수학의 결">
-
-      <div class="side-brand-caption">학생 관리 시스템</div>
+      <div class="side-brand-caption">Math Standard</div>
+      <div class="side-brand-divider"></div>
     </div>
     <nav class="side-nav" id="sideNav">
       <button class="nav-item active" data-page="dashboard">
@@ -4487,7 +4475,7 @@ function renderAll(){
 // 사이드바는 아이보리로 고정, 나머지 버튼(--teal)/진한 강조(--deep)/진한 글자(--teal-dark)/연한 배경(--soft)을 자동 계산한다.
 // 저장된 색은 시트의 "설정" 탭(action=settings)에 두어 모든 기기에서 같은 색이 보이고,
 // 로딩 순간의 깜빡임을 줄이기 위해 localStorage에도 마지막 값을 캐시해 둔다.
-const THEME_DEFAULT = '#0C4642';
+const THEME_DEFAULT = '#2F493C';
 // 2026-09: 고정 프리셋 대신 "최근에 실제로 저장한 색"을 서버(Code.gs)에서 받아와 스와치로 보여준다
 // (최대 10개, 최근순). 처음 로딩 때 깜빡임 없이 뭔가 보이도록 기본값으로 하나 채워두고,
 // loadTheme()이 서버에서 실제 이력을 받아오면 이 배열을 교체한다.
@@ -4545,12 +4533,13 @@ function applyTheme(hex){
   const valid = themeHexToRgb_(hex) ? hex.toUpperCase() : THEME_DEFAULT;
   if(valid === THEME_DEFAULT){
     // 기본 테마: CSS에 적힌 원래 값으로 되돌린다 (사이드바 관련 값만 — 메인 화면 배경/카드는 아래에서 항상 다시 계산)
-    ['--deep','--teal','--teal-dark','--soft','--side-fg','--side-fg-soft','--side-fg-dim','--deep-rgb','--teal-rgb'].forEach(k=>root.removeProperty(k));
+    ['--deep','--teal','--teal-dark','--teal-light','--soft','--side-fg','--side-fg-soft','--side-fg-dim','--deep-rgb','--teal-rgb'].forEach(k=>root.removeProperty(k));
   }else{
     root.setProperty('--deep', valid);
     const tealHex = themeMix_(valid, 255, 0.12);
     root.setProperty('--teal', tealHex);
     root.setProperty('--teal-dark', themeMix_(valid, 0, 0.12));
+    root.setProperty('--teal-light', themeMix_(valid, 255, 0.22)); // 사이드바 활성 메뉴 배경 — 테마색보다 한 톤 밝게
     root.setProperty('--soft', themeMix_(valid, 255, 0.88));
     // 사이드바 유리 배경 그라데이션도 테마색을 따라가도록 r,g,b 값을 같이 갱신
     const deepRgb = themeHexToRgb_(valid);
