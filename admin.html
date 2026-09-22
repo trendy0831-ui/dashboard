@@ -45,10 +45,10 @@
   #shell{display:flex;min-height:100vh;}
   /* 사이드바 뒤에 고정으로 깔리는 그라데이션 — 유리(사이드바)가 이걸 비춰서 은은하게 보이게 함 */
   #sidebarBackdrop{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;z-index:0;pointer-events:none;
-    background-color:var(--teal);}
+    background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);}
   #sidebar{width:var(--sidebar-w);flex-shrink:0;color:var(--side-fg);
     display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:1;
-    background:var(--teal);
+    background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);
     border-right:1px solid rgba(255,255,255,.10);}
   .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;box-sizing:border-box;
     border-bottom:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
@@ -610,8 +610,7 @@
     #sidebar{display:none;}
     #sidebarBackdrop{display:none;}
     #mobileTopbar{display:flex;align-items:center;justify-content:space-between;
-      background:rgba(var(--deep-rgb),.82);color:var(--side-fg);padding:10px 14px;position:sticky;top:0;z-index:50;
-      backdrop-filter:blur(14px) saturate(130%);-webkit-backdrop-filter:blur(14px) saturate(130%);
+      background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);color:var(--side-fg);padding:10px 14px;position:sticky;top:0;z-index:50;
       border-bottom:1px solid rgba(255,255,255,.12);}
     #mobileTopbar .mt-brand{display:flex;align-items:center;gap:8px;min-width:0;}
     #mobileTopbar .mt-brand img{width:26px;height:26px;object-fit:contain;flex-shrink:0;border-radius:6px;}
@@ -627,7 +626,7 @@
     #mobileMenuOverlay .mmo-backdrop{position:absolute;inset:0;background:rgba(8,29,24,.45);}
     #mobileMenuOverlay .mmo-panel{position:relative;color:var(--side-fg);
       padding:0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.3);
-      background-color:var(--teal);}
+      background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);}
     #mobileMenuOverlay .mmo-head{display:flex;flex-direction:column;align-items:center;justify-content:center;
       padding:20px 14px 14px;border-bottom:1px solid rgba(255,255,255,.12);position:relative;}
     #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
