@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>학생 관리 시스템 | 수학의 결</title>
 <link rel="apple-touch-icon" href="assets/logo-180.png">
+<!-- 2026-09-23: 문제은행 조판 문제 본문용 명조체 -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#2F493C">
 <style>
   :root{
@@ -792,6 +795,73 @@
   .pb-tag.pb-typeset-btn{cursor:pointer;background:var(--card);border:1px dashed var(--line);color:var(--ink-soft);}
   .pb-tag.pb-typeset-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
   .pb-tag.pb-typeset-btn.on{background:var(--soft);color:var(--teal-dark);border:1px solid var(--teal);}
+
+  /* 2026-09-23: 문제 조판(캡쳐 이미지 대신 텍스트·수식으로 다시 입력한 문제). 문제은행 "조판문제" 열이
+     있는 문제만 이 스타일로 그리고, 없는 문제는 기존처럼 캡쳐 이미지를 쓴다. 클래스는 해설 조판(.ts-*)과
+     겹치지 않도록 .tq-* 로 구분. 본문은 명조, 번호·태그는 고딕. 그림은 원본 PDF 크기(pt) 그대로. */
+  .tq-q{background:#fff;border:1px solid var(--line);border-top:3px solid var(--teal);border-radius:10px;padding:20px 22px 14px;font-family:'Noto Serif KR','AppleMyungjo','Batang',serif;color:var(--ink)}
+  .tq-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-family:inherit}
+  .tq-num{background:var(--teal);color:#fff;font-weight:700;border-radius:6px;padding:2px 9px;font-size:15px}
+  .tq-tag{border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:1px 8px;font-size:13px;font-weight:500}
+  .tq-head .tq-pts{margin-left:auto}
+  .tq-pts{color:var(--ink-soft);font-size:14px;font-family:inherit}
+  .tq-body{font-size:17px;line-height:1.95;word-break:keep-all}
+  .tq-q mjx-container[jax="CHTML"]{white-space:nowrap;font-size:104% !important}
+  .tq-cond{font-size:15px;color:#374151;text-align:right;margin-top:4px;line-height:1.7}
+  .tq-fig{margin:10px auto 14px;max-width:100%}
+  .tq-fig img{width:100%;display:block}
+  .tq-table{border-collapse:collapse;margin:12px 0;font-size:15px;width:100%}
+  .tq-table th,.tq-table td{border:1px solid #9AA3AD;padding:6px 10px;line-height:1.6}
+  .tq-table th{width:64px;font-weight:400;background:#F3F5F8;word-break:keep-all}
+  .tq-box{border:1.2px solid #4B5563;border-radius:4px;margin:14px 0;padding:10px 14px;font-size:16px;line-height:2;position:relative}
+  .tq-box.titled{margin-top:22px;padding-top:14px}
+  .tq-box-title{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#fff;padding:0 10px;font-size:14px;letter-spacing:.2em;font-family:inherit}
+  .tq-box-in{display:flex;gap:12px;align-items:center;justify-content:space-between}
+  .tq-box-fig .tq-fig{margin:0}
+  .tq-blank{display:inline-block;min-width:64px;border:1px solid #4B5563;text-align:center;padding:0 8px;line-height:1.5;font-size:.92em;margin:0 2px}
+  .tq-sub{list-style:none;padding:0;margin:10px 0 0;font-size:16.5px;line-height:1.9}
+  .tq-sub li{margin-bottom:6px;word-break:keep-all}
+  .tq-sub-n{font-weight:600}
+  .tq-space{border:1px dashed var(--line);border-radius:8px;height:90px;margin:8px 0 4px}
+  .tq-choices{display:grid;grid-template-columns:repeat(5,1fr);gap:8px 14px;font-size:17px;padding-top:6px}
+  .tq-choices>span{white-space:nowrap;min-width:0}
+  .tq-choices b{font-weight:400;color:var(--teal)}
+  .tq-choices.c3{grid-template-columns:repeat(3,1fr)}
+  .tq-choices.c3>span:nth-child(5){grid-column:span 2}
+  .tq-choices.c1{grid-template-columns:1fr}
+  .tq-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid var(--line);font-family:inherit;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tq-meta span{background:var(--soft);color:var(--teal);font-size:12px;border-radius:999px;padding:3px 10px}
+  /* 카드 목록용 축소판 — 위쪽만 보여주고 아래는 흐리게 */
+  .pb-thumb.tq-mini{overflow:hidden;position:relative;background:#fff;padding:0;}
+  .tq-mini .tq-q{border:none;border-radius:0;padding:32px 12px 8px;}
+  .tq-mini .tq-head{display:none;}
+  .tq-mini .tq-body{font-size:11.5px;line-height:1.7;}
+  .tq-mini .tq-cond,.tq-mini .tq-box,.tq-mini .tq-sub,.tq-mini .tq-table{font-size:10.5px;line-height:1.6;}
+  .tq-mini .tq-box{padding:4px 8px;margin:6px 0;}
+  .tq-mini .tq-fig{zoom:.62;margin:6px auto;}
+  .tq-mini .tq-choices{font-size:11px;gap:2px 8px;}
+  .tq-mini::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(rgba(255,255,255,0),#fff);}
+  .pb-tag.tq-on{background:#fff;border:1px solid var(--teal);color:var(--teal-dark);}
+  /* 문제지 인쇄 칸 — 칸 위쪽에 조판 문제, 아래 빈 곳은 풀이 공간 */
+  .ws-slot.tq-slot{display:block;padding:3mm 3.5mm;}
+  .tq-slot .tq-q{border:none;padding:0;border-radius:0;}
+  .tq-slot .tq-head{margin-bottom:5px;}
+  .tq-slot .tq-num{font-size:11px;padding:1px 7px;border-radius:5px;}
+  .tq-slot .tq-tag{font-size:9pt;padding:0 6px;}
+  .tq-slot .tq-pts{font-size:8.5pt;}
+  .tq-slot .tq-body{font-size:10pt;line-height:1.75;}
+  .tq-slot .tq-cond{font-size:9pt;}
+  .tq-slot .tq-box{font-size:9.5pt;line-height:1.75;padding:5px 9px;margin:8px 0;}
+  .tq-slot .tq-box-title{font-size:8.5pt;top:-9px;}
+  .tq-slot .tq-blank{min-width:40px;}
+  .tq-slot .tq-table{font-size:9pt;margin:6px 0;}
+  .tq-slot .tq-sub{font-size:9.5pt;line-height:1.7;}
+  .tq-slot .tq-sub li{margin-bottom:18mm;}
+  .tq-slot .tq-sub li:last-child{margin-bottom:0;}
+  .tq-slot .tq-fig{margin:6px auto 8px;}
+  .tq-slot .tq-choices{font-size:10pt;gap:3px 10px;padding-top:2px;}
+  .tq-slot .tq-meta{margin-top:7px;padding-top:5px;}
+  .tq-slot .tq-meta span{font-size:7pt;padding:1px 7px;}
 
   .nav-item.new-badge::after{content:"NEW";position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:8.5px;
     font-weight:800;background:var(--gold);color:#1d312b;padding:1px 5px;border-radius:20px;}
@@ -3551,6 +3621,115 @@ document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{
   syncSideBrandHeight();
 })();
 /* ============ 문제은행 ============ */
+// 2026-09-23: 문제 조판 렌더러. p.typeset(조판 JSON)이 있으면 캡쳐 이미지 대신 이걸로 그린다.
+// 수식($...$)은 그대로 두고, 화면에 꽂힌 뒤 typesetPbProblems()가 MathJax로 문제 단위로 렌더링한다.
+// 문제 조판 렌더러 — admin.html에도 그대로 들어갈 함수 (수식은 $...$ 그대로 두고, 렌더는 MathJax/KaTeX가 담당)
+// o: 조판 JSON, opt: {num, figUrl(file)->url, meta:{school, region, year, unit, sub, lv}, answerSpace:true}
+function tsEsc(s){return String(s==null?'':s);}
+function tsBlanks(s){ // [[가]] -> 빈칸 상자
+  return tsEsc(s).replace(/\[\[(.+?)\]\]/g,'<span class="tq-blank">($1)</span>');
+}
+function tsFig(f,url){
+  return '<figure class="tq-fig" style="width:'+f.w+'pt"><img src="'+url+'" alt=""></figure>';
+}
+function renderTypesetProblem(o,opt){
+  opt=opt||{};
+  const url=f=>opt.figUrl?opt.figUrl(f.file):f.file;
+  const figs=(o.figs||[]);
+  let h='<article class="tq-q">';
+  h+='<div class="tq-head"><span class="tq-num">'+(opt.num!=null?String(opt.num).padStart(2,'0'):'')+'</span>';
+  if(o.tag) h+='<span class="tq-tag">'+o.tag+'</span>';
+  h+='<span class="tq-pts">['+o.pts+']</span></div>';
+  h+='<div class="tq-body">'+tsBlanks(o.body)+'</div>';
+  if(o.cond) h+='<div class="tq-cond">'+o.cond+'</div>';
+  if(o.table){
+    h+='<table class="tq-table">'+o.table.map(r=>'<tr>'+r.map((c,i)=>i===0?'<th>'+c+'</th>':'<td>'+c+'</td>').join('')+'</tr>').join('')+'</table>';
+  }
+  const box=()=>{
+    const b=o.box; let s='<div class="tq-box'+(b.title?' titled':'')+'">';
+    if(b.title) s+='<div class="tq-box-title">&lt; '+b.title+' &gt;</div>';
+    s+='<div class="tq-box-in"><div class="tq-box-lines">'+b.lines.map(l=>'<div>'+tsBlanks(l)+'</div>').join('')+'</div>';
+    if(b.figIn && figs.length) s+='<div class="tq-box-fig">'+tsFig(figs[0],url(figs[0]))+'</div>';
+    return s+'</div></div>';
+  };
+  const figHtml=()=>figs.filter(()=>!(o.box&&o.box.figIn)).map(f=>tsFig(f,url(f))).join('');
+  if(o.box && !o.boxAfterFig){ h+=box(); h+=figHtml(); }
+  else if(o.box){ h+=figHtml(); h+=box(); }
+  else h+=figHtml();
+  if(o.sub){
+    h+='<ol class="tq-sub">'+o.sub.map((s,i)=>'<li><span class="tq-sub-n">('+(i+1)+')</span> '+s[0]+' <span class="tq-pts">['+s[1]+']</span>'+(opt.answerSpace!==false?'<div class="tq-space"></div>':'')+'</li>').join('')+'</ol>';
+  }
+  if(o.ch){
+    const c='①②③④⑤';
+    h+='<div class="tq-choices">'+o.ch.map((x,i)=>'<span><b>'+c[i]+'</b> '+x+'</span>').join('')+'</div>';
+  } else if(!o.sub && opt.answerSpace!==false){
+    h+='<div class="tq-space"></div>';
+  }
+  if(opt.meta){
+    const m=opt.meta;
+    h+='<div class="tq-meta"><span>'+m.school+(m.region?'('+m.region+')':'')+' · '+m.year+'</span><span>'+m.unit+(m.sub?' · '+m.sub:'')+'</span><span>LV '+m.lv+'</span></div>';
+  }
+  return h+'</article>';
+}
+// 보기 배치 자동 선택: 한 줄 → 3칸 격자(⑤는 두 칸) → 5줄
+function fitTypesetChoices(root){
+  (root||document).querySelectorAll('.tq-choices').forEach(c=>{
+    const modes=['','c3','c1']; let pick='c1';
+    for(const m of modes){ c.className='tq-choices '+m;
+      const over=[].some.call(c.children,s=>s.scrollWidth>s.clientWidth+1);
+      if(!over){pick=m;break;} }
+    c.className='tq-choices '+pick;
+  });
+}
+function pbTypesetHTML(p, opt){
+  opt = opt || {};
+  const urls = p.typesetFigUrls || {};
+  return renderTypesetProblem(p.typeset, Object.assign({
+    figUrl: f => urls[f] || '',
+    meta: opt.noMeta ? null : { school:p.school||'', region:p.region||'', year:p.year||'', unit:p.unitMain||'', sub:p.unitSub||'', lv:p.lv||'' }
+  }, opt));
+}
+// 문제(.tq-q) 하나씩 따로 MathJax를 돌려서, 한 문제의 $ 짝이 틀려도 다른 문제로 번지지 않게 한다.
+function typesetPbProblems(root){
+  const items = Array.from(root.querySelectorAll('.tq-q:not([data-mj])'));
+  if(!items.length) return Promise.resolve();
+  return new Promise(resolve=>{
+    // MathJax(CDN)가 끝내 안 불러와지는 경우에도 문제지·해설지 생성이 멈추지 않도록 8초 뒤엔 그냥 진행
+    const giveUp = Date.now() + 8000;
+    const run = ()=>{
+      if(Date.now() > giveUp){ fitTypesetChoices(root); resolve(); return; }
+      if(window.MathJax && MathJax.typesetPromise){
+        items.forEach(el=>el.setAttribute('data-mj','1'));
+        MathJax.typesetPromise(items).then(()=>{ fitTypesetChoices(root); resolve(); }).catch(()=>resolve());
+      } else setTimeout(run, 100);
+    };
+    run();
+  });
+}
+// 인쇄 칸을 넘치는 조판 문제는 그 문제만 비율대로 줄인다(최소 60%).
+function shrinkOverflowTypesetSlots(root){
+  root.querySelectorAll('.ws-slot.tq-slot').forEach(slot=>{
+    const q = slot.querySelector('.tq-q');
+    if(!q) return;
+    q.style.zoom = '';
+    const avail = slot.clientHeight - 12;
+    const need = q.scrollHeight;
+    if(need > avail && avail > 0) q.style.zoom = Math.max(0.6, avail / need).toFixed(3);
+  });
+}
+async function finishPbTypesetPrint(root){
+  if(!root.querySelector('.tq-slot')) return;
+  await typesetPbProblems(root);
+  if(document.fonts && document.fonts.ready) await document.fonts.ready;
+  // 그림이 다 불러와진 뒤에 높이를 재야 칸 넘침 판단이 정확하다 (최대 8초 대기)
+  const imgs = Array.from(root.querySelectorAll('.tq-slot img')).filter(im=>!im.complete);
+  await Promise.race([
+    Promise.all(imgs.map(im=>new Promise(r=>{ im.onload = im.onerror = r; }))),
+    new Promise(r=>setTimeout(r, 8000))
+  ]);
+  fitTypesetChoices(root);
+  shrinkOverflowTypesetSlots(root);
+}
 async function loadProblemBankData(){
   const rows = await apiGet({action:'problemBank'});
   pbProblems = Array.isArray(rows) ? rows : [];
@@ -3624,7 +3803,9 @@ function renderPbCards(){
   gridEl.innerHTML = pbProblems.map(p=>`
     <div class="pb-card${pbSelected.has(p.id)?' sel':''}${pbSelected.has(p.id)&&pbAutoAdded.has(p.id)?' auto':''}" data-id="${p.id}">
       <div class="pb-check"><svg viewBox="0 0 24 24"><polyline points="5 13 10 18 19 7"/></svg></div>
-      <img class="pb-thumb" src="${p.thumbUrl}" loading="lazy" alt="${p.id}">
+      ${p.typeset
+        ? `<div class="pb-thumb tq-mini">${pbTypesetHTML(p,{answerSpace:false,noMeta:true})}</div>`
+        : `<img class="pb-thumb" src="${p.thumbUrl}" loading="lazy" alt="${p.id}">`}
       <div class="pb-body">
         <div class="pb-id">${p.id}</div>
         <div class="pb-tags">
@@ -3633,6 +3814,7 @@ function renderPbCards(){
           <span class="pb-tag">${p.unitSub || ''}</span>
           <span class="pb-tag ${pbLevelClass(p.lv)}">${p.level || ''} · LV${p.lv || ''}</span>
           <span class="pb-tag">${p.type || ''}</span>
+          ${p.typeset ? '<span class="pb-tag tq-on">조판 문제</span>' : ''}
           ${p.hasSolution
             ? `<span class="pb-tag pb-typeset-btn${p.solutionTypeset && p.solutionTypeset.trim() ? ' on' : ''}" data-id="${p.id}">${p.solutionTypeset && p.solutionTypeset.trim() ? '✓ 조판됨' : '✎ 조판 편집'}</span>`
             : '<span class="pb-tag nosol">해설 준비중</span>'}
@@ -3656,6 +3838,7 @@ function renderPbCards(){
     }
   });
   applyPbFilters();
+  typesetPbProblems(gridEl); // 조판 문제 카드의 수식 렌더링 (비동기 — 목록은 바로 보이고 수식만 뒤이어 그려짐)
 }
 // 2026-09-19: 해설 "조판 편집" 모달. 손글씨 이미지를 옆에 보여주면서 텍스트/수식으로
 // 옮겨 적게 하고, 저장 시 no-cors POST로 서버(시트)에 직접 기록한다(파일 업로드와 동일한
@@ -4159,10 +4342,15 @@ async function buildPbPrintView(){
       <div class="ws-head"><span>수학 · ${mainUnits.join('/')}</span></div>
       <div class="ws-grid">`;
     chunk.forEach((id,k)=>{
-      html += `<div class="ws-slot">
+      if(meta[id].typeset){
+        // 2026-09-23: 조판된 문제는 캡쳐 대신 텍스트·수식으로 (번호는 문제 머리의 배지로 표시)
+        html += `<div class="ws-slot tq-slot">${pbTypesetHTML(meta[id],{num:i+k+1,answerSpace:false})}</div>`;
+      } else {
+        html += `<div class="ws-slot">
         <div class="ws-badge">${i+k+1}</div>
         <img src="${meta[id].printUrl}">
       </div>`;
+      }
     });
     for(let k=chunk.length;k<4;k++) html += `<div class="ws-slot ws-empty"></div>`;
     html += `</div>${pbFooterHTML(Math.floor(i/4)+1, '수학의 결')}</div>`;
@@ -4176,6 +4364,7 @@ async function buildPbPrintView(){
     // 문제지를 먼저 화면에 그려서 보여준 뒤, 해설 페이지는 실제 높이를 측정해서 비동기로 이어붙인다.
     document.getElementById('pbPrintPages').innerHTML = html;
     document.getElementById('pbPrintView').classList.add('show');
+    await finishPbTypesetPrint(document.getElementById('pbPrintPages'));
     const solHtml = await layoutPbSolutionPages(ids, meta, worksheetPageCount + 1);
     const pagesEl = document.getElementById('pbPrintPages');
     pagesEl.insertAdjacentHTML('beforeend', solHtml);
@@ -4188,6 +4377,7 @@ async function buildPbPrintView(){
 
   document.getElementById('pbPrintPages').innerHTML = html;
   document.getElementById('pbPrintView').classList.add('show');
+  await finishPbTypesetPrint(document.getElementById('pbPrintPages'));
 }
 async function renderProblemBankPage(){
   const el = document.getElementById('problemBankPageEl');
