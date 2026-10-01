@@ -986,28 +986,37 @@
   }
 
   // 시험/공지/수강료 탭을 처음 열 때만 호출 — 이미 받아온 탭이면 재요청하지 않는다.
+  const LAZY_TTL = { notice: 30000 }; // 공지는 30초가 지나면 다시 받아옴
+  const lazyFetchedAt = {};
   function loadLazyTab(kind){
-    if(tabDataCache[kind]) return;
+    const ttl = LAZY_TTL[kind];
+    const hasCache = !!tabDataCache[kind];
+    if(hasCache && (!ttl || Date.now() - (lazyFetchedAt[kind] || 0) < ttl)) return;
     const id = getParam('id');
     const containers = kind === 'notice' ? [document.getElementById('notice-card')]
                       : kind === 'tuition' ? [document.getElementById('tuition-card')]
                       : [document.getElementById('exam-card'), document.getElementById('elem-test-card')];
-    containers.forEach(el => { if(el) el.innerHTML = '<div class="log-empty">불러오는 중…</div>'; });
+    containers.forEach(el => { if(el && !hasCache) el.innerHTML = '<div class="log-empty">불러오는 중…</div>'; });
 
     const actionName = kind === 'notice' ? 'studentReportNotice' : kind === 'exam' ? 'studentReportExam' : 'studentReportTuition';
     fetchApi(actionName, { id })
       .then(data => {
-        if(data.error){ showLazyTabError(kind, containers); return; }
+        if(data.error){ if(!hasCache) showLazyTabError(kind, containers); return; }
         tabDataCache[kind] = data;
+        lazyFetchedAt[kind] = Date.now();
         if(kind === 'notice') renderNotice(data.notice);
         else if(kind === 'exam') renderExam(data);
         else if(kind === 'tuition') renderTuition(data.tuition);
       })
       .catch(e => {
         console.error(kind + ' 탭 로드 실패:', e);
-        showLazyTabError(kind, containers);
+        if(!hasCache) showLazyTabError(kind, containers);
       });
   }
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' &&
+       document.querySelector('.tab-btn.active')?.getAttribute('data-tab') === 'notice') loadLazyTab('notice');
+  });
   function showLazyTabError(kind, containers){
     containers.forEach(el => {
       if(!el) return;
