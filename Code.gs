@@ -68,6 +68,10 @@ function doGet(e) {
     // 수강료 탭(이번 달) 및 대시보드 미납 카드가 이 값으로 완납/결제예정/미납 3단계를 표시한다.
     return jsonResponse(getTuitionStatusToday());
   }
+  if (action === 'wrongNotes') {
+    // 2026-10: 오답노트(note.html) 기록 목록 — "오답노트" 시트에서 삭제 표시되지 않은 행만 내려준다.
+    return jsonResponse(getWrongNotes());
+  }
   return jsonResponse({ error: 'unknown action' });
 }
 
@@ -136,6 +140,19 @@ function doPost(e) {
     // 2026-09: 색상 테마 저장 — PropertiesService(스크립트 속성)에 저장해 모든 기기/브라우저가
     // 같은 값을 읽도록 한다. POST는 no-cors라 클라이언트가 응답을 못 읽으므로 여기서 직접 반영한다.
     saveSettings_(body.settings);
+    return jsonResponse({ status: 'ok' });
+  }
+  if (action === 'saveWrongNote') {
+    // 2026-10: 오답노트 기록 1건. POST(no-cors)라 응답을 못 읽으므로 서버가 시트에 직접 기록한다.
+    saveWrongNote(body.record);
+    return jsonResponse({ status: 'ok' });
+  }
+  if (action === 'deleteWrongNote') {
+    deleteWrongNote(body.id);
+    return jsonResponse({ status: 'ok' });
+  }
+  if (action === 'importWrongNotes') {
+    importWrongNotes(body.records);
     return jsonResponse({ status: 'ok' });
   }
   return jsonResponse({ error: 'unknown action' });
@@ -1763,4 +1780,129 @@ function getStudentReportSummary(reportId) {
 
   reportCacheSet_(cacheKey, result, 120); // 2분간 캐시 — 반복 방문·탭 전환 시 시트 재조회 방지
   return result;
+}
+
+
+// ---------- 오답노트 (note.html) ----------
+// "오답노트" 시트가 없으면 자동 생성:
+//   기록ID / 날짜 / 학생이름 / 단원 / 시험·교재 / 오답원인 / 메모 / 상태 / 기록시각 / 삭제시각
+// 과거 기록은 지우지 않는다: 삭제는 행을 없애지 않고 "상태" 칸에 "삭제"를 표시하기만 한다.
+function getWrongNoteSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('오답노트');
+  if (!sheet) {
+    sheet = ss.insertSheet('오답노트');
+    sheet.appendRow(['기록ID', '날짜', '학생이름', '단원', '시험·교재', '오답원인', '메모', '상태', '기록시각', '삭제시각']);
+    sheet.getRange(1, 1, 1, 10).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    sheet.getRange(2, 2, sheet.getMaxRows() - 1, 1).setNumberFormat('@'); // 날짜가 자동 변환되지 않게 텍스트로 고정
+  }
+  return sheet;
+}
+
+function wrongNoteKey_(r) {
+  return [r.studentName, r.unit, r.cause, r.date, r.testName || '', r.memo || ''].map(v => String(v || '').trim()).join('|');
+}
+
+function wrongNoteRow_(r) {
+  return [
+    String(r.id || ''),
+    String(r.date || ''),
+    String(r.studentName || '').trim(),
+    String(r.unit || '').trim(),
+    String(r.testName || '').trim(),
+    String(r.cause || '').trim(),
+    String(r.memo || '').trim(),
+    '',
+    new Date(),
+    ''
+  ];
+}
+
+function getWrongNotes() {
+  const sheet = getWrongNoteSheet_();
+  const data = sheet.getDataRange().getValues();
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0] || String(data[i][7] || '').trim() === '삭제') continue;
+    rows.push({
+      id: String(data[i][0]),
+      date: normalizeDate_(data[i][1]),
+      studentName: String(data[i][2] || ''),
+      unit: String(data[i][3] || ''),
+      testName: String(data[i][4] || ''),
+      cause: String(data[i][5] || ''),
+      memo: String(data[i][6] || '')
+    });
+  }
+  return rows;
+}
+
+// 같은 기록ID가 이미 있으면 다시 넣지 않는다(재전송해도 중복되지 않음).
+function saveWrongNote(rec) {
+  if (!rec || !rec.id || !rec.studentName || !rec.unit || !rec.cause) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sheet = getWrongNoteSheet_();
+    const ids = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues() : [];
+    if (ids.some(r => String(r[0]) === String(rec.id))) return;
+    const rowNum = sheet.getLastRow() + 1;
+    sheet.getRange(rowNum, 2).setNumberFormat('@');
+    sheet.getRange(rowNum, 1, 1, 10).setValues([wrongNoteRow_(rec)]);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteWrongNote(id) {
+  if (!id) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sheet = getWrongNoteSheet_();
+    const ids = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues() : [];
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(id)) {
+        sheet.getRange(i + 2, 8).setValue('삭제');
+        sheet.getRange(i + 2, 10).setValue(new Date());
+        return;
+      }
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 이 기기(브라우저)에 쌓인 기존 기록을 한꺼번에 옮긴다. 기록ID가 같거나 내용이 같은 기록은 건너뛴다.
+function importWrongNotes(records) {
+  if (!records || !records.length) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = getWrongNoteSheet_();
+    const data = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues() : [];
+    const haveIds = {};
+    const haveKeys = {};
+    data.forEach(r => {
+      haveIds[String(r[0])] = true;
+      if (String(r[7] || '').trim() === '삭제') return;
+      haveKeys[wrongNoteKey_({ studentName: r[2], unit: r[3], cause: r[5], date: normalizeDate_(r[1]), testName: r[4], memo: r[6] })] = true;
+    });
+    const out = [];
+    records.forEach(r => {
+      if (!r || !r.id || !r.studentName || !r.unit || !r.cause) return;
+      const key = wrongNoteKey_(r);
+      if (haveIds[String(r.id)] || haveKeys[key]) return;
+      haveIds[String(r.id)] = true;
+      haveKeys[key] = true;
+      out.push(wrongNoteRow_(r));
+    });
+    if (!out.length) return;
+    const start = sheet.getLastRow() + 1;
+    sheet.getRange(start, 2, out.length, 1).setNumberFormat('@');
+    sheet.getRange(start, 1, out.length, 10).setValues(out);
+  } finally {
+    lock.releaseLock();
+  }
 }
