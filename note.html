@@ -283,7 +283,7 @@
             <select id="inputCause" required>
               <option value="">선택</option>
               <option value="개념 이해 부족">개념 이해 부족</option>
-              <option value="조건 오독">조건 오독</option>
+              <option value="조건 놓침">조건 놓침</option>
               <option value="계산 실수">계산 실수</option>
               <option value="시간 부족">시간 부족</option>
             </select>
@@ -317,7 +317,7 @@
           <select id="filterCause">
             <option value="all">전체 원인</option>
             <option value="개념 이해 부족">개념 이해 부족</option>
-            <option value="조건 오독">조건 오독</option>
+            <option value="조건 놓침">조건 놓침</option>
             <option value="계산 실수">계산 실수</option>
             <option value="시간 부족">시간 부족</option>
           </select>
@@ -487,12 +487,16 @@ let appData = {
   records: []  // { id, studentName, unit, testName, cause, memo, date }
 };
 
+/* 오답 원인 이름 변경 호환: 예전 이름으로 저장된 기록·CSV도 새 이름으로 읽습니다 */
+const CAUSE_RENAMES = { '조건 오독':'조건 놓침' };
+function normalizeCause(c){ return CAUSE_RENAMES[c] || c; }
+
 function loadData(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      appData.records = parsed.records || [];
+      appData.records = (parsed.records || []).map(r => Object.assign({}, r, { cause: normalizeCause(r.cause) }));
     }
   }catch(e){
     console.error('데이터 로드 실패', e);
@@ -578,7 +582,7 @@ tabBtns.forEach(btn=>{
    ============================================================ */
 const causeClassMap = {
   '개념 이해 부족':'cause-concept',
-  '조건 오독':'cause-condition',
+  '조건 놓침':'cause-condition',
   '계산 실수':'cause-calc',
   '시간 부족':'cause-time'
 };
@@ -776,7 +780,7 @@ function computeUnitStats(records){
 }
 
 function computeCauseStats(records){
-  const causeCounts = { '개념 이해 부족':0, '조건 오독':0, '계산 실수':0, '시간 부족':0 };
+  const causeCounts = { '개념 이해 부족':0, '조건 놓침':0, '계산 실수':0, '시간 부족':0 };
   records.forEach(r=>{
     if(causeCounts[r.cause] !== undefined) causeCounts[r.cause]++;
   });
@@ -827,7 +831,7 @@ function renderAnalysis(){
   }else{
     const causeColorMap = {
       '개념 이해 부족':'#224F42',
-      '조건 오독':'#4E8A77',
+      '조건 놓침':'#4E8A77',
       '계산 실수':'#9CC4B3',
       '시간 부족':'repeating-linear-gradient(45deg,#224F42 0 6px,#9CC4B3 6px 12px)'
     };
@@ -885,7 +889,7 @@ document.getElementById('generateReportBtn').addEventListener('click', ()=>{
   // 원인별 훈련 제안 문구 매핑
   const causeAdviceMap = {
     '개념 이해 부족':'해당 단원의 기본 개념부터 다시 설명하고 확인 문제를 통해 이해도를 점검하는 훈련을 함께 해 나가겠습니다',
-    '조건 오독':'문제 풀이 시 조건 오독을 줄이는 훈련을 함께 해 나가겠습니다',
+    '조건 놓침':'문제 풀이 시 조건을 놓치지 않도록 확인하는 훈련을 함께 해 나가겠습니다',
     '계산 실수':'풀이 과정을 검산하는 습관을 들여 계산 실수를 줄이는 훈련을 함께 해 나가겠습니다',
     '시간 부족':'제한 시간 안에 문제를 푸는 실전 연습을 통해 풀이 속도를 높이는 훈련을 함께 해 나가겠습니다'
   };
@@ -1038,7 +1042,7 @@ function handleCsvImport(file){
         const cols = rows[i];
         const studentName = (cols[colIndex.studentName] || '').trim();
         const unit = (cols[colIndex.unit] || '').trim();
-        const cause = (cols[colIndex.cause] || '').trim();
+        const cause = normalizeCause((cols[colIndex.cause] || '').trim());
         const date = (cols[colIndex.date] || '').trim();
         const testName = colIndex.testName !== undefined ? (cols[colIndex.testName] || '').trim() : '';
         const memo = colIndex.memo !== undefined ? (cols[colIndex.memo] || '').trim() : '';
