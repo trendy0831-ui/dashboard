@@ -5,562 +5,202 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>이끌림 오답노트 · 취약 개념 분석기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
   :root{
-    --deep-green:#018875;
-    --deep-green-light:#02A390;
-    --deep-green-dark:#016358;
-    --cream:#F4F9F6;
-    --cream-dark:#E4EFE8;
+    --teal:#224F42;
+    --teal-deep:#224F42;
+    --teal-soft:#E3EEE8;
+    --teal-mid:#B9D4C8;
+    --cream:#FBF8F1;
+    --sand:#F3ECDD;
+    --butter:#F2DE97;
     --white:#FFFFFF;
-    --ink:#1D2A26;
-    --ink-soft:#6B7A74;
-    --line:#DCE7E1;
-    --red:#C1443A;
-    --red-soft:#F7DFDC;
-    --amber:#B8863B;
-    --amber-soft:#F2E4C8;
-    --blue:#027A94;
-    --blue-soft:#DCEEF1;
-    --shadow:0 10px 28px rgba(1,136,117,0.12);
-    --shadow-sm:0 3px 10px rgba(1,136,117,0.08);
-    --radius:14px;
+    --ink:#2B3A34;
+    --ink-soft:#4F5F58;
+    --line:#E4DDCB;
+    --serif:'Gowun Batang', serif;
+    --sans:'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    --shadow:0 8px 24px rgba(34,79,66,.10);
+    --shadow-sm:0 2px 8px rgba(34,79,66,.07);
+    --radius:24px;
+    /* 기존 변수명 호환 */
+    --deep-green:var(--teal);
+    --deep-green-dark:var(--teal-deep);
+    --cream-dark:var(--teal-soft);
   }
-
   *{ box-sizing:border-box; margin:0; padding:0; }
-
-  body{
-    font-family:'Noto Sans KR', sans-serif;
-    background:var(--cream);
-    color:var(--ink);
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-  }
-
-  .mono{ font-family:'Noto Sans KR', sans-serif; font-weight:700; }
-
-  .app{
-    max-width:1220px;
-    margin:0 auto;
-    padding:28px 24px 90px;
-  }
+  body{ font-family:var(--sans); font-size:16px; line-height:1.65; background:var(--cream); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:var(--serif); font-weight:700; }
+  .app{ max-width:1120px; margin:0 auto; padding:20px clamp(16px,4vw,32px) 90px; }
 
   /* ===== 헤더 ===== */
   .masthead{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:20px;
-    background:var(--deep-green);
-    border-radius:18px;
-    padding:24px 28px;
-    margin-bottom:22px;
-    box-shadow:var(--shadow);
-    flex-wrap:wrap;
+    display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
+    background:var(--teal); border-radius:32px; padding:clamp(20px,3vw,32px) clamp(20px,3vw,36px);
+    margin-bottom:20px;
   }
-  .masthead-left{ display:flex; align-items:center; gap:16px; }
-  .logo-mark{
-    width:60px; height:60px;
-    border-radius:50%;
-    background:var(--cream);
-    display:flex; align-items:center; justify-content:center;
-    flex-shrink:0;
-    border:2px solid rgba(255,255,255,0.5);
-    overflow:hidden;
-  }
-  .logo-mark img{
-    width:100%; height:100%;
-    object-fit:contain;
-    padding:6px;
-  }
-  .masthead h1{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:23px;
-    font-weight:700;
-    color:var(--white);
-    letter-spacing:-0.3px;
-  }
-  .masthead .subtitle{
-    font-size:12.5px;
-    color:#C9D9CF;
-    margin-top:4px;
-  }
-  .masthead-right{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-  }
+  .masthead-left{ display:flex; align-items:center; gap:16px; flex:1 1 520px; min-width:0; }
+  .logo-mark{ width:56px; height:56px; border-radius:18px; background:var(--white); overflow:hidden; position:relative; flex:none; }
+  .logo-mark img{ position:absolute; width:107.5px; height:107.5px; left:-24.2px; top:-12.2px; max-width:none; }
+  .masthead h1{ font-family:var(--serif); font-size:clamp(21px,3vw,28px); font-weight:700; color:var(--white); line-height:1.3; }
+  .masthead .subtitle{ font-size:15px; color:#D5E5DC; margin-top:4px; }
+  .masthead-right{ display:flex; gap:10px; flex-wrap:wrap; }
 
   /* ===== 버튼 ===== */
   .btn{
-    font-family:'Noto Sans KR', sans-serif;
-    font-weight:700;
-    font-size:15px;
-    padding:11px 18px;
-    border:none;
-    border-radius:9px;
-    cursor:pointer;
-    transition:all 0.15s ease;
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    white-space:nowrap;
+    font-family:var(--sans); font-weight:400; font-size:16px; min-height:48px; padding:0 24px;
+    border:none; border-radius:999px; cursor:pointer; transition:all .15s ease;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;
   }
-  .btn-primary{ background:var(--deep-green); color:var(--white); }
-  .btn-primary:hover{ background:var(--deep-green-dark); transform:translateY(-1px); box-shadow:var(--shadow-sm); }
-  .btn-cream{ background:var(--cream); color:var(--deep-green); }
-  .btn-cream:hover{ background:var(--white); transform:translateY(-1px); }
-  .btn-outline{
-    background:transparent;
-    color:var(--white);
-    border:1.5px solid rgba(255,255,255,0.4);
-  }
-  .btn-outline:hover{ background:rgba(255,255,255,0.1); border-color:var(--white); }
-  .btn-ghost{
-    background:transparent;
-    color:var(--ink-soft);
-    border:1.5px solid var(--line);
-  }
-  .btn-ghost:hover{ border-color:var(--deep-green); color:var(--deep-green); }
-  .btn-red{ background:var(--red); color:var(--white); }
-  .btn-red:hover{ background:#a3382f; }
-  .btn-sm{ padding:8px 14px; font-size:12.5px; border-radius:7px; }
-  .btn:disabled{ opacity:0.45; cursor:not-allowed; transform:none !important; }
+  .btn-primary{ background:var(--teal); color:var(--white); }
+  .btn-primary:hover{ background:var(--teal); box-shadow:0 4px 12px rgba(34,79,66,.28); filter:brightness(1.12); }
+  .btn-cream{ background:var(--butter); color:var(--teal); }
+  .btn-cream:hover{ background:#F6E7A8; }
+  .btn-outline{ background:transparent; color:var(--white); border:1.5px solid rgba(255,255,255,.7); }
+  .btn-outline:hover{ background:rgba(255,255,255,.12); border-color:var(--white); }
+  .btn-ghost{ background:var(--white); color:var(--teal); border:1.5px solid var(--teal-mid); }
+  .btn-ghost:hover{ background:var(--teal-soft); }
+  .btn-red{ background:var(--white); color:var(--teal-deep); border:1.5px solid var(--teal); }
+  .btn-red:hover{ background:var(--teal); color:var(--white); }
+  .btn-sm{ min-height:44px; padding:0 18px; font-size:15px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
   .btn-block{ width:100%; }
-
   input[type=file]{ display:none; }
 
-  /* ===== 탭 ===== */
-  .tabs{
-    display:flex;
-    gap:6px;
-    margin-bottom:22px;
-    flex-wrap:wrap;
-    border-bottom:2px solid var(--line);
-  }
+  /* ===== 탭 (알약형) ===== */
+  .tabs{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
   .tab-btn{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:17px;
-    font-weight:700;
-    color:var(--ink-soft);
-    background:transparent;
-    border:none;
-    padding:12px 18px;
-    cursor:pointer;
-    position:relative;
-    display:flex;
-    align-items:center;
-    gap:7px;
-    transition:color 0.15s ease;
+    font-family:var(--sans); font-size:16px; color:var(--teal); background:var(--teal-soft);
+    border:none; min-height:48px; padding:0 20px; border-radius:999px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px; transition:background .15s ease;
   }
-  .tab-btn::after{
-    content:"";
-    position:absolute;
-    left:0; bottom:-2px;
-    width:100%; height:3px;
-    background:transparent;
-    border-radius:3px 3px 0 0;
-    transition:background 0.15s ease;
-  }
-  .tab-btn:hover{ color:var(--deep-green); }
-  .tab-btn.active{ color:var(--deep-green); }
-  .tab-btn.active::after{ background:var(--deep-green); }
-
-  .panel{ display:none; animation:fadeIn 0.22s ease; }
+  .tab-btn:hover{ background:var(--teal-mid); }
+  .tab-btn.active{ background:var(--teal); color:var(--white); }
+  .panel{ display:none; animation:fadeIn .22s ease; }
   .panel.active{ display:block; }
   @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
 
   /* ===== 카드 ===== */
-  .card{
-    background:var(--white);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow-sm);
-    padding:24px;
-    margin-bottom:18px;
-    border:1px solid var(--line);
-  }
-  .card-title{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:17px;
-    font-weight:700;
-    color:var(--deep-green);
-    margin-bottom:16px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    flex-wrap:wrap;
-  }
-  .card-title .title-left{ display:flex; align-items:center; gap:8px; }
-  .badge-count{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:11.5px;
-    font-weight:700;
-    background:var(--cream-dark);
-    color:var(--deep-green);
-    padding:2px 10px;
-    border-radius:20px;
-  }
+  .card{ background:var(--white); border-radius:var(--radius); padding:clamp(20px,3vw,28px); margin-bottom:20px; border:1px solid var(--line); }
+  .card-title{ font-family:var(--serif); font-size:clamp(20px,2.6vw,24px); font-weight:700; color:var(--teal); margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .card-title .title-left{ display:flex; align-items:center; gap:10px; }
+  .badge-count{ font-family:var(--sans); font-size:14px; font-weight:400; background:var(--teal-soft); color:var(--teal); padding:2px 12px; border-radius:999px; }
 
   /* ===== 폼 ===== */
   .field{ margin-bottom:14px; }
-  .field label{
-    display:block;
-    font-size:12px;
-    font-weight:700;
-    color:var(--ink-soft);
-    margin-bottom:6px;
-  }
+  .field label{ display:block; font-size:15px; color:var(--ink-soft); margin-bottom:6px; }
   .field input, .field select, .field textarea{
-    width:100%;
-    padding:10px 12px;
-    border:1.5px solid var(--line);
-    border-radius:9px;
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:14px;
-    color:var(--ink);
-    background:var(--cream);
-    transition:border-color 0.15s, box-shadow 0.15s;
+    width:100%; min-height:48px; padding:10px 14px; border:1.5px solid var(--line); border-radius:16px;
+    font-family:var(--sans); font-size:16px; color:var(--ink); background:var(--cream);
+    transition:border-color .15s, box-shadow .15s;
   }
   .field input:focus, .field select:focus, .field textarea:focus{
-    outline:none;
-    border-color:var(--deep-green);
-    box-shadow:0 0 0 3px rgba(32,66,52,0.12);
-    background:var(--white);
+    outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(34,79,66,.14); background:var(--white);
   }
-  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .required-star{ color:var(--red); }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .required-star{ color:var(--teal); }
 
   /* ===== 상단 요약 ===== */
-  .summary-grid{
-    display:grid;
-    grid-template-columns:repeat(4, 1fr);
-    gap:14px;
-    margin-bottom:20px;
-  }
-  .summary-card{
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:16px 18px;
-    box-shadow:var(--shadow-sm);
-    position:relative;
-    overflow:hidden;
-  }
-  .summary-card::before{ content:""; position:absolute; top:0; left:0; width:4px; height:100%; background:var(--deep-green); }
-  .summary-card.c2::before{ background:var(--red); }
-  .summary-card.c3::before{ background:var(--amber); }
-  .summary-card.c4::before{ background:var(--blue); }
-  .summary-label{ font-size:12px; color:var(--ink-soft); font-weight:600; margin-bottom:8px; }
-  .summary-value{ font-family:'Noto Sans KR', sans-serif; font-size:26px; font-weight:700; color:var(--ink); }
-  .summary-sub{ font-size:11px; color:var(--ink-soft); margin-top:4px; }
+  .summary-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .summary-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+  .summary-card::before{ display:none; }
+  .summary-label{ font-size:15px; color:var(--ink-soft); margin-bottom:6px; }
+  .summary-value{ font-family:var(--serif); font-size:clamp(24px,3vw,30px); font-weight:700; color:var(--teal); }
+  .summary-sub{ font-size:14px; color:var(--ink-soft); margin-top:4px; }
+  .summary-card.c1{ background:var(--teal-soft); border-color:var(--teal-mid); }
 
   /* ===== 필터 바 ===== */
-  .filter-bar{
-    display:flex;
-    align-items:flex-end;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-bottom:18px;
-    padding:16px 18px;
-    background:var(--cream);
-    border-radius:12px;
-    border:1px solid var(--line);
-  }
+  .filter-bar{ display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:18px; padding:16px 18px; background:var(--sand); border-radius:20px; }
   .filter-bar .field{ margin-bottom:0; min-width:170px; flex:1; }
   .filter-bar .field.grow{ flex:2; }
 
   /* ===== 오답 테이블 ===== */
   .table-wrap{ overflow-x:auto; }
-  table.data-table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:13.5px;
-  }
-  table.data-table th{
-    text-align:left;
-    font-size:11.5px;
-    font-weight:700;
-    color:var(--ink-soft);
-    padding:10px 12px;
-    border-bottom:2px solid var(--deep-green);
-    letter-spacing:0.2px;
-    white-space:nowrap;
-  }
-  table.data-table td{
-    padding:11px 12px;
-    border-bottom:1px solid var(--line);
-    vertical-align:middle;
-  }
-  table.data-table tr:hover td{ background:rgba(32,66,52,0.03); }
+  table.data-table{ width:100%; border-collapse:collapse; font-size:15.5px; }
+  table.data-table th{ text-align:left; font-size:15px; font-weight:400; color:var(--teal); background:#F7F3EA; padding:10px 14px; white-space:nowrap; }
+  table.data-table th:first-child{ border-radius:12px 0 0 12px; }
+  table.data-table th:last-child{ border-radius:0 12px 12px 0; }
+  table.data-table td{ padding:12px 14px; border-bottom:1px solid #EDE6D6; vertical-align:middle; }
+  table.data-table tr:hover td{ background:rgba(227,238,232,.45); }
 
-  .tag{
-    display:inline-flex;
-    align-items:center;
-    gap:5px;
-    padding:4px 10px;
-    border-radius:20px;
-    font-size:11px;
-    font-weight:700;
-    white-space:nowrap;
-  }
-  .tag.cause-concept{ background:var(--red-soft); color:var(--red); }
-  .tag.cause-condition{ background:var(--amber-soft); color:#8A6323; }
-  .tag.cause-calc{ background:var(--blue-soft); color:var(--blue); }
-  .tag.cause-time{ background:#E5DEF2; color:#5B3E96; }
+  .tag{ display:inline-flex; align-items:center; gap:5px; padding:3px 12px; border-radius:999px; font-size:14px; white-space:nowrap; }
+  .tag.cause-concept{ background:var(--teal); color:var(--white); }
+  .tag.cause-condition{ background:#4E8A77; color:var(--white); }
+  .tag.cause-calc{ background:#CFE3D9; color:var(--teal-deep); }
+  .tag.cause-time{ background:#F2DE97; color:var(--teal-deep); }
 
-  .empty-msg{
-    text-align:center;
-    color:var(--ink-soft);
-    font-size:13.5px;
-    padding:44px 20px;
-    line-height:1.8;
-  }
-
-  .btn-danger-text{
-    background:transparent; color:var(--red); border:none; cursor:pointer;
-    font-size:12px; font-weight:700; padding:4px 8px;
-  }
-  .btn-danger-text:hover{ text-decoration:underline; }
+  .empty-msg{ text-align:center; color:var(--ink-soft); font-size:16px; padding:44px 20px; line-height:1.8; }
+  .btn-danger-text{ background:transparent; color:var(--teal); border:none; cursor:pointer; font-family:var(--sans); font-size:15px; padding:8px 12px; min-height:44px; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; }
+  .btn-danger-text:hover{ color:var(--teal-deep); }
 
   /* ===== 취약 단원 분석 ===== */
-  .weak-list{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
-  .weak-item{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    padding:14px 16px;
-    background:var(--cream);
-    border:1.5px solid var(--line);
-    border-radius:12px;
-    position:relative;
-  }
-  .weak-rank{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:20px;
-    font-weight:700;
-    color:var(--deep-green);
-    width:32px;
-    flex-shrink:0;
-  }
+  .weak-list{ display:flex; flex-direction:column; gap:12px; }
+  .weak-item{ display:flex; align-items:center; gap:14px; padding:16px 18px; background:var(--cream); border:1px solid var(--line); border-radius:20px; position:relative; }
+  .weak-rank{ font-family:var(--serif); font-size:22px; font-weight:700; color:var(--teal); width:34px; flex-shrink:0; }
   .weak-body{ flex:1; min-width:0; }
-  .weak-top-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
-  .weak-unit-name{ font-weight:700; font-size:15px; color:var(--ink); }
-  .weak-count{ font-size:12px; color:var(--ink-soft); }
-  .weak-bar-bg{ width:100%; height:8px; background:var(--cream-dark); border-radius:10px; overflow:hidden; }
-  .weak-bar-fill{ height:100%; background:var(--deep-green); border-radius:10px; transition:width 0.4s ease; }
+  .weak-top-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .weak-unit-name{ font-family:var(--serif); font-weight:700; font-size:18px; color:var(--ink); }
+  .weak-count{ font-size:15px; color:var(--ink-soft); }
+  .weak-bar-bg{ width:100%; height:10px; background:var(--teal-soft); border-radius:999px; overflow:hidden; }
+  .weak-bar-fill{ height:100%; background:var(--teal); border-radius:999px; transition:width .4s ease; }
 
-  .warn-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:5px;
-    background:var(--red);
-    color:var(--white);
-    font-size:11px;
-    font-weight:800;
-    padding:4px 11px;
-    border-radius:20px;
-    animation:pulseWarn 1.8s ease-in-out infinite;
-    letter-spacing:0.2px;
-  }
-  .warn-badge::before{ content:"⚠"; font-size:12px; }
-  @keyframes pulseWarn{
-    0%, 100%{ box-shadow:0 0 0 0 rgba(193,68,58,0.35); }
-    50%{ box-shadow:0 0 0 6px rgba(193,68,58,0); }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .warn-badge{ animation:none; }
-  }
+  .warn-badge{ display:inline-flex; align-items:center; gap:5px; background:var(--butter); color:var(--teal-deep); font-size:14px; padding:2px 12px; border-radius:999px; }
+  .warn-badge::before{ content:"●"; font-size:10px; color:var(--teal); }
 
   /* ===== 진단 리포트 ===== */
-  .report-select-row{
-    display:flex;
-    align-items:flex-end;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-bottom:18px;
-  }
+  .report-select-row{ display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
   .report-select-row .field{ margin-bottom:0; min-width:220px; }
-
-  .report-output{
-    display:none;
-    margin-top:18px;
-  }
+  .report-output{ display:none; margin-top:22px; }
   .report-output.show{ display:block; }
-
-  .report-paper{
-    background:var(--cream);
-    border:1.5px solid var(--line);
-    border-radius:14px;
-    padding:26px 28px;
-    position:relative;
-  }
-  .report-paper::before{
-    content:"상담용 진단서";
-    position:absolute;
-    top:-11px; left:22px;
-    background:var(--deep-green);
-    color:var(--white);
-    font-size:11.5px;
-    font-weight:700;
-    padding:4px 14px;
-    border-radius:20px;
-    font-family:'Noto Sans KR', sans-serif;
-    letter-spacing:0.3px;
-  }
-  .report-header-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:16px;
-    padding-bottom:14px;
-    border-bottom:1.5px dashed var(--line);
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .report-student-name{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:20px;
-    font-weight:700;
-    color:var(--deep-green);
-  }
-  .report-date{ font-size:12px; color:var(--ink-soft); }
-
-  .report-stat-row{
-    display:grid;
-    grid-template-columns:repeat(3, 1fr);
-    gap:12px;
-    margin-bottom:18px;
-  }
-  .report-stat{
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:10px;
-    padding:12px 14px;
-  }
-  .report-stat .r-label{ font-size:11px; color:var(--ink-soft); font-weight:600; margin-bottom:4px; }
-  .report-stat .r-value{ font-family:'Noto Sans KR', sans-serif; font-size:17px; font-weight:700; color:var(--ink); }
-
-  .report-textbox{
-    background:var(--white);
-    border:1.5px solid var(--deep-green);
-    border-radius:12px;
-    padding:20px 22px;
-    font-size:15px;
-    line-height:1.85;
-    color:var(--ink);
-    position:relative;
-  }
-  .report-textbox .quote-mark{
-    font-family:'Noto Sans KR', sans-serif;
-    font-size:36px;
-    color:var(--deep-green);
-    opacity:0.25;
-    line-height:1;
-    position:absolute;
-    top:8px; left:14px;
-  }
+  .report-paper{ background:var(--teal-soft); border-radius:28px; padding:30px clamp(18px,3vw,30px) 26px; position:relative; }
+  .report-paper::before{ content:"상담용 진단서"; position:absolute; top:-14px; left:24px; background:var(--teal); color:var(--white); font-size:15px; padding:3px 16px; border-radius:999px; }
+  .report-header-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:14px; border-bottom:1.5px dashed var(--teal-mid); flex-wrap:wrap; gap:8px; }
+  .report-student-name{ font-family:var(--serif); font-size:26px; font-weight:700; color:var(--teal-deep); }
+  .report-date{ font-size:15px; color:var(--ink-soft); }
+  .report-stat-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px; }
+  .report-stat{ background:var(--white); border-radius:18px; padding:14px 16px; }
+  .report-stat .r-label{ font-size:14px; color:var(--ink-soft); margin-bottom:4px; }
+  .report-stat .r-value{ font-family:var(--serif); font-size:20px; font-weight:700; color:var(--teal); }
+  .report-textbox{ background:var(--white); border-radius:20px; padding:22px 24px; font-size:17px; line-height:1.9; color:var(--ink); position:relative; }
+  .report-textbox .quote-mark{ font-family:var(--serif); font-size:40px; color:var(--teal); opacity:.25; line-height:1; position:absolute; top:8px; left:14px; }
   .report-textbox p{ position:relative; z-index:1; padding-left:6px; }
-  .report-textbox strong{ color:var(--deep-green); }
+  .report-textbox strong{ color:var(--teal); }
+  .report-actions{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
 
-  .report-actions{
-    display:flex;
-    gap:10px;
-    margin-top:16px;
-    flex-wrap:wrap;
-  }
+  /* ===== 백업/복원 ===== */
+  .backup-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .backup-box{ background:var(--sand); border-radius:24px; padding:24px; text-align:center; }
+  .backup-box .icon{ width:52px; height:52px; margin:0 auto 12px; border-radius:50%; background:var(--teal); color:var(--white); font-size:24px; display:flex; align-items:center; justify-content:center; }
+  .backup-box h4{ font-family:var(--serif); font-size:20px; color:var(--teal); margin-bottom:8px; }
+  .backup-box p{ font-size:15px; color:var(--ink-soft); line-height:1.7; margin-bottom:16px; }
+  .file-status{ margin-top:10px; font-size:15px; color:var(--ink-soft); min-height:18px; }
+  .file-status.ok{ color:var(--teal); font-weight:700; }
+  .file-status.err{ color:var(--teal-deep); font-weight:700; }
 
-  /* ===== 백업/복원 카드 ===== */
-  .backup-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:16px;
-  }
-  .backup-box{
-    background:var(--cream);
-    border:1.5px solid var(--line);
-    border-radius:12px;
-    padding:20px;
-    text-align:center;
-  }
-  .backup-box .icon{ font-size:30px; margin-bottom:10px; }
-  .backup-box h4{ font-family:'Noto Sans KR', sans-serif; font-size:15px; color:var(--deep-green); margin-bottom:6px; }
-  .backup-box p{ font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:14px; }
-
-  .file-status{
-    margin-top:10px;
-    font-size:12px;
-    color:var(--ink-soft);
-    min-height:16px;
-  }
-  .file-status.ok{ color:var(--deep-green); font-weight:700; }
-  .file-status.err{ color:var(--red); font-weight:700; }
-
-  /* ===== 토스트 ===== */
-  .toast{
-    position:fixed;
-    bottom:28px;
-    left:50%;
-    transform:translateX(-50%) translateY(20px);
-    background:var(--deep-green-dark);
-    color:var(--white);
-    padding:13px 24px;
-    border-radius:10px;
-    font-size:14px;
-    font-weight:600;
-    box-shadow:0 8px 24px rgba(0,0,0,0.25);
-    opacity:0;
-    pointer-events:none;
-    transition:all 0.3s ease;
-    z-index:999;
-  }
+  /* ===== 토스트 / 모달 ===== */
+  .toast{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--teal-deep); color:var(--white); padding:14px 26px; border-radius:999px; font-size:16px; box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:all .3s ease; z-index:999; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-  /* ===== 모달 ===== */
-  .modal-overlay{
-    position:fixed; inset:0;
-    background:rgba(21,44,34,0.5);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:1000;
-  }
+  .modal-overlay{ position:fixed; inset:0; background:rgba(15,30,28,.6); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
   .modal-overlay.show{ display:flex; }
-  .modal-box{
-    background:var(--white);
-    border-radius:16px;
-    padding:28px;
-    width:360px;
-    box-shadow:0 20px 50px rgba(0,0,0,0.25);
-    text-align:center;
-  }
-  .modal-box h3{ font-family:'Noto Sans KR', sans-serif; font-size:18px; margin-bottom:10px; color:var(--ink); }
-  .modal-box p{ font-size:13.5px; color:var(--ink-soft); margin-bottom:20px; line-height:1.6; }
+  .modal-box{ background:var(--white); border-radius:28px; padding:30px; width:380px; max-width:100%; box-shadow:0 20px 50px rgba(0,0,0,.25); text-align:center; }
+  .modal-box h3{ font-family:var(--serif); font-size:22px; margin-bottom:10px; color:var(--teal-deep); }
+  .modal-box p{ font-size:16px; color:var(--ink-soft); margin-bottom:22px; line-height:1.7; }
   .modal-actions{ display:flex; gap:10px; }
-  .modal-actions .btn{ flex:1; justify-content:center; }
+  .modal-actions .btn{ flex:1; }
 
-  footer.note{
-    text-align:center;
-    font-size:12px;
-    color:var(--ink-soft);
-    margin-top:30px;
-    padding-top:16px;
-    border-top:1px solid var(--line);
-    line-height:1.8;
-  }
+  footer.note{ text-align:center; font-size:15px; color:var(--ink-soft); margin-top:30px; padding-top:18px; border-top:1px solid var(--line); line-height:1.8; }
 
   @media (max-width:900px){
-    .summary-grid{ grid-template-columns:repeat(2, 1fr); }
+    .summary-grid{ grid-template-columns:repeat(2,1fr); }
     .backup-grid{ grid-template-columns:1fr; }
     .report-stat-row{ grid-template-columns:1fr; }
     .field-row{ grid-template-columns:1fr; }
     .masthead{ flex-direction:column; align-items:flex-start; }
+    .masthead-left{ flex:none; }
+    table.data-table{ min-width:640px; }
   }
+  @media (prefers-reduced-motion: reduce){ .panel{ animation:none; } .weak-bar-fill{ transition:none; } }
 </style>
 </head>
 <body>
@@ -570,7 +210,7 @@
   <!-- ===== 헤더 ===== -->
   <div class="masthead">
     <div class="masthead-left">
-      <div class="logo-mark"><img src="https://raw.githubusercontent.com/trendy0831-ui/dashboard/main/assets/logo-rounded.png" alt="이끌림 수학학원 로고"></div>
+      <div class="logo-mark"><img src="data:image/jpeg;base64,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" alt="이끌림수학학원 로고"></div>
       <div>
         <h1>이끌림 오답 노트 &amp; 취약 개념 분석기</h1>
         <div class="subtitle">이끌림 수학학원 · 오답을 기록하고, 취약 단원을 진단하고, 데이터를 안전하게 관리하세요</div>
@@ -1186,10 +826,10 @@ function renderAnalysis(){
     causeList.innerHTML = `<div class="empty-msg">분석할 오답 데이터가 없습니다.</div>`;
   }else{
     const causeColorMap = {
-      '개념 이해 부족':'var(--red)',
-      '조건 오독':'#B8863B',
-      '계산 실수':'var(--blue)',
-      '시간 부족':'#5B3E96'
+      '개념 이해 부족':'#224F42',
+      '조건 오독':'#4E8A77',
+      '계산 실수':'#9CC4B3',
+      '시간 부족':'#E2CB7A'
     };
     causeList.innerHTML = Object.entries(causeStats)
       .sort((a,b)=> b[1]-a[1])
