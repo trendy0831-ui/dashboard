@@ -201,6 +201,12 @@
     .masthead-left{ flex:none; }
     table.data-table{ min-width:640px; }
   }
+  /* 구글시트 저장 상태 표시 */
+  .sync-row{ display:flex; justify-content:flex-end; margin:0 0 10px; }
+  .sync-chip{ display:inline-flex; align-items:center; gap:8px; background:var(--teal-soft); color:var(--teal); border:1px solid var(--teal-mid); border-radius:999px; padding:6px 14px; font-size:14px; font-weight:600; cursor:default; font-family:inherit; }
+  .sync-chip small{ font-size:13px; font-weight:400; opacity:.8; }
+  .sync-chip.is-offline{ background:var(--white); border-style:dashed; cursor:pointer; }
+  .migrate-card{ border-color:var(--teal-mid); }
   /* admin 사이드바 안에 띄울 때(?embed=1): 큰 헤더는 숨기고 본문만 보여줌 */
   html.embed body{ background:transparent; min-height:0; }
   html.embed .masthead{ display:none; }
@@ -259,6 +265,8 @@
   </div>
 
   <!-- ===== 탭 ===== -->
+  <div class="sync-row"><button type="button" class="sync-chip" id="syncChip" title="누르면 다시 동기화합니다">☁️ 구글시트와 연결 중…</button></div>
+
   <div class="tabs">
     <button class="tab-btn active" data-panel="panel-record"><span>✍️</span>오답 기록</button>
     <button class="tab-btn" data-panel="panel-analysis"><span>📊</span>취약 개념 분석</button>
@@ -275,7 +283,7 @@
         <div class="field-row">
           <div class="field">
             <label>학생 이름 <span class="required-star">*</span></label>
-            <input type="text" id="inputStudentName" placeholder="예: 김민준" required list="studentNameList">
+            <input type="text" id="inputStudentName" placeholder="학생 명단에서 고르거나 입력 (예: 김민준)" required list="studentNameList">
             <datalist id="studentNameList"></datalist>
           </div>
           <div class="field">
@@ -434,10 +442,15 @@
 
   <!-- ===== 패널 4: 데이터 백업 및 복원 ===== -->
   <div class="panel" id="panel-backup">
+    <div class="card migrate-card">
+      <div class="card-title"><div class="title-left">☁️ 이 기기의 기록을 구글시트로 옮기기</div></div>
+      <p style="font-size:15px; line-height:1.7; margin-bottom:14px;" id="migrateText">확인 중…</p>
+      <button class="btn btn-primary" id="migrateBtn" disabled>구글시트로 옮기기</button>
+    </div>
     <div class="card">
       <div class="card-title"><div class="title-left">💾 데이터 백업 및 복원</div></div>
       <p style="font-size:13px; color:var(--ink-soft); margin-bottom:18px; line-height:1.7;">
-        브라우저에 저장된 오답 데이터는 이 브라우저에서만 유지됩니다. 다른 컴퓨터로 옮기거나, 브라우저 데이터 삭제로부터 안전하게 보관하려면 아래에서 CSV 파일로 내보내고, 필요할 때 다시 불러오세요.
+        오답 기록은 구글시트("오답노트" 탭)에 저장되어 어느 기기에서든 같은 기록을 볼 수 있습니다. 아래 CSV 내보내기·불러오기는 따로 보관하거나 엑셀로 열어볼 때 쓰세요.
       </p>
 
       <div class="backup-grid">
@@ -462,7 +475,7 @@
     <div class="card">
       <div class="card-title"><div class="title-left">⚠️ 위험 구역</div></div>
       <p style="font-size:13px; color:var(--ink-soft); margin-bottom:14px; line-height:1.7;">
-        아래 작업은 브라우저에 저장된 모든 오답 데이터를 완전히 삭제합니다. 삭제 전 반드시 CSV로 백업해두세요.
+        아래 작업은 모든 오답 기록을 목록에서 삭제합니다. 구글시트에는 지우지 않고 "삭제"로 표시만 남지만, 삭제 전 CSV로 백업해두세요.
       </p>
       <button class="btn btn-red" id="clearAllBtn">🗑️ 전체 데이터 초기화</button>
     </div>
@@ -612,12 +625,15 @@ wrongForm.addEventListener('submit', (e)=>{
     return;
   }
 
-  appData.records.push({
+  const newRec = {
     id: uid(),
     studentName, unit, testName, cause, memo,
-    date: todayISO()
-  });
+    date: todayISO(),
+    pending: true
+  };
+  appData.records.push(newRec);
   saveData();
+  remotePost('saveWrongNote', { record: pickRec(newRec) });
   wrongForm.reset();
   document.getElementById('inputStudentName').focus();
   showToast(`✅ ${studentName} 학생의 오답이 기록되었습니다.`);
@@ -646,7 +662,7 @@ function populateDatalistsAndFilters(){
   const units = getUniqueUnits();
 
   document.getElementById('studentNameList').innerHTML =
-    students.map(s=>`<option value="${escapeHtml(s)}">`).join('');
+    [...new Set([...rosterNames, ...students])].map(s=>`<option value="${escapeHtml(s)}">`).join('');
   document.getElementById('unitNameList').innerHTML =
     units.map(u=>`<option value="${escapeHtml(u)}">`).join('');
 
@@ -735,7 +751,9 @@ function renderWrongTable(){
         `${rec.studentName} 학생의 '${rec.unit}' 단원 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.`,
         ()=>{
           appData.records = appData.records.filter(r=>r.id!==id);
+          deletedIds.add(id);
           saveData();
+          remotePost('deleteWrongNote', { id });
           showToast('🗑️ 오답 기록이 삭제되었습니다.');
           renderAll();
         }
@@ -1048,6 +1066,7 @@ function handleCsvImport(file){
 
       let addedCount = 0;
       let skippedCount = 0;
+      const importedNew = [];
 
       for(let i=1; i<rows.length; i++){
         const cols = rows[i];
@@ -1063,15 +1082,15 @@ function handleCsvImport(file){
         const key = `${studentName}|${unit}|${cause}|${date}|${testName}|${memo}`;
         if(existingKeys.has(key)){ skippedCount++; continue; }
 
-        appData.records.push({
-          id: uid(),
-          studentName, unit, testName, cause, memo, date
-        });
+        const impRec = { id: uid(), studentName, unit, testName, cause, memo, date, pending: true };
+        appData.records.push(impRec);
+        importedNew.push(pickRec(impRec));
         existingKeys.add(key);
         addedCount++;
       }
 
       saveData();
+      if(importedNew.length) remotePost('importWrongNotes', { records: importedNew });
       renderAll();
 
       importStatus.textContent = `✅ ${addedCount}건 추가, ${skippedCount}건 중복/제외 처리되었습니다.`;
@@ -1114,12 +1133,16 @@ document.getElementById('clearAllBtn').addEventListener('click', ()=>{
   }
   openConfirmModal(
     '전체 데이터를 초기화할까요?',
-    `누적된 오답 기록 ${appData.records.length}건이 모두 삭제됩니다. 반드시 CSV 백업 후 진행해주세요. 이 작업은 되돌릴 수 없습니다.`,
-    ()=>{
+    `누적된 오답 기록 ${appData.records.length}건이 모두 목록에서 삭제됩니다. 구글시트에는 "삭제" 표시로 남지만, 반드시 CSV 백업 후 진행해주세요.`,
+    async ()=>{
+      const ids = appData.records.map(r=>r.id);
       appData.records = [];
+      ids.forEach(id=>deletedIds.add(id));
       saveData();
-      showToast('🗑️ 전체 데이터가 초기화되었습니다.');
       renderAll();
+      showToast('🗑️ 전체 기록을 삭제하는 중입니다…');
+      for(const id of ids){ await remotePost('deleteWrongNote', { id }); }
+      showToast('🗑️ 전체 데이터가 초기화되었습니다.');
     }
   );
 });
@@ -1143,8 +1166,152 @@ function renderAll(){
 /* ============================================================
    초기화
    ============================================================ */
+/* ============================================================
+   구글시트 연동 (Apps Script)
+   - 저장/삭제/옮기기: POST(no-cors) → 서버(Code.gs)가 "오답노트" 시트에 직접 기록
+   - 목록·학생 명단 읽기: 일반 GET (화면을 열 때·저장 후 확인용)
+   - 이 기기(localStorage)에는 같은 기록을 복사본으로 두어, 시트에 연결이 안 돼도 화면은 유지됩니다.
+   ============================================================ */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSVS9mzGr116jePeDPKV1lesU4hI7wIm_11yjYaYruLS38kWj32-E_QHEny3K8l00E/exec";
+let rosterNames = [];
+const deletedIds = new Set();
+let syncTimer = null;
+let syncBusy = false;
+
+function pickRec(r){
+  return { id:r.id, studentName:r.studentName, unit:r.unit, testName:r.testName||'', cause:r.cause, memo:r.memo||'', date:r.date };
+}
+function recKey(r){
+  return [r.studentName, r.unit, r.cause, r.date, r.testName||'', r.memo||''].map(v=>String(v||'').trim()).join('|');
+}
+
+const syncChip = document.getElementById('syncChip');
+function setSync(state, extra){
+  syncChip.classList.toggle('is-offline', state==='offline');
+  if(state==='loading') syncChip.innerHTML = '☁️ 구글시트와 동기화 중…';
+  else if(state==='saving') syncChip.innerHTML = '☁️ 구글시트에 저장 중…';
+  else if(state==='ok') syncChip.innerHTML = '☁️ 구글시트에 저장됨 <small>· ' + extra + ' 동기화</small>';
+  else syncChip.innerHTML = '💾 이 기기에만 저장됨 <small>· 시트 연결 안 됨 (눌러서 다시 시도)</small>';
+}
+function nowHM(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
+async function remoteGetOnce(action){
+  const url = SCRIPT_URL + '?' + new URLSearchParams({ action, _t: Date.now() }).toString();
+  const res = await fetch(url, { cache:'no-store' });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+async function remoteGet(action){
+  let lastErr;
+  for(let i=0;i<3;i++){
+    try{ return await remoteGetOnce(action); }
+    catch(e){ lastErr = e; if(i<2) await new Promise(r=>setTimeout(r, 800)); }
+  }
+  throw lastErr;
+}
+async function remotePost(action, body){
+  try{
+    await fetch(SCRIPT_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action }, body))
+    });
+    setSync('saving');
+    scheduleSync(4000);
+    return true;
+  }catch(e){
+    console.error('시트 전송 실패', e);
+    setSync('offline');
+    return false;
+  }
+}
+function scheduleSync(ms){
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncFromRemote, ms);
+}
+
+async function syncFromRemote(){
+  if(syncBusy) return;
+  syncBusy = true;
+  if(!appData.records.some(r=>r.pending)) setSync('loading');
+  try{
+    const [remote, info] = await Promise.all([
+      remoteGet('wrongNotes'),
+      remoteGet('studentInfoList').catch(()=>null)
+    ]);
+    if(!Array.isArray(remote)) throw new Error('unexpected response');
+    if(Array.isArray(info)){
+      rosterNames = info.filter(s=>s.status !== '퇴원').map(s=>s.name).filter(Boolean);
+    }
+    const remoteRecs = remote.filter(r=>!deletedIds.has(r.id)).map(r=>Object.assign({}, r, { cause: normalizeCause(r.cause), synced:true }));
+    const remoteIds = new Set(remote.map(r=>r.id));
+    const remoteKeys = new Set(remoteRecs.map(recKey));
+    const keep = [];
+    const resend = [];
+    appData.records.forEach(r=>{
+      if(remoteIds.has(r.id)) return;               // 시트 기록으로 대체
+      if(r.pending){ keep.push(r); resend.push(pickRec(r)); return; } // 아직 시트에 안 보임 → 다시 전송(중복 안 됨)
+      if(!r.synced && !remoteKeys.has(recKey(r))) keep.push(r);      // 아직 안 옮긴 이 기기의 예전 기록
+      // synced인데 시트에 없으면 다른 기기에서 삭제된 기록 → 목록에서 뺀다
+    });
+    appData.records = remoteRecs.concat(keep);
+    saveData();
+    renderAll();
+    if(resend.length){
+      await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'importWrongNotes', records: resend }) }).catch(()=>{});
+      setSync('saving');
+      scheduleSync(5000);
+    } else {
+      setSync('ok', nowHM());
+    }
+  }catch(e){
+    console.error('시트 동기화 실패', e);
+    setSync('offline');
+    renderAll();
+  }finally{
+    syncBusy = false;
+  }
+}
+syncChip.addEventListener('click', ()=>{ if(syncChip.classList.contains('is-offline')) syncFromRemote(); });
+
+/* 이 기기에만 있는 예전 기록 → 구글시트로 옮기기 */
+function legacyRecords(){
+  return appData.records.filter(r=>!r.synced && !r.pending);
+}
+function updateMigrateCard(){
+  const n = legacyRecords().length;
+  const text = document.getElementById('migrateText');
+  const btn = document.getElementById('migrateBtn');
+  if(n > 0){
+    text.innerHTML = `이 기기에 저장돼 있던 오답 기록 <b>${n}건</b>을 구글시트 "오답노트" 탭으로 옮겨요. 이미 시트에 있는 기록은 중복으로 넣지 않고, 옮긴 뒤에도 이 기기의 기록은 지우지 않아요.`;
+    btn.disabled = false;
+    btn.textContent = `${n}건 구글시트로 옮기기`;
+  } else {
+    text.textContent = '구글시트로 옮길 기록이 없습니다. 모든 기록이 시트에 저장되어 있어요.';
+    btn.disabled = true;
+    btn.textContent = '옮길 기록 없음';
+  }
+}
+document.getElementById('migrateBtn').addEventListener('click', async ()=>{
+  const list = legacyRecords();
+  if(!list.length) return;
+  list.forEach(r=>{ r.pending = true; r.cause = normalizeCause(r.cause); });
+  saveData();
+  const ok = await remotePost('importWrongNotes', { records: list.map(pickRec) });
+  if(ok) showToast(`☁️ ${list.length}건을 구글시트로 옮기는 중입니다.`);
+  renderAll();
+});
+
+const _renderAllBase = renderAll;
+renderAll = function(){ _renderAllBase(); updateMigrateCard(); };
+
 loadData();
 renderAll();
+syncFromRemote();
 </script>
 
 </body>
