@@ -1006,6 +1006,9 @@
     #pbPrintPages{padding:0;gap:0;}
     .ws-page{box-shadow:none;page-break-after:always;margin:0 auto;}
   }
+
+/* 오답노트(iframe) */
+.note-frame{ display:block; width:100%; height:calc(100vh - 150px); min-height:620px; border:0; border-radius:16px; background:transparent; }
 </style>
 <!-- 2026-09-19: 해설을 손글씨 사진 대신 텍스트/수식으로 "조판"한 경우(문제은행 조판해설 필드),
      인쇄 미리보기에서 수식을 깔끔하게 렌더링하기 위한 라이브러리. startup.typeset:false로
@@ -1057,6 +1060,10 @@
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
         성적 관리
+      </button>
+      <button class="nav-item" data-page="noteAnalyzer">
+        <span class="nav-emoji" aria-hidden="true">📝</span>
+        오답노트
       </button>
       <button class="nav-item" data-page="tuition">
         <span class="nav-emoji" aria-hidden="true">💰</span>
@@ -1129,6 +1136,10 @@
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
         성적 관리
+      </button>
+      <button class="nav-item" data-page="noteAnalyzer">
+        <span class="nav-emoji" aria-hidden="true">📝</span>
+        오답노트
       </button>
       <button class="nav-item" data-page="tuition">
         <span class="nav-emoji" aria-hidden="true">💰</span>
@@ -1209,6 +1220,7 @@
         <div id="noticePageEl" style="display:none;"></div>
         <div id="reportPageEl" style="display:none;"></div>
         <div id="problemBankPageEl" style="display:none;"></div>
+        <div id="noteAnalyzerPageEl" style="display:none;"></div>
       </div>
       <div id="dashboardPage"></div>
     </div>
@@ -2182,7 +2194,8 @@ const PAGE_TITLES = {
   tuition:    "수강료 관리",
   notice:     "공지사항",
   report:     "학생 리포트",
-  problemBank: "문제은행"
+  problemBank: "문제은행",
+  noteAnalyzer: "오답노트"
 };
 let currentPage = 'dashboard';
 function emptyPagePanel(icon, title, desc){
@@ -3564,7 +3577,7 @@ function switchPage(page){
   // 학생관리/성적관리/수강료/공지사항/리포트/문제은행도 대시보드와 같은 방식으로,
   // 각자 자기만의 화면을 유지한 채(탭을 오갈 때 지우지 않고) 다시 방문할 때마다
   // 조용히 최신 내용으로 갱신한다 (2026-09-02, 사용자 요청)
-  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','reportPageEl','problemBankPageEl'].forEach(id=>{
+  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','reportPageEl','problemBankPageEl','noteAnalyzerPageEl'].forEach(id=>{
     document.getElementById(id).style.display = 'none';
   });
   if(page === 'students'){
@@ -3590,6 +3603,14 @@ function switchPage(page){
   } else if(page === 'problemBank'){
     document.getElementById('problemBankPageEl').style.display = '';
     renderProblemBankPage();
+  } else if(page === 'noteAnalyzer'){
+    // 오답노트: 처음 눌렀을 때만 불러온다 (admin 첫 화면 속도에 영향 없음)
+    const el = document.getElementById('noteAnalyzerPageEl');
+    el.style.display = '';
+    if(!el.dataset.built){
+      el.innerHTML = '<iframe class="note-frame" src="note.html?embed=1" title="오답노트" loading="lazy"></iframe>';
+      el.dataset.built = '1';
+    }
   }
 }
 function goldFlash(el){
