@@ -884,14 +884,14 @@ document.getElementById('generateReportBtn').addEventListener('click', ()=>{
 
   // 원인별 훈련 제안 문구 매핑
   const causeAdviceMap = {
-    '개념 이해 부족':'해당 단원의 기본 개념부터 다시 설명하고 확인 문제를 통해 이해도를 점검하는 훈련이 필요합니다',
-    '조건 오독':'문제 풀이 시 조건 오독을 줄이는 훈련이 필요합니다',
-    '계산 실수':'풀이 과정을 검산하는 습관을 들여 계산 실수를 줄이는 훈련이 필요합니다',
-    '시간 부족':'제한 시간 안에 문제를 푸는 실전 연습을 통해 풀이 속도를 높이는 훈련이 필요합니다'
+    '개념 이해 부족':'해당 단원의 기본 개념부터 다시 설명하고 확인 문제를 통해 이해도를 점검하는 훈련을 함께 해 나가겠습니다',
+    '조건 오독':'문제 풀이 시 조건 오독을 줄이는 훈련을 함께 해 나가겠습니다',
+    '계산 실수':'풀이 과정을 검산하는 습관을 들여 계산 실수를 줄이는 훈련을 함께 해 나가겠습니다',
+    '시간 부족':'제한 시간 안에 문제를 푸는 실전 연습을 통해 풀이 속도를 높이는 훈련을 함께 해 나가겠습니다'
   };
-  const adviceText = topCause ? causeAdviceMap[topCause] : '전반적인 문제 풀이 습관 점검이 필요합니다';
+  const adviceText = topCause ? causeAdviceMap[topCause] : '전반적인 문제 풀이 습관을 함께 점검해 나가겠습니다';
 
-  const sentence = `이 학생은 현재 <strong>${escapeHtml(weakestUnit.unit)}</strong> 단원의 개념 보완이 시급하며, ${escapeHtml(adviceText)}.`;
+  const sentence = `이 학생은 현재 <strong>${escapeHtml(weakestUnit.unit)}</strong> 단원에서 조금 더 탄탄하게 다져가면 성장 폭이 클 것으로 보이며, ${escapeHtml(adviceText)}.`;
 
   document.getElementById('reportStudentName').textContent = studentName;
   document.getElementById('reportDate').textContent = todayISO();
