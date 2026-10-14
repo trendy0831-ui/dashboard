@@ -3629,7 +3629,8 @@ function switchPage(page){
     const el = document.getElementById('noteAnalyzerPageEl');
     el.style.display = '';
     if(!el.dataset.built){
-      el.innerHTML = '<iframe class="note-frame" src="note.html?embed=1" title="오답노트" loading="lazy"></iframe>';
+      // 2026-10-15: v 값은 note.html을 고쳐서 올릴 때마다 바꿔 주면, 브라우저 캐시에 남은 옛 버전 대신 새 파일을 불러온다.
+      el.innerHTML = '<iframe class="note-frame" src="note.html?embed=1&v=20261015" title="오답노트" loading="lazy"></iframe>';
       el.dataset.built = '1';
     }
   }
