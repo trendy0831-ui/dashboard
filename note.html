@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>이끌림 오답노트 · 취약 개념 분석기</title>
 <script>if(/[?&]embed=1/.test(location.search)){document.documentElement.classList.add('embed');}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
   :root{
     --teal:#224F42;
@@ -20,8 +18,9 @@
     --ink:#2B3A34;
     --ink-soft:#4F5F58;
     --line:#E4DDCB;
-    --serif:'Gowun Batang', serif;
-    --sans:'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    /* 2026-10-15: admin.html과 같은 시스템 고딕으로 통일 (Gowun 폰트 로딩 제거) */
+    --serif:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     --shadow:0 8px 24px rgba(34,79,66,.10);
     --shadow-sm:0 2px 8px rgba(34,79,66,.07);
     --radius:24px;
