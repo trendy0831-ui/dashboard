@@ -5,9 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>학생 관리 시스템 | 수학의 결</title>
 <link rel="apple-touch-icon" href="assets/logo-180.png">
-<!-- 2026-09-23: 문제은행 조판 문제 본문용 명조체 -->
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+<!-- 2026-10-14: 문제은행 사용 스위치. false면 메뉴(PC 사이드바·모바일 메뉴)를 숨기고,
+     문제은행에서만 쓰는 명조체 폰트와 MathJax도 불러오지 않는다. 다시 쓰려면 true로 바꿔 재배포한다.
+     (문제은행 코드와 시트 데이터는 그대로 남아 있다.) -->
+<script>
+  const PROBLEM_BANK_ENABLED = false;
+  if(!PROBLEM_BANK_ENABLED){ document.documentElement.classList.add('pb-off'); }
+</script>
+<style>html.pb-off .nav-item[data-page="problemBank"]{ display:none !important; }</style>
+<!-- 2026-09-23: 문제은행 조판 문제 본문용 명조체 (스위치가 켜졌을 때만 불러옴) -->
+<script>
+  if(PROBLEM_BANK_ENABLED){
+    const pbPre1 = document.createElement('link'); pbPre1.rel = 'preconnect'; pbPre1.href = 'https://fonts.googleapis.com';
+    const pbPre2 = document.createElement('link'); pbPre2.rel = 'preconnect'; pbPre2.href = 'https://fonts.gstatic.com'; pbPre2.crossOrigin = 'anonymous';
+    const pbFont = document.createElement('link'); pbFont.rel = 'stylesheet'; pbFont.href = 'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap';
+    document.head.append(pbPre1, pbPre2, pbFont);
+  }
+</script>
 <meta name="theme-color" content="#2F493C">
 <style>
   :root{
@@ -1016,9 +1030,15 @@
      실수로 수식으로 인식되는 걸 방지), 조판 해설을 그릴 때만 MathJax.typesetPromise로
      해당 영역만 지정해서 렌더링한다. -->
 <script>
-  window.MathJax = { tex: { inlineMath: [['$','$']] }, startup: { typeset: false } };
+  /* 2026-10-14: 문제은행 스위치가 꺼져 있으면 MathJax(수식 라이브러리)를 불러오지 않는다.
+     MathJax를 쓰는 코드는 window.MathJax가 없거나 로딩 중이어도 멈추지 않게 이미 대비되어 있다. */
+  if(PROBLEM_BANK_ENABLED){
+    window.MathJax = { tex: { inlineMath: [['$','$']] }, startup: { typeset: false } };
+    const pbMj = document.createElement('script');
+    pbMj.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js';
+    document.head.appendChild(pbMj);
+  }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
 </head>
 <body>
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
@@ -3522,6 +3542,7 @@ function initDashCollapsibles(){
   });
 }
 function switchPage(page){
+  if(page === 'problemBank' && !PROBLEM_BANK_ENABLED) page = 'dashboard'; // 2026-10-14: 문제은행 숨김 상태
   currentPage = page;
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
