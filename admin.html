@@ -81,7 +81,7 @@
   .side-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
   .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;
     font-size:14px;font-weight:700;color:var(--side-fg);cursor:pointer;border:none;background:none;
-    width:100%;text-align:left;position:relative;overflow:hidden;opacity:.82;}
+    width:100%;text-align:left;position:relative;overflow:hidden;opacity:.82;transition:background-color .25s ease;}
   .nav-item .nav-emoji{font-size:15px;width:20px;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;line-height:1;}
   .nav-item:hover{opacity:1;background:rgba(255,255,255,.06);color:var(--side-fg);}
@@ -89,20 +89,16 @@
     opacity:1;
     background:var(--teal-light);
     color:#fff;}
-  .nav-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--gold);}
+  .nav-item::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:#9fe1cb;transform:scaleY(0);transition:transform .2s ease;}
+  .nav-item.active::before{transform:scaleY(1);}
   .nav-item.new-badge{opacity:1;background:none;color:#f5dfaa;}
   .nav-item.new-badge:hover{background:rgba(255,255,255,.06);}
   .nav-item.new-badge .nav-emoji{color:var(--gold);}
   .side-foot{padding:16px 20px 20px;font-size:11px;color:var(--side-fg-dim);line-height:1.6;
     border-top:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
-  /* 클릭 순간 골드 플래시 */
-  .gold-flash{animation:navGoldFlash .5s ease;}
-  @keyframes navGoldFlash{
-    0%{box-shadow:0 0 0 rgba(var(--gold-rgb),0);}
-    45%{box-shadow:0 0 22px rgba(var(--gold-rgb),.5),0 0 4px rgba(var(--gold-rgb),.4);}
-    100%{box-shadow:0 0 0 rgba(var(--gold-rgb),0);}
-  }
-  .nav-item.active.gold-flash{box-shadow:0 0 22px rgba(var(--gold-rgb),.5);}
+  /* 2026-10-15: 클릭 효과 — 금색 번쩍임 대신, 누른 자리에서 옅은 물결이 퍼졌다 사라진다 */
+  .nav-ripple{position:absolute;border-radius:50%;background:#fff;opacity:.22;transform:scale(0);pointer-events:none;animation:navRipple .55s ease-out forwards;}
+  @keyframes navRipple{to{transform:scale(1);opacity:0;}}
   #main{flex:1;min-width:0;display:flex;flex-direction:column;}
   #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
     padding:30.5px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -3635,14 +3631,22 @@ function switchPage(page){
     }
   }
 }
-function goldFlash(el){
-  el.classList.remove('gold-flash');
-  void el.offsetWidth; // 리플로우 강제 → 애니메이션 재시작
-  el.classList.add('gold-flash');
-  setTimeout(()=>el.classList.remove('gold-flash'), 500);
+function navRipple(el, e){
+  const r = el.getBoundingClientRect();
+  const size = Math.max(r.width, r.height) * 2;
+  // 키보드로 눌러서 좌표가 없으면(clientX가 0) 가운데에서 퍼지게 한다
+  const x = (e && e.detail > 0) ? e.clientX - r.left : r.width / 2;
+  const y = (e && e.detail > 0) ? e.clientY - r.top : r.height / 2;
+  const s = document.createElement('span');
+  s.className = 'nav-ripple';
+  s.style.width = s.style.height = size + 'px';
+  s.style.left = (x - size / 2) + 'px';
+  s.style.top = (y - size / 2) + 'px';
+  el.appendChild(s);
+  setTimeout(()=>s.remove(), 600);
 }
 document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{
-  btn.onclick = ()=>{ goldFlash(btn); switchPage(btn.getAttribute('data-page')); };
+  btn.onclick = (e)=>{ navRipple(btn, e); switchPage(btn.getAttribute('data-page')); };
 });
 /* 사이드바 로고 영역 높이를 상단 헤더(#mainTopbar) 실제 높이에 항상 맞춤
    — 날짜/버튼 줄바꿈, 폰트/브라우저 차이로 헤더 높이가 달라져도
