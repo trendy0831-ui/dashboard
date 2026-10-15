@@ -275,7 +275,7 @@
   .dash-card .dc-label{font-size:13px;color:var(--ink-soft);font-weight:700;margin-bottom:8px;}
   .dash-card .dc-value{font-size:30px;font-weight:800;color:var(--ink);line-height:1.2;}
   .dash-card .dc-value .unit{font-size:15px;font-weight:700;color:var(--ink-soft);margin-left:2px;}
-  .dash-card.accent-red .dc-value{color:var(--red);}
+  .dash-card.accent-red .dc-value{color:var(--teal-dark);}
   .dash-card.accent-teal .dc-value{color:var(--teal);}
   .dash-card.accent-blue .dc-value{color:var(--blue);}
   /* 대시보드 상단 오늘의 문구 카드 — 통계 칸 옆 빈 자리를 채우는 용도, dash-summary 그리드 안에 함께 놓인다 */
@@ -1826,7 +1826,7 @@ function renderDayContent(){
   if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.</div>`;
   return html;
 }
-const ATT_CYCLE = {present:"late", late:"absent", absent:"present", normal:"present"};
+const ATT_CYCLE = {present:"late", late:"absent", absent:"normal", normal:"present"};
 function attachCardHandlers(){
   document.querySelectorAll('#dayPanel .quad-btn[data-role="att"]').forEach(el=>{
     el.onclick = async ()=>{
@@ -2059,12 +2059,14 @@ async function renderUnchecked(){
     return;
   }
   let items = [];
+  let assignedCount = 0;
   if(dayName && roster[dayName]){
     BLOCKS.forEach(block=>{
       const names = roster[dayName][block];
       for(let s=0;s<SUB;s++){
         const name = names[s];
         if(!name || !name.trim()) continue;
+        assignedCount++;
         const rec = src.records[todayStr+"|"+block+"|"+s];
         if(!rec || rec.status === "normal" || !rec.status){
           items.push({name, block});
@@ -2073,7 +2075,9 @@ async function renderUnchecked(){
     });
   }
   if(!items.length){
-    listEl.innerHTML = `<div class="unchecked-empty">오늘 배정된 학생은 모두 출결 체크를 완료했어요.</div>`;
+    listEl.innerHTML = assignedCount
+      ? `<div class="unchecked-empty" style="color:var(--teal-dark);font-weight:600;">오늘 배정된 학생은 모두 출결 체크를 완료했어요.</div>`
+      : `<div class="unchecked-empty">오늘은 배정된 학생이 없어요.</div>`;
     return;
   }
   listEl.innerHTML = items.map(it=>{
