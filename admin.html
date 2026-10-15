@@ -465,6 +465,15 @@
   .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-dark);margin-top:8px;}
   .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
   /* ===================== 성적 관리(초등 테스트 기록) ===================== */
+  .gr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+  .gr-chip{padding:8px 15px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .gr-chip small{margin-left:5px;font-size:11.5px;font-weight:600;color:var(--ink-soft);}
+  .gr-chip:hover{border-color:var(--teal);}
+  .gr-chip.on{background:var(--deep);border-color:var(--deep);color:#fff;}
+  .gr-chip.on small{color:rgba(255,255,255,.78);}
+  .gr-tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px;}
+  .gr-tab{padding:11px 22px;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;background:none;color:var(--ink-soft);font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .gr-tab.on{color:var(--teal);border-bottom-color:var(--teal);font-weight:800;}
   .grades-layout{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;}
   @media (max-width: 900px){ .grades-layout{grid-template-columns:1fr;} }
   .grades-stu-list{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
@@ -1083,11 +1092,7 @@
       </button>
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
-        성적 관리
-      </button>
-      <button class="nav-item" data-page="noteAnalyzer">
-        <span class="nav-emoji" aria-hidden="true">📝</span>
-        오답노트
+        성적·오답노트
       </button>
       <button class="nav-item" data-page="tuition">
         <span class="nav-emoji" aria-hidden="true">💰</span>
@@ -1159,11 +1164,7 @@
       </button>
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
-        성적 관리
-      </button>
-      <button class="nav-item" data-page="noteAnalyzer">
-        <span class="nav-emoji" aria-hidden="true">📝</span>
-        오답노트
+        성적·오답노트
       </button>
       <button class="nav-item" data-page="tuition">
         <span class="nav-emoji" aria-hidden="true">💰</span>
@@ -2303,7 +2304,7 @@ const PAGE_TITLES = {
   dashboard:  "대시보드",
   students:   "학생 관리",
   attendance: "출결 관리",
-  grades:     "성적 관리",
+  grades:     "성적·오답노트",
   tuition:    "수강료 관리",
   notice:     "공지사항",
   report:     "학생 리포트",
@@ -3202,64 +3203,84 @@ function secondaryStudents(){
     .filter(item => !/초$/.test((item.stu.school || '').trim()))
     .sort(byGrade);
 }
+let gradesTab = 'grades'; // 'grades' | 'note'
+function gradesAllStudents(){
+  return allStudentNames()
+    .map(raw => ({ raw, stu: parseStudentEntry(raw) }))
+    .sort(byGrade);
+}
 function renderGradesPage(){
   const el = document.getElementById('gradesPageEl');
   if(!el.dataset.built){
     el.innerHTML = `
-      <div class="section-tabs">
-        <button class="section-tab" id="gradesTabElem">초등부</button>
-        <button class="section-tab" id="gradesTabSecondary">중·고등부</button>
+      <div class="gr-chips" id="gradesChips"></div>
+      <div class="gr-tabs">
+        <button class="gr-tab" id="grTabGrades" type="button">성적</button>
+        <button class="gr-tab" id="grTabNote" type="button">오답노트</button>
       </div>
-      <div class="grades-layout">
-        <div class="grades-stu-list" id="gradesStuList"></div>
-        <div id="gradesMain"></div>
-      </div>
+      <div id="gradesMain"></div>
+      <div id="gradesNoteWrap" style="display:none;"></div>
     `;
-    document.getElementById('gradesTabElem').onclick = ()=>{
-      gradesActiveGroup = 'elem';
-      gradesSelectedName = '';
-      renderGradesPage();
-    };
-    document.getElementById('gradesTabSecondary').onclick = ()=>{
-      gradesActiveGroup = 'secondary';
-      gradesSelectedName = '';
-      renderGradesPage();
-    };
+    document.getElementById('grTabGrades').onclick = ()=>{ gradesTab = 'grades'; applyGradesTab(); };
+    document.getElementById('grTabNote').onclick = ()=>{ gradesTab = 'note'; applyGradesTab(); };
     el.dataset.built = '1';
   }
-  document.getElementById('gradesTabElem').classList.toggle('active', gradesActiveGroup==='elem');
-  document.getElementById('gradesTabSecondary').classList.toggle('active', gradesActiveGroup==='secondary');
-  if(!gradesSelectedName){
-    document.getElementById('gradesMain').innerHTML = `
-      <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div>
-      <div>왼쪽 목록에서 학생을 선택하면 테스트·시험 점수를 기록할 수 있어요.</div></div>`;
+  const students = gradesAllStudents();
+  if(!students.some(s => s.stu.name === gradesSelectedName)){
+    gradesSelectedName = students.length ? students[0].stu.name : '';
   }
-  renderGradesStuList();
+  renderGradesChips();
+  applyGradesTab();
 }
-function renderGradesStuList(){
-  const el = document.getElementById('gradesStuList');
-  const students = gradesActiveGroup === 'elem' ? elementaryStudents() : secondaryStudents();
+function renderGradesChips(){
+  const el = document.getElementById('gradesChips');
+  const students = gradesAllStudents();
   if(!students.length){
-    const emptyMsg = gradesActiveGroup === 'elem'
-      ? '초등부로 등록된 학생이 없어요.<br>학생 관리 &gt; 명단 편집에서 학교명을 "~초"로 입력해주세요.'
-      : '중·고등부로 등록된 학생이 없어요.';
-    el.innerHTML = `<div class="grades-stu-empty">${emptyMsg}</div>`;
+    el.innerHTML = '<div class="grades-stu-empty">등록된 학생이 없어요. 학생 관리에서 학생을 추가해주세요.</div>';
     return;
   }
-  el.innerHTML = students.map(({raw, stu})=>{
-    const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
-    return `<div class="grades-stu-item ${gradesSelectedName===stu.name?'active':''}" data-name="${stu.name}">
-      ${stu.name}
-      ${meta ? `<div class="gs-meta">${meta}</div>` : ''}
-    </div>`;
-  }).join('');
-  el.querySelectorAll('.grades-stu-item').forEach(item=>{
-    item.onclick = ()=>{
-      gradesSelectedName = item.getAttribute('data-name');
-      renderGradesStuList();
-      renderGradesMain();
+  el.innerHTML = students.map(({stu})=>
+    `<button type="button" class="gr-chip ${gradesSelectedName===stu.name?'on':''}" data-name="${stu.name}">${stu.name}${stu.grade ? `<small>${stu.grade}</small>` : ''}</button>`
+  ).join('');
+  el.querySelectorAll('.gr-chip').forEach(b=>{
+    b.onclick = ()=>{
+      gradesSelectedName = b.getAttribute('data-name');
+      renderGradesChips();
+      applyGradesTab();
     };
   });
+}
+function applyGradesTab(){
+  const isNote = gradesTab === 'note';
+  document.getElementById('grTabGrades').classList.toggle('on', !isNote);
+  document.getElementById('grTabNote').classList.toggle('on', isNote);
+  document.getElementById('gradesMain').style.display = isNote ? 'none' : '';
+  document.getElementById('gradesNoteWrap').style.display = isNote ? '' : 'none';
+  if(isNote){
+    ensureGradesNoteFrame();
+    sendGradesNoteStudent();
+    return;
+  }
+  if(!gradesSelectedName){
+    document.getElementById('gradesMain').innerHTML = `
+      <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div></div>`;
+    return;
+  }
+  renderGradesMain();
+}
+// 오답노트 탭: 처음 열 때만 불러온다 (note.html을 고쳐 올릴 때마다 v 값을 바꿔 주면 새 파일을 불러온다)
+function ensureGradesNoteFrame(){
+  const wrap = document.getElementById('gradesNoteWrap');
+  if(wrap.dataset.built) return;
+  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261016" title="오답노트"></iframe>';
+  wrap.dataset.built = '1';
+  document.getElementById('gradesNoteFrame').addEventListener('load', sendGradesNoteStudent);
+}
+// 위에서 고른 학생을 오답노트 화면의 학생 선택에도 맞춰 준다
+function sendGradesNoteStudent(){
+  const f = document.getElementById('gradesNoteFrame');
+  if(!f || !f.contentWindow) return;
+  f.contentWindow.postMessage({ type:'selectStudent', name: gradesSelectedName }, location.origin);
 }
 async function renderGradesMain(){
   const el = document.getElementById('gradesMain');
