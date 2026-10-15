@@ -1553,6 +1553,7 @@ async function refreshData(auto){
     waited += 150;
   }
   setSyncStatus('busy');
+  invalidateTodayData(); // 오늘 기준 데이터(보고 있는 주가 이번 주가 아닐 때 쓰는 캐시)도 새로 받는다
   try{
     await loadRoster();
     await loadWeekData();
@@ -2009,8 +2010,39 @@ function attachCardHandlers(){
     };
   });
 }
+/* ============ 오늘 기준 데이터 (보고 있는 주와 무관) ============ */
+// 2026-10-16: "오늘 미체크 학생"·"오늘 숙제 완료율"은 출결 관리에서 보고 있는 주(weekStart)와 상관없이
+// 항상 오늘 기준이어야 한다. 보고 있는 주가 이번 주면 이미 불러온 records/homeworkRecords를 그대로 쓰고,
+// 다른 주를 보고 있으면 이번 주 기록만 따로 불러와(60초 캐시) 쓴다. (예전엔 이 경우 '-'만 표시됐다)
+const todayData = { weekKey:'', records:null, hw:null, at:0 };
+let todayDataPromise = null;
+function invalidateTodayData(){ todayData.at = 0; }
+async function ensureTodayData(){
+  const thisWeekKey = toDateStr(mondayOf(new Date()));
+  if(thisWeekKey === toDateStr(weekStart)) return { records: records, hw: homeworkRecords };
+  if(todayData.records && todayData.weekKey === thisWeekKey && Date.now() - todayData.at < 60000) return todayData;
+  if(!todayDataPromise){
+    todayDataPromise = (async ()=>{
+      const [recRows, hwRows] = await Promise.all([
+        apiGet({action:"records", weekStart: thisWeekKey}),
+        apiGet({action:"homework", weekStart: thisWeekKey}).catch(()=>[])
+      ]);
+      const recMap = {}, hwMap = {};
+      (recRows||[]).forEach(rec=>{
+        const slotIdx = (parseInt(rec.slot) || 1) - 1;
+        recMap[rec.date+"|"+rec.block+"|"+slotIdx] = { status: rec.status || "normal" };
+      });
+      (hwRows||[]).forEach(rec=>{
+        hwMap[rec.date+"|"+rec.block+"|"+rec.name] = { completed: rec.completed || "미확인" };
+      });
+      todayData.weekKey = thisWeekKey; todayData.records = recMap; todayData.hw = hwMap; todayData.at = Date.now();
+      return todayData;
+    })().finally(()=>{ todayDataPromise = null; });
+  }
+  return todayDataPromise;
+}
 /* ============ 오늘의 미체크 학생 ============ */
-function renderUnchecked(){
+async function renderUnchecked(){
   const listEl = document.getElementById('uncheckedList');
   const labelEl = document.getElementById('uncheckedDateLabel');
   if(!listEl) return;
@@ -2018,9 +2050,14 @@ function renderUnchecked(){
   const todayStr = toDateStr(today);
   const days=["일","월","화","수","목","금","토"];
   labelEl.textContent = `(${today.getMonth()+1}월 ${today.getDate()}일 ${days[today.getDay()]})`;
-  const todayWeekStart = mondayOf(today);
   const dayName = dayNameForDate(todayStr);
-  const sameWeek = toDateStr(todayWeekStart) === toDateStr(weekStart);
+  let src;
+  try{
+    src = await ensureTodayData();
+  }catch(e){
+    listEl.innerHTML = `<div class="unchecked-empty">미체크 현황을 불러오지 못했어요. 새로고침해 주세요.</div>`;
+    return;
+  }
   let items = [];
   if(dayName && roster[dayName]){
     BLOCKS.forEach(block=>{
@@ -2028,16 +2065,12 @@ function renderUnchecked(){
       for(let s=0;s<SUB;s++){
         const name = names[s];
         if(!name || !name.trim()) continue;
-        const rec = sameWeek ? getRec(todayStr, block, s) : {status:"normal"};
-        if(rec.status === "normal" || !rec.status){
+        const rec = src.records[todayStr+"|"+block+"|"+s];
+        if(!rec || rec.status === "normal" || !rec.status){
           items.push({name, block});
         }
       }
     });
-  }
-  if(!sameWeek){
-    listEl.innerHTML = `<div class="unchecked-empty">현재 보고 있는 주가 오늘이 아니라 정확한 미체크 현황을 알 수 없어요.</div>`;
-    return;
   }
   if(!items.length){
     listEl.innerHTML = `<div class="unchecked-empty">오늘 배정된 학생은 모두 출결 체크를 완료했어요.</div>`;
@@ -2549,26 +2582,29 @@ async function renderMakeupOldest(cache){
     </div>`;
   }).join("");
 }
-function renderDashSummary(){
+async function renderDashSummary(){
   const el = document.getElementById('dashSummary');
   if(!el) return;
   const today = new Date();
   const todayStr = toDateStr(today);
   const dayName = dayNameForDate(todayStr);
-  const sameWeek = toDateStr(mondayOf(today)) === toDateStr(weekStart);
+  // 2026-10-16: 보고 있는 주와 무관하게 항상 "오늘" 기준 (불러오지 못했을 때만 '-')
+  let src = null;
+  try{ src = await ensureTodayData(); }catch(e){ src = null; }
+  const sameWeek = !!src;
   let totalStudents=0, uncheckedCount=0;
   let hwScore=0, hwTotal=0;
-  if(dayName && roster[dayName]){
+  if(src && dayName && roster[dayName]){
     BLOCKS.forEach(block=>{
       const names = roster[dayName][block];
       for(let s=0;s<SUB;s++){
         const name = names[s];
         if(!name || !name.trim()) continue;
         totalStudents++;
-        const rec = sameWeek ? getRec(todayStr, block, s) : {status:"normal"};
+        const rec = src.records[todayStr+"|"+block+"|"+s] || {status:"normal"};
         if(rec.status === "normal" || !rec.status) uncheckedCount++;
         if(rec.status === "absent") continue;
-        const hw = sameWeek ? getHwRec(todayStr, block, name) : {completed:"미확인"};
+        const hw = src.hw[todayStr+"|"+block+"|"+name] || {completed:"미확인"};
         const hwState = hwStatusLabel(hw.completed);
         if(hwState === "미확인") continue;
         hwTotal++;
