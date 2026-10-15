@@ -2161,19 +2161,36 @@ async function loadMonthRecords(){
       }
     });
   };
-  let pending = weeks.length;
   if(calGridEl) calGridEl.style.opacity = '.55';
-  await Promise.all(weeks.map(ws =>
-    fetchWeekRows(toDateStr(ws)).then(rows=>{
-      // 그 사이 다른 학생/월로 바뀌었다면 이 결과는 버림
-      if(mySeq !== monthLoadSeq) return;
-      apply(rows);
-      monthRecords = Object.assign({}, fresh);
-      pending--;
-      if(pending > 0) renderCalendar();
-    })
-  ));
-  if(mySeq === monthLoadSeq && calGridEl) calGridEl.style.opacity = '';
+  const rows = await fetchMonthRows(weeks);
+  // 그 사이 다른 학생/월로 바뀌었다면 이 결과는 버림
+  if(mySeq !== monthLoadSeq) return;
+  apply(rows);
+  monthRecords = fresh;
+  if(calGridEl) calGridEl.style.opacity = '';
+}
+// 한 달치를 서버 요청 1번(recordsRange)으로 받음. Code.gs가 아직 옛 버전이면 주차별 요청으로 자동 대체.
+async function fetchMonthRows(weeks){
+  const startStr = toDateStr(weeks[0]);
+  const endStr = toDateStr(addDays(weeks[weeks.length-1], 6));
+  const key = 'range|' + startStr + '|' + endStr;
+  const c = weekRowsCache.get(key);
+  if(c){
+    if(c.rows && Date.now() - c.at < 300000) return c.rows;
+    if(c.promise) return c.promise;
+  }
+  const p = (async ()=>{
+    try{
+      const rows = await apiGet({action:"recordsRange", start: startStr, end: endStr});
+      if(Array.isArray(rows)) return rows;
+    }catch(e){}
+    const parts = await Promise.all(weeks.map(ws => fetchWeekRows(toDateStr(ws))));
+    return [].concat.apply([], parts);
+  })();
+  weekRowsCache.set(key, { promise: p, at: 0 });
+  const rows = await p;
+  weekRowsCache.set(key, { rows, at: Date.now() });
+  return rows;
 }
 function renderCalendar(){
   document.getElementById('calLabel').textContent = `${calMonth.getFullYear()}년 ${calMonth.getMonth()+1}월`;
