@@ -100,18 +100,23 @@
   .nav-ripple{position:absolute;border-radius:50%;background:#fff;opacity:.22;transform:scale(0);pointer-events:none;animation:navRipple .55s ease-out forwards;}
   @keyframes navRipple{to{transform:scale(1);opacity:0;}}
   #main{flex:1;min-width:0;display:flex;flex-direction:column;}
-  #mainTopbar{background:var(--card);border-bottom:1px solid var(--line);
-    padding:30.5px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-  #mainTopbar h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-0.3px;}
-  .tb-titles{display:flex;flex-direction:column;gap:3px;}
-  .page-greeting{font-size:13px;font-weight:600;color:var(--teal-dark);}
-  .topbar-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .date-picker{display:flex;align-items:center;gap:9px;background:var(--paper);
-    border:1px solid var(--line);border-radius:11px;padding:11px 16px;font-size:14.5px;font-weight:600;}
-  .date-picker input[type=date]{border:none;font-family:inherit;font-size:14.5px;font-weight:600;
+  /* 2026-10-15: 상단 바 높이 고정 — 대시보드/출결 관리를 오갈 때 높이가 달라지지 않도록 한다.
+     (왼쪽 로고 영역 높이가 이 바에 맞춰지므로, 값을 줄이면 로고가 눌린다. 바꾸려면 --topbar-h만 수정) */
+  #mainTopbar{--topbar-h:106px;background:var(--card);border-bottom:1px solid var(--line);
+    height:var(--topbar-h);padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:nowrap;}
+  #mainTopbar h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-0.3px;white-space:nowrap;flex-shrink:0;}
+  /* 제목 오른쪽에 명언을 한 줄로 붙인다 (길면 …로 줄임) */
+  .tb-titles{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 auto;}
+  .page-greeting{font-size:13px;font-weight:600;color:var(--teal-dark);min-width:0;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    padding-left:14px;border-left:1px solid rgba(var(--teal-rgb),.28);}
+  .topbar-actions{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;flex-shrink:0;}
+  .date-picker{display:flex;align-items:center;gap:7px;background:var(--paper);
+    border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-size:13px;font-weight:600;}
+  .date-picker input[type=date]{border:none;font-family:inherit;font-size:13px;font-weight:600;
     color:var(--ink);background:none;}
   .edit-toggle{background:var(--card);border:1.5px solid var(--teal);color:var(--teal);
-    border-radius:11px;padding:11px 20px;font-size:14.5px;font-weight:700;cursor:pointer;}
+    border-radius:9px;padding:5px 13px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .edit-toggle.active{background:var(--teal);color:#fff;}
   .sync-status{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);
     font-weight:600;white-space:nowrap;}
@@ -653,7 +658,10 @@
       display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     #mobileMenuClose svg{width:20px;height:20px;}
     #mobileMenuOverlay .mmo-nav{padding:8px 10px;display:flex;flex-direction:column;gap:2px;}
-    #mainTopbar{padding:16px 18px;}
+    #mainTopbar{height:auto;min-height:56px;padding:12px 18px;flex-wrap:wrap;}
+    .tb-titles{flex-wrap:wrap;gap:2px 12px;}
+    .page-greeting{white-space:normal;border-left:none;padding-left:0;}
+    .topbar-actions{flex-wrap:wrap;flex-shrink:1;}
     #mainTopbar h1{font-size:18px;}
     #pageContent{padding:18px;}
     .slot-group{grid-template-columns:1fr;}
@@ -668,10 +676,10 @@
     #mobileMenuOverlay .mmo-head .t1{font-size:16px;}
     .mmo-brand-text{font-size:16px !important;}
     .topbar-actions{width:100%;gap:8px;}
-    .date-picker{flex:1;padding:9px 12px;font-size:13px;}
+    .date-picker{flex:1;padding:6px 10px;font-size:13px;}
     .sync-status{font-size:11px;order:1;}
     .date-picker input[type=date]{font-size:13px;width:100%;}
-    .edit-toggle{padding:9px 14px;font-size:13px;white-space:nowrap;}
+    .edit-toggle{padding:5px 12px;font-size:13px;white-space:nowrap;}
     .weekly-attend-grid{gap:4px;}
     .weekly-attend-cell{padding:8px 2px;}
     .weekly-attend-dow{font-size:10px;margin-bottom:3px;}
