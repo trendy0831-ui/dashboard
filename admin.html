@@ -1450,6 +1450,7 @@ function getRec(dateStr, block, slot){
 }
 function setRecLocal(dateStr, block, slot, rec){ records[dateStr+"|"+block+"|"+slot] = rec; }
 async function pushRecord(dateStr, dayName, block, slot, rec){
+  weekRowsCache.clear(); // 출결이 바뀌면 학생별 이력 캐시도 새로 받는다
   const body = { action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
     status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
     statusNote:rec.statusNote||"", attNote:rec.attNote||"",
@@ -1553,6 +1554,7 @@ async function refreshData(auto){
     waited += 150;
   }
   setSyncStatus('busy');
+  weekRowsCache.clear();
   invalidateTodayData(); // 오늘 기준 데이터(보고 있는 주가 이번 주가 아닐 때 쓰는 캐시)도 새로 받는다
   try{
     await loadRoster();
@@ -2113,6 +2115,24 @@ document.getElementById('calNext').onclick = async ()=>{
   await loadMonthRecords();
   renderCalendar();
 };
+// 주차별 출결 기록 캐시 (5분). 학생을 바꾸거나 이미 본 달로 돌아갈 때 서버를 다시 부르지 않음.
+const weekRowsCache = new Map();
+function fetchWeekRows(wsStr){
+  const c = weekRowsCache.get(wsStr);
+  if(c){
+    if(c.rows && Date.now() - c.at < 300000) return Promise.resolve(c.rows);
+    if(c.promise) return c.promise;
+  }
+  const p = apiGet({action:"records", weekStart: wsStr}).then(rows=>{
+    weekRowsCache.set(wsStr, { rows: rows||[], at: Date.now() });
+    return rows||[];
+  }).catch(()=>{
+    weekRowsCache.delete(wsStr);
+    return [];
+  });
+  weekRowsCache.set(wsStr, { promise: p, at: 0 });
+  return p;
+}
 let monthLoadSeq = 0;
 async function loadMonthRecords(){
   const mySeq = ++monthLoadSeq;
@@ -2127,14 +2147,10 @@ async function loadMonthRecords(){
     weeks.push(new Date(cursor));
     cursor = addDays(cursor, 7);
   }
-  // 주차별 요청을 동시에 보내 로딩 시간을 줄임 (apiGet이 동시 4개로 제한)
-  const results = await Promise.all(weeks.map(ws =>
-    apiGet({action:"records", weekStart: toDateStr(ws)}).catch(()=>[])
-  ));
-  // 그 사이 다른 학생/월로 바뀌었다면 이 결과는 버림
-  if(mySeq !== monthLoadSeq) return;
+  // 주차별 요청을 동시에 보내고, 도착하는 대로 캘린더에 바로 채움. 한 번 받은 주차는 캐시해서 재사용.
+  const calGridEl = document.getElementById('calGrid');
   const fresh = {};
-  results.forEach(rows=>{
+  const apply = rows=>{
     (rows||[]).forEach(rec=>{
       const dayName = dayNameForDate(rec.date);
       const slotIdx = (parseInt(rec.slot)||1)-1;
@@ -2144,8 +2160,20 @@ async function loadMonthRecords(){
         fresh[rec.date] = rec.status;
       }
     });
-  });
-  monthRecords = fresh;
+  };
+  let pending = weeks.length;
+  if(calGridEl) calGridEl.style.opacity = '.55';
+  await Promise.all(weeks.map(ws =>
+    fetchWeekRows(toDateStr(ws)).then(rows=>{
+      // 그 사이 다른 학생/월로 바뀌었다면 이 결과는 버림
+      if(mySeq !== monthLoadSeq) return;
+      apply(rows);
+      monthRecords = Object.assign({}, fresh);
+      pending--;
+      if(pending > 0) renderCalendar();
+    })
+  ));
+  if(mySeq === monthLoadSeq && calGridEl) calGridEl.style.opacity = '';
 }
 function renderCalendar(){
   document.getElementById('calLabel').textContent = `${calMonth.getFullYear()}년 ${calMonth.getMonth()+1}월`;
