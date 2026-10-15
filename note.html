@@ -656,6 +656,29 @@ function getUniqueUnits(){
   return [...new Set(units)].sort((a,b)=> a.localeCompare(b, 'ko'));
 }
 
+// admin의 "성적·오답노트" 화면에서 고른 학생을 이 화면의 학생 선택에도 맞춰 준다 (사용자가 직접 바꾸면 그쪽을 우선)
+let pendingStudent = '';
+function applyPendingStudent(){
+  if(!pendingStudent) return;
+  ['filterStudent','analysisStudentFilter','reportStudentSelect'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const has = [...sel.options].some(o => o.value === pendingStudent);
+    const v = has ? pendingStudent : (id === 'reportStudentSelect' ? '' : 'all');
+    if(sel.value !== v){ sel.value = v; sel.dispatchEvent(new Event('change')); }
+  });
+}
+['filterStudent','analysisStudentFilter','reportStudentSelect'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', e=>{ if(e.isTrusted) pendingStudent = ''; });
+});
+window.addEventListener('message', e=>{
+  if(e.origin !== location.origin) return;
+  const d = e.data;
+  if(!d || d.type !== 'selectStudent') return;
+  pendingStudent = String(d.name || '');
+  applyPendingStudent();
+});
+
 function populateDatalistsAndFilters(){
   const students = getUniqueStudents();
   const units = getUniqueUnits();
@@ -685,6 +708,7 @@ function populateDatalistsAndFilters(){
   reportSel.innerHTML = '<option value="">학생을 선택하세요</option>' +
     students.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
   if(students.includes(curReport)) reportSel.value = curReport;
+  applyPendingStudent();
 }
 
 function renderWrongTable(){
