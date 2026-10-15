@@ -2109,7 +2109,9 @@ document.getElementById('calNext').onclick = async ()=>{
   await loadMonthRecords();
   renderCalendar();
 };
+let monthLoadSeq = 0;
 async function loadMonthRecords(){
+  const mySeq = ++monthLoadSeq;
   monthRecords = {};
   if(!selectedStudent) return;
   const selectedName = parseStudentEntry(selectedStudent).name;
@@ -2121,20 +2123,25 @@ async function loadMonthRecords(){
     weeks.push(new Date(cursor));
     cursor = addDays(cursor, 7);
   }
-  for(const ws of weeks){
-    try{
-      const rows = await apiGet({action:"records", weekStart: toDateStr(ws)});
-      rows.forEach(rec=>{
-        const dayName = dayNameForDate(rec.date);
-        const slotIdx = (parseInt(rec.slot)||1)-1;
-        const slotRaw = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
-        const slotName = slotRaw ? parseStudentEntry(slotRaw).name : '';
-        if(slotName && slotName === selectedName){
-          monthRecords[rec.date] = rec.status;
-        }
-      });
-    }catch(e){}
-  }
+  // 주차별 요청을 동시에 보내 로딩 시간을 줄임 (apiGet이 동시 4개로 제한)
+  const results = await Promise.all(weeks.map(ws =>
+    apiGet({action:"records", weekStart: toDateStr(ws)}).catch(()=>[])
+  ));
+  // 그 사이 다른 학생/월로 바뀌었다면 이 결과는 버림
+  if(mySeq !== monthLoadSeq) return;
+  const fresh = {};
+  results.forEach(rows=>{
+    (rows||[]).forEach(rec=>{
+      const dayName = dayNameForDate(rec.date);
+      const slotIdx = (parseInt(rec.slot)||1)-1;
+      const slotRaw = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
+      const slotName = slotRaw ? parseStudentEntry(slotRaw).name : '';
+      if(slotName && slotName === selectedName){
+        fresh[rec.date] = rec.status;
+      }
+    });
+  });
+  monthRecords = fresh;
 }
 function renderCalendar(){
   document.getElementById('calLabel').textContent = `${calMonth.getFullYear()}년 ${calMonth.getMonth()+1}월`;
