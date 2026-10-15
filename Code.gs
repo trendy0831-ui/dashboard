@@ -10,6 +10,10 @@ function doGet(e) {
     const weekStart = e.parameter.weekStart; // YYYY-MM-DD (월요일)
     return jsonResponse(getRecordsForWeek(weekStart));
   }
+  if (action === 'recordsRange') {
+    // 학생별 출결 이력용: 한 달치를 요청 1번으로 받아감 (start, end = YYYY-MM-DD)
+    return jsonResponse(getRecordsInRange_(e.parameter.start, e.parameter.end));
+  }
   if (action === 'homework') {
     const weekStart = e.parameter.weekStart; // YYYY-MM-DD (월요일)
     return jsonResponse(getHomeworkForWeek(weekStart));
@@ -379,17 +383,30 @@ function findRowsInDateRange_(sheet, startStr, endStr) {
 }
 
 function getRecordsForWeek(weekStart) {
-  const sheet = getSheet('기록');
   const tz = Session.getScriptTimeZone();
   const endStr = weekEndDateStr(weekStart, tz);
-  const rowNums = findRowsInDateRange_(sheet, weekStart, endStr);
-  if (!rowNums.length) return [];
+  return getRecordsInRange_(weekStart, endStr);
+}
+
+// 시작일~종료일(YYYY-MM-DD, 포함) 사이의 출결 기록을 시트 한 번 읽기로 모두 반환.
+// 예전에는 행마다 getRange를 따로 호출해서 느렸음 → 전체를 한 번에 읽고 메모리에서 거름.
+function getRecordsInRange_(startStr, endStr) {
+  const sheet = getSheet('기록');
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const tz = Session.getScriptTimeZone();
+  const lo = new Date(startStr + 'T00:00:00').getTime() - 2 * 86400000;
+  const hi = new Date(endStr + 'T00:00:00').getTime() + 3 * 86400000;
+  const vals = sheet.getRange(2, 1, lastRow - 1, 15).getValues();
 
   const byKey = {};
-  rowNums.forEach(rowNum => {
-    const r = sheet.getRange(rowNum, 1, 1, 15).getValues()[0];
-    if (!r[0]) return;
+  for (let i = 0; i < vals.length; i++) {
+    const r = vals[i];
+    if (!r[0]) continue;
+    const t = new Date(r[0]).getTime();
+    if (isNaN(t) || t < lo || t > hi) continue; // 범위 밖은 날짜 변환 없이 빠르게 건너뜀
     const dateStr = Utilities.formatDate(new Date(r[0]), tz, 'yyyy-MM-dd');
+    if (dateStr < startStr || dateStr > endStr) continue;
     const key = dateStr + '|' + normalizeBlock(r[2]) + '|' + String(parseInt(r[3], 10));
     byKey[key] = {
       date: dateStr,
@@ -401,7 +418,7 @@ function getRecordsForWeek(weekStart) {
       makeupDone: !!r[12], makeupDate: r[13] || "",
       makeupStatus: normalizeMakeupStatus_(r[14], r[12])
     };
-  });
+  }
   return Object.values(byKey);
 }
 
