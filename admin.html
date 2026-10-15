@@ -2720,6 +2720,12 @@ function studentTuitionSettingsOf(name){
     sessionBaselineCount: found.sessionBaselineCount || ''
   };
 }
+// 저장 직후 서버 응답을 기다리지 않고 화면용 캐시에 바로 반영 (저장 자체는 이미 서버로 전송됨)
+function patchStudentInfo(name, fields){
+  let found = studentInfoList.find(s => s.name === name);
+  if(!found){ found = { name, status:'재원' }; studentInfoList.push(found); }
+  Object.assign(found, fields);
+}
 function slotsByStudent(){
   const map = {};
   DAYS.forEach(day=>{
@@ -2856,8 +2862,7 @@ async function renderStudentGrid(){
       btn.textContent = '저장 중...';
       try{
         await apiPost({ action:'setTuitionSettings', name, billingType, dueDay, sessionCount, sessionBaselineDate, sessionBaselineCount });
-        await new Promise(r=>setTimeout(r, 800));
-        await loadStudentInfoList(true);
+        patchStudentInfo(name, { billingType, dueDay, sessionCount, sessionBaselineDate, sessionBaselineCount });
         statusEl.textContent = '저장됨';
         btn.textContent = original;
         btn.disabled = false;
@@ -2906,8 +2911,7 @@ async function renderStudentGrid(){
       btn.disabled = true;
       try{
         await apiPost({ action:'deleteTextbookImage', name });
-        await new Promise(r=>setTimeout(r, 1500));
-        await loadStudentInfoList(true);
+        patchStudentInfo(name, { textbookImageName: '' });
         await renderStudentGrid();
       }catch(err){
         showSaveFailToast('이미지 삭제에 실패했어요. 인터넷 연결을 확인해주세요.');
@@ -2926,8 +2930,7 @@ async function renderStudentGrid(){
       btn.textContent = '저장 중...';
       try{
         await apiPost({ action:'setTextbookMemo', name, memo });
-        await new Promise(r=>setTimeout(r, 1000));
-        await loadStudentInfoList(true);
+        patchStudentInfo(name, { textbookMemo: memo });
         btn.textContent = '저장됨';
         setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 1500);
       }catch(err){
