@@ -3272,7 +3272,7 @@ function applyGradesTab(){
 function ensureGradesNoteFrame(){
   const wrap = document.getElementById('gradesNoteWrap');
   if(wrap.dataset.built) return;
-  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261016" title="오답노트"></iframe>';
+  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261017" title="오답노트"></iframe>';
   wrap.dataset.built = '1';
   document.getElementById('gradesNoteFrame').addEventListener('load', sendGradesNoteStudent);
 }
