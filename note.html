@@ -245,6 +245,40 @@
   html.embed .report-textbox{ font-size:15px; line-height:1.8; }
   html.embed .backup-box p, html.embed .file-status{ font-size:13.5px; }
   html.embed footer.note{ font-size:13px; }
+  /* ===== 오답노트 화면 구성 개편 (2026-10-16): 밑줄 탭 · 한 줄 요약 · 여러 줄 입력 · 단원별 목록 ===== */
+  .tabs{ gap:0; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .tabs .tab-btn{ background:none; border-radius:0; border-bottom:3px solid transparent; margin-bottom:-1px; color:var(--ink-soft); font-weight:700; padding:0 18px; }
+  .tabs .tab-btn:hover{ background:none; color:var(--teal); }
+  .tabs .tab-btn.active{ background:none; color:var(--teal); border-bottom-color:var(--teal); font-weight:800; }
+  .tabs .tab-right{ margin-left:auto; }
+  html .summary-grid{ display:flex; flex-wrap:wrap; gap:6px 24px; background:#F3F6F4; border-radius:10px; padding:9px 14px; margin-bottom:12px; }
+  html .summary-grid .summary-card{ display:flex; align-items:baseline; gap:7px; background:none; border:0; box-shadow:none; padding:0; border-radius:0; }
+  html .summary-grid .summary-label{ margin:0; font-size:13px; }
+  html .summary-grid .summary-value{ font-family:var(--sans); font-size:15px; font-weight:800; line-height:1.4; }
+  html .summary-grid .summary-sub{ display:none; }
+  .line-head{ display:block; font-size:14px; color:var(--ink-soft); margin:4px 0 8px; }
+  .line-row{ display:grid; grid-template-columns:26px 1.5fr 1fr 1.2fr 32px; gap:8px; align-items:center; margin-bottom:8px; }
+  .line-n{ text-align:center; color:var(--ink-soft); font-size:13px; }
+  .line-row input, .line-row select{ width:100%; min-height:42px; padding:8px 12px; border:1.5px solid var(--line); border-radius:12px; font-family:var(--sans); font-size:14px; color:var(--ink); background:var(--cream); }
+  .line-row input:focus, .line-row select:focus{ outline:none; border-color:var(--teal); background:var(--white); }
+  .line-x{ border:0; background:none; color:var(--ink-soft); font-size:18px; border-radius:8px; cursor:pointer; padding:4px; }
+  .line-x:hover{ background:#EEF1EF; }
+  .line-foot{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .line-foot-right{ display:flex; align-items:center; gap:12px; }
+  .line-count{ font-size:13px; color:var(--ink-soft); }
+  .ngroup{ margin-top:16px; }
+  .ngroup:first-child{ margin-top:0; }
+  .ngroup-h{ display:flex; justify-content:space-between; align-items:center; font-weight:700; color:var(--teal); margin-bottom:8px; }
+  .nitem{ display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; margin-bottom:6px; }
+  .nitem-main{ flex:1; min-width:0; }
+  .nitem-t{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
+  .nitem-sub{ font-size:13px; color:var(--ink-soft); }
+  .nitem-memo{ font-size:13px; color:var(--ink-soft); margin-top:3px; white-space:normal; }
+  @media (max-width:640px){ .line-row{ grid-template-columns:22px 1fr 1fr 28px; } .line-row input[data-lm]{ grid-column:2 / 4; } }
+  html.embed .line-row input, html.embed .line-row select{ font-size:13.5px; min-height:40px; }
+  html.embed .line-head{ font-size:13.5px; }
+  html.embed .nitem-sub, html.embed .nitem-memo{ font-size:12.5px; }
+  html.embed .ngroup-h{ font-size:14px; }
   @media (prefers-reduced-motion: reduce){ .panel{ animation:none; } .weak-bar-fill{ transition:none; } }
 </style>
 </head>
@@ -296,17 +330,17 @@
   <div class="sync-row"><button type="button" class="sync-chip" id="syncChip" title="누르면 다시 동기화합니다">☁️ 구글시트와 연결 중…</button></div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-panel="panel-record"><span>✍️</span>오답 기록</button>
-    <button class="tab-btn" data-panel="panel-analysis"><span>📊</span>취약 개념 분석</button>
-    <button class="tab-btn" data-panel="panel-report"><span>🩺</span>학생별 진단 리포트</button>
-    <button class="tab-btn" data-panel="panel-backup"><span>💾</span>데이터 백업·복원</button>
+    <button class="tab-btn active" data-panel="panel-record">기록</button>
+    <button class="tab-btn" data-panel="panel-analysis">취약 개념 분석</button>
+    <button class="tab-btn" data-panel="panel-report">진단 리포트</button>
+    <button class="tab-btn tab-right" data-panel="panel-backup">백업·복원</button>
   </div>
 
   <!-- ===== 패널 1: 오답 기록 ===== -->
   <div class="panel active" id="panel-record">
 
     <div class="card">
-      <div class="card-title"><div class="title-left">✏️ 오답 새로 기록하기</div></div>
+      <div class="card-title"><div class="title-left">오답 입력</div></div>
       <form id="wrongForm">
         <div class="field-row">
           <div class="field">
@@ -315,38 +349,26 @@
             <datalist id="studentNameList"></datalist>
           </div>
           <div class="field">
-            <label>단원명 <span class="required-star">*</span></label>
-            <input type="text" id="inputUnit" placeholder="예: 이차방정식" required list="unitNameList">
-            <datalist id="unitNameList"></datalist>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>시험/교재명</label>
+            <label>시험/교재명 (한 번만 입력)</label>
             <input type="text" id="inputTestName" placeholder="예: 3월 모의고사, 쎈수학 p.42">
           </div>
-          <div class="field">
-            <label>오답 원인 <span class="required-star">*</span></label>
-            <select id="inputCause" required>
-              <option value="">선택</option>
-              <option value="개념 이해 부족">개념 이해 부족</option>
-              <option value="조건 놓침">조건 놓침</option>
-              <option value="계산 실수">계산 실수</option>
-              <option value="시간 부족">시간 부족</option>
-            </select>
+        </div>
+        <label class="line-head">틀린 문제 (단원 + 원인 + 메모)</label>
+        <datalist id="unitNameList"></datalist>
+        <div id="lineList"></div>
+        <div class="line-foot">
+          <button type="button" class="btn btn-outline btn-sm" id="addLineBtn">+ 줄 추가</button>
+          <div class="line-foot-right">
+            <span class="line-count" id="lineCount">0건 입력됨</span>
+            <button type="submit" class="btn btn-primary">전체 저장</button>
           </div>
         </div>
-        <div class="field">
-          <label>메모 (선택)</label>
-          <textarea id="inputMemo" rows="2" placeholder="예: 이차방정식 근의 공식 부호 실수, 판별식 개념 재설명 필요"></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">＋ 오답 기록 추가</button>
       </form>
     </div>
 
     <div class="card">
       <div class="card-title">
-        <div class="title-left">전체 오답 목록 <span class="badge-count" id="listCount">0건</span></div>
+        <div class="title-left">오답 기록 (단원별) <span class="badge-count" id="listCount">0건</span></div>
       </div>
       <div class="filter-bar">
         <div class="field grow">
@@ -371,23 +393,8 @@
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table class="data-table" id="wrongTable">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>학생</th>
-              <th>단원</th>
-              <th>시험/교재</th>
-              <th>오답 원인</th>
-              <th>메모</th>
-              <th style="width:50px;"></th>
-            </tr>
-          </thead>
-          <tbody id="wrongTableBody"></tbody>
-        </table>
-      </div>
-      <div class="empty-msg" id="wrongEmptyMsg">아직 등록된 오답 기록이 없습니다. 위 양식에서 첫 기록을 추가해보세요 ✍️</div>
+      <div id="wrongGroups"></div>
+      <div class="empty-msg" id="wrongEmptyMsg">아직 등록된 오답 기록이 없습니다. 위 입력 칸에서 첫 기록을 추가해보세요</div>
     </div>
   </div>
 
@@ -640,31 +647,95 @@ const causeClassMap = {
 };
 
 const wrongForm = document.getElementById('wrongForm');
+const CAUSE_OPTIONS = ['개념 이해 부족','조건 놓침','계산 실수','시간 부족'];
+let lineRows = [];
+function newLine(cause){ return { unit:'', cause: cause || CAUSE_OPTIONS[0], memo:'' }; }
+function attrEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function updateLineCount(){
+  const c = lineRows.filter(l=>l.unit.trim()).length;
+  document.getElementById('lineCount').textContent = c + '건 입력됨';
+}
+function renderLines(focusIdx){
+  const el = document.getElementById('lineList');
+  el.innerHTML = lineRows.map((l,i)=>`
+    <div class="line-row">
+      <span class="line-n">${i+1}</span>
+      <input type="text" data-lu="${i}" list="unitNameList" value="${attrEsc(l.unit)}" placeholder="단원명 (엔터 → 다음 줄)">
+      <select data-lc="${i}">${CAUSE_OPTIONS.map(c=>`<option value="${c}"${l.cause===c?' selected':''}>${c}</option>`).join('')}</select>
+      <input type="text" data-lm="${i}" value="${attrEsc(l.memo)}" placeholder="메모 (선택)">
+      <button type="button" class="line-x" data-ldel="${i}" aria-label="줄 삭제">×</button>
+    </div>`).join('');
+  updateLineCount();
+  if(focusIdx != null){
+    const f = el.querySelector(`[data-lu="${focusIdx}"]`);
+    if(f) f.focus();
+  }
+}
+function goNextLine(i){
+  if(i === lineRows.length - 1){
+    if(!lineRows[i].unit.trim()) return;
+    lineRows.push(newLine(lineRows[i].cause));
+  }
+  renderLines(i + 1);
+}
+(function initLines(){
+  const el = document.getElementById('lineList');
+  el.addEventListener('input', e=>{
+    const t = e.target;
+    if(t.dataset.lu != null) lineRows[+t.dataset.lu].unit = t.value;
+    else if(t.dataset.lm != null) lineRows[+t.dataset.lm].memo = t.value;
+    updateLineCount();
+  });
+  el.addEventListener('change', e=>{
+    const t = e.target;
+    if(t.dataset.lc != null) lineRows[+t.dataset.lc].cause = t.value;
+  });
+  el.addEventListener('keydown', e=>{
+    const t = e.target;
+    if(e.key !== 'Enter') return;
+    if(t.dataset.lu != null){ e.preventDefault(); goNextLine(+t.dataset.lu); }
+    else if(t.dataset.lm != null){ e.preventDefault(); goNextLine(+t.dataset.lm); }
+  });
+  el.addEventListener('click', e=>{
+    const b = e.target.closest('[data-ldel]');
+    if(!b) return;
+    lineRows.splice(+b.dataset.ldel, 1);
+    if(!lineRows.length) lineRows.push(newLine());
+    renderLines();
+  });
+  document.getElementById('addLineBtn').addEventListener('click', ()=>{
+    lineRows.push(newLine(lineRows.length ? lineRows[lineRows.length-1].cause : null));
+    renderLines(lineRows.length - 1);
+  });
+  lineRows = [newLine()];
+  renderLines();
+})();
+
 wrongForm.addEventListener('submit', (e)=>{
   e.preventDefault();
   const studentName = document.getElementById('inputStudentName').value.trim();
-  const unit = document.getElementById('inputUnit').value.trim();
   const testName = document.getElementById('inputTestName').value.trim();
-  const cause = document.getElementById('inputCause').value;
-  const memo = document.getElementById('inputMemo').value.trim();
+  const filled = lineRows.filter(l=>l.unit.trim());
 
-  if(!studentName || !unit || !cause){
-    showToast('⚠️ 학생 이름, 단원명, 오답 원인은 필수입니다.');
+  if(!studentName || !filled.length){
+    showToast('⚠️ 학생 이름과 단원명은 필수입니다.');
     return;
   }
 
-  const newRec = {
-    id: uid(),
-    studentName, unit, testName, cause, memo,
-    date: todayISO(),
-    pending: true
-  };
-  appData.records.push(newRec);
+  filled.forEach(l=>{
+    const newRec = {
+      id: uid(),
+      studentName, unit: l.unit.trim(), testName, cause: l.cause, memo: l.memo.trim(),
+      date: todayISO(),
+      pending: true
+    };
+    appData.records.push(newRec);
+    remotePost('saveWrongNote', { record: pickRec(newRec) });
+  });
   saveData();
-  remotePost('saveWrongNote', { record: pickRec(newRec) });
-  wrongForm.reset();
-  document.getElementById('inputStudentName').focus();
-  showToast(`✅ ${studentName} 학생의 오답이 기록되었습니다.`);
+  lineRows = [newLine()];
+  renderLines(0);
+  showToast(`✅ ${studentName} 학생의 오답 ${filled.length}건이 기록되었습니다.`);
   renderAll();
 });
 
@@ -705,6 +776,8 @@ window.addEventListener('message', e=>{
   const d = e.data;
   if(!d || d.type !== 'selectStudent') return;
   pendingStudent = String(d.name || '');
+  const si = document.getElementById('inputStudentName');
+  if(si && pendingStudent) si.value = pendingStudent;
   applyPendingStudent();
 });
 
@@ -741,8 +814,7 @@ function populateDatalistsAndFilters(){
 }
 
 function renderWrongTable(){
-  const tbody = document.getElementById('wrongTableBody');
-  const table = document.getElementById('wrongTable');
+  const wrap = document.getElementById('wrongGroups');
   const emptyMsg = document.getElementById('wrongEmptyMsg');
 
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -769,32 +841,35 @@ function renderWrongTable(){
   document.getElementById('listCount').textContent = appData.records.length + '건';
 
   if(list.length === 0){
-    table.style.display = 'none';
+    wrap.innerHTML = '';
     emptyMsg.style.display = 'block';
     emptyMsg.textContent = appData.records.length === 0
-      ? '아직 등록된 오답 기록이 없습니다. 위 양식에서 첫 기록을 추가해보세요 ✍️'
+      ? '아직 등록된 오답 기록이 없습니다. 위 입력 칸에서 첫 기록을 추가해보세요'
       : '조건에 맞는 기록이 없습니다.';
     return;
   }
-  table.style.display = 'table';
   emptyMsg.style.display = 'none';
 
-  tbody.innerHTML = list.map(r=>{
-    const causeCls = causeClassMap[r.cause] || '';
-    return `
-      <tr>
-        <td class="mono">${escapeHtml(r.date)}</td>
-        <td><strong>${escapeHtml(r.studentName)}</strong></td>
-        <td>${escapeHtml(r.unit)}</td>
-        <td>${escapeHtml(r.testName || '-')}</td>
-        <td><span class="tag ${causeCls}">${escapeHtml(r.cause)}</span></td>
-        <td style="max-width:220px; white-space:normal;">${escapeHtml(r.memo || '-')}</td>
-        <td><button class="btn-danger-text" data-del="${r.id}">삭제</button></td>
-      </tr>
-    `;
-  }).join('');
+  // 단원별로 묶어서, 오답이 많은 단원을 위로
+  const groups = {};
+  list.forEach(r=>{ (groups[r.unit] = groups[r.unit] || []).push(r); });
+  const ordered = Object.entries(groups).sort((a,b)=> b[1].length - a[1].length || a[0].localeCompare(b[0],'ko'));
 
-  tbody.querySelectorAll('[data-del]').forEach(btn=>{
+  wrap.innerHTML = ordered.map(([unit, arr])=>`
+    <div class="ngroup">
+      <div class="ngroup-h"><span>${escapeHtml(unit)}</span><span class="badge-count">${arr.length}건</span></div>
+      ${arr.map(r=>`
+        <div class="nitem">
+          <div class="nitem-main">
+            <div class="nitem-t"><strong>${escapeHtml(r.studentName)}</strong><span class="nitem-sub">${escapeHtml(r.testName || '-')} · ${escapeHtml(r.date)}</span></div>
+            ${r.memo ? `<div class="nitem-memo">${escapeHtml(r.memo)}</div>` : ''}
+          </div>
+          <span class="tag ${causeClassMap[r.cause] || ''}">${escapeHtml(r.cause)}</span>
+          <button class="btn-danger-text" data-del="${r.id}">삭제</button>
+        </div>`).join('')}
+    </div>`).join('');
+
+  wrap.querySelectorAll('[data-del]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.dataset.del;
       const rec = appData.records.find(r=>r.id===id);
