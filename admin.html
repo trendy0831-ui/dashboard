@@ -1545,7 +1545,7 @@ function syncStatusTick(){
 setInterval(syncStatusTick, 5000);
 let pendingSaveCount = 0;
 function isUserEditing(){
-  return editMode || !!openAttKey || !!openStatusKey || !!openHwMemoKey || pendingSaveCount > 0;
+  return editMode || !!openAttKey || !!openStatusKey || !!openHwMemoKey || !!openMakeupDateKey || pendingSaveCount > 0;
 }
 async function refreshData(auto){
   if(auto && isUserEditing()) return;
@@ -1560,6 +1560,8 @@ async function refreshData(auto){
   try{
     await loadRoster();
     await loadWeekData();
+    // 데이터를 받는 동안 사용자가 사유·메모 입력을 열었다면 화면을 다시 그리지 않는다 (적던 글 보호)
+    if(auto && isUserEditing()){ setSyncStatus('ok'); return; }
     if(!editMode){
       renderCardView();
       populateStudentSelect();
@@ -1686,7 +1688,22 @@ function renderCardView(){
   });
   document.getElementById('bottomGrid').style.display = '';
   const panel = document.getElementById('dayPanel');
+  // 사유·메모 입력 중에 화면이 다시 그려져도 적던 글과 커서 위치가 사라지지 않게 보존한다
+  const drafts = [];
+  panel.querySelectorAll('input.attInput, input.statusInput, input.makeupDateInput, input.hwMemoInput').forEach(inp=>{
+    drafts.push({cls: inp.className, key: inp.getAttribute('data-key'), value: inp.value,
+      focused: document.activeElement === inp, s: inp.selectionStart, e: inp.selectionEnd});
+  });
   panel.innerHTML = renderDayContent();
+  drafts.forEach(dr=>{
+    const inp = Array.from(panel.querySelectorAll('input')).find(x=> x.className === dr.cls && x.getAttribute('data-key') === dr.key);
+    if(!inp) return;
+    inp.value = dr.value;
+    if(dr.focused){
+      inp.focus();
+      try{ inp.setSelectionRange(dr.s, dr.e); }catch(_){}
+    }
+  });
   attachCardHandlers();
   renderUnchecked();
 }
