@@ -2110,6 +2110,7 @@ async function renderUnchecked(){
 const stuSelect = document.getElementById('stuSelect');
 function populateStudentSelect(){
   const names = allStudentNames();
+  const keepVal = selectedStudent || stuSelect.value; // 자동 새로고침 때 고른 학생이 풀리지 않게 유지
   stuSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
     names.map(n=>{
       const stu = parseStudentEntry(n);
@@ -2117,6 +2118,7 @@ function populateStudentSelect(){
       const label = meta ? `${stu.name} (${meta})` : stu.name;
       return `<option value="${n}">${label}</option>`;
     }).join("");
+  if(keepVal && names.includes(keepVal)) stuSelect.value = keepVal;
 }
 stuSelect.onchange = async ()=>{
   selectedStudent = stuSelect.value;
@@ -2813,6 +2815,16 @@ async function renderStudentGrid(){
     el.innerHTML = `<div class="student-grid-empty">등록된 학생이 없어요. 출결 관리 &gt; 명단 편집에서 학생을 추가해주세요.</div>`;
     return;
   }
+  // 다른 학생 카드의 저장·삭제 등으로 화면이 다시 그려져도, 아직 저장하지 않고 적어 둔 값(수강료 설정·교재 메모)이 사라지지 않게 보존한다
+  const scDrafts = [];
+  el.querySelectorAll('.student-card').forEach(card=>{
+    const cname = card.getAttribute('data-name');
+    card.querySelectorAll('input:not([type=file])').forEach(inp=>{
+      if(inp.value !== inp.defaultValue) scDrafts.push({ card: cname, cls: inp.className, value: inp.value, focused: document.activeElement === inp });
+    });
+    const sessOn = !!card.querySelector('.sc-billing-session.on');
+    scDrafts.push({ card: cname, billing: sessOn ? '회차' : '월정액' });
+  });
   el.innerHTML = names.map(raw=>{
     const stu = parseStudentEntry(raw);
     const meta = [stu.school, stu.grade].filter(Boolean).join(' · ');
@@ -3003,6 +3015,25 @@ async function renderStudentGrid(){
       }
     };
   });
+  // 보존해 둔 입력값 되살리기
+  const cardByName = {};
+  el.querySelectorAll('.student-card').forEach(c=>{ cardByName[c.getAttribute('data-name')] = c; });
+  scDrafts.forEach(dr=>{
+    const card = cardByName[dr.card];
+    if(!card) return;
+    if(dr.billing){
+      const isSess = !!card.querySelector('.sc-billing-session.on');
+      if((dr.billing === '회차') !== isSess){
+        const tab = card.querySelector(dr.billing === '회차' ? '.sc-billing-session' : '.sc-billing-monthly');
+        if(tab && tab.onclick) tab.onclick();
+      }
+      return;
+    }
+    const inp = Array.from(card.querySelectorAll('input')).find(x=> x.className === dr.cls);
+    if(!inp) return;
+    inp.value = dr.value;
+    if(dr.focused) inp.focus();
+  });
 }
 /* ============ 학생 리포트 (검색 후 report.html 새 탭으로 열기) ============ */
 async function renderReportPage(){
@@ -3093,10 +3124,15 @@ async function renderNoticePage(){
         </div>
       </div>
     `;
+    // 사용자가 직접 적은 칸은 서버에서 늦게 도착한 값이 덮어쓰지 못하게 표시해 둔다
+    ['noticeTitle','noticeContent','noticeStart','noticeEnd'].forEach(fid=>{
+      document.getElementById(fid).addEventListener('input', ()=>{ noticeDirty[fid] = true; });
+    });
     document.getElementById('noticeAttachInput').onchange = async (e)=>{
       const file = e.target.files[0];
       const statusEl = document.getElementById('noticeAttachStatus');
       if(!file) return;
+      noticeDirty.attach = true;
       const isPdf = file.type === 'application/pdf';
       const isImage = file.type.indexOf('image/') === 0;
       if(!isPdf && !isImage){
@@ -3144,6 +3180,7 @@ async function renderNoticePage(){
         await new Promise(r=>setTimeout(r, 1200));
         msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
         msgEl.classList.add('ok');
+        noticeDirty = {};
         await renderNoticePreview();
       }catch(e){
         msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
@@ -3152,19 +3189,21 @@ async function renderNoticePage(){
     };
     el.dataset.built = '1';
   }
-  currentAttachment = null;
+  if(!noticeDirty.attach) currentAttachment = null;
   await loadNoticeIntoForm();
 }
+let noticeDirty = {}; // 공지 입력칸 중 사용자가 직접 손댄 칸 (저장하면 비움)
 async function loadNoticeIntoForm(){
   try{
     const data = await apiGet({action:'notice'});
     const n = data.notice;
     if(n){
-      document.getElementById('noticeTitle').value = n.title || '';
-      document.getElementById('noticeContent').value = n.content || '';
-      document.getElementById('noticeStart').value = n.startDate || '';
-      document.getElementById('noticeEnd').value = n.endDate || '';
-      if(n.attachmentName){
+      // 적고 있던(저장 전) 칸은 덮어쓰지 않는다
+      if(!noticeDirty.noticeTitle) document.getElementById('noticeTitle').value = n.title || '';
+      if(!noticeDirty.noticeContent) document.getElementById('noticeContent').value = n.content || '';
+      if(!noticeDirty.noticeStart) document.getElementById('noticeStart').value = n.startDate || '';
+      if(!noticeDirty.noticeEnd) document.getElementById('noticeEnd').value = n.endDate || '';
+      if(n.attachmentName && !noticeDirty.attach){
         currentAttachment = { fileId: n.attachmentId || '', fileName: n.attachmentName, fileType: n.attachmentType || 'pdf' };
         const statusEl = document.getElementById('noticeAttachStatus');
         if(statusEl) statusEl.textContent = `현재 첨부: ${n.attachmentName}`;
@@ -3283,13 +3322,18 @@ function applyGradesTab(){
       <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div></div>`;
     return;
   }
+  // 같은 학생의 입력 화면이 이미 있으면 폼은 그대로 두고 기록 목록만 새로 고친다
+  if(gradesMainFor === gradesSelectedName && document.getElementById('gtTitle')){
+    renderGradesTestList();
+    return;
+  }
   renderGradesMain();
 }
 // 오답노트 탭: 처음 열 때만 불러온다 (note.html을 고쳐 올릴 때마다 v 값을 바꿔 주면 새 파일을 불러온다)
 function ensureGradesNoteFrame(){
   const wrap = document.getElementById('gradesNoteWrap');
   if(wrap.dataset.built) return;
-  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261018" title="오답노트"></iframe>';
+  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261019" title="오답노트"></iframe>';
   wrap.dataset.built = '1';
   document.getElementById('gradesNoteFrame').addEventListener('load', sendGradesNoteStudent);
 }
@@ -3299,8 +3343,10 @@ function sendGradesNoteStudent(){
   if(!f || !f.contentWindow) return;
   f.contentWindow.postMessage({ type:'selectStudent', name: gradesSelectedName }, location.origin);
 }
+let gradesMainFor = ''; // 성적 입력 화면이 이미 그려져 있는 학생 (탭만 오갈 때 입력 중인 내용을 지우지 않기 위함)
 async function renderGradesMain(){
   const el = document.getElementById('gradesMain');
+  gradesMainFor = gradesSelectedName;
   el.innerHTML = `
     <div class="grades-form">
       <div class="grades-form-grid">
