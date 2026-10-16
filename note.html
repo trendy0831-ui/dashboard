@@ -777,9 +777,14 @@ window.addEventListener('message', e=>{
   if(!d || d.type !== 'selectStudent') return;
   pendingStudent = String(d.name || '');
   const si = document.getElementById('inputStudentName');
-  if(si && pendingStudent) si.value = pendingStudent;
+  // 비어 있거나 이전에 자동으로 채운 이름일 때만 채운다 (직접 적던 이름은 덮어쓰지 않음)
+  if(si && pendingStudent && (si.value === '' || si.value === lastAutoStudent)){
+    si.value = pendingStudent;
+    lastAutoStudent = pendingStudent;
+  }
   applyPendingStudent();
 });
+let lastAutoStudent = '';
 
 function populateDatalistsAndFilters(){
   const students = getUniqueStudents();
