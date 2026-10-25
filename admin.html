@@ -2338,11 +2338,17 @@ function emptyPagePanel(icon, title, desc){
 // 대시보드의 여러 섹션이 겹치는 주간의 출결 기록(records)을 각자 따로 요청하던 것을
 // 요청 1회로 공유하기 위한 캐시. renderDashboard()가 호출될 때마다 새로 만들어서,
 // 예전 값이 남아 다음 새로고침에서도 계속 쓰이는 일이 없도록 한다 (2026-09-02, 속도 개선).
+// 2026-10-25: 불러오기에 실패하면 빈 목록([]) 대신 null을 돌려준다.
+// (예전에는 실패해도 []로 처리돼 "보강 대기 없음", 출석률 "0%"처럼 평소 화면과 똑같이 보였다.)
 function getRecordsCached(weekStart, cache){
   if(!cache.has(weekStart)){
-    cache.set(weekStart, apiGet({action:"records", weekStart}).catch(()=>[]));
+    cache.set(weekStart, apiGet({action:"records", weekStart}).catch(()=>null));
   }
   return cache.get(weekStart);
+}
+// 대시보드 패널의 불러오기 실패 안내 (+ 다시 불러오기 버튼). 버튼 동작은 switchPage의 dash-retry 처리에서 한다.
+function dashFailHtml(panelId, msg){
+  return `<div class="reason-feed-empty"><div style="color:var(--teal-dark);font-weight:600;margin-bottom:12px;">${msg}</div><button type="button" class="edit-toggle dash-retry" data-retry="${panelId}">다시 불러오기</button></div>`;
 }
 // 2026-09: 대시보드 패널별 데이터 로더 -- 접힌 패널은 펼치기 전까지 API를 호출하지 않는다.
 // (초기 로딩 속도 개선. dashPanelLoaded에 한 번 true로 남으면 이후 새로고침 때만 같이 갱신되고,
@@ -2475,6 +2481,12 @@ async function renderMakeupFeed(cache){
   }
   const items = [];
   const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
+  if(weekRows.some(r=>r===null)){
+    el.className = 'reason-feed';
+    el.innerHTML = dashFailHtml('makeup', '보강 대기 현황을 불러오지 못했어요.');
+    if(labelEl) labelEl.innerHTML = '';
+    return;
+  }
   weekRows.forEach(rows=>{
     (rows||[]).forEach(rec=>{
       if(rec.status !== 'absent') return;
@@ -2522,6 +2534,10 @@ async function renderWeeklyAttendance(cache){
   await Promise.all(weekStartsNeeded.map(async ws=>{
     recordsByWeek[ws] = await getRecordsCached(ws, cache);
   }));
+  if(Object.values(recordsByWeek).some(v=>v===null)){
+    el.innerHTML = dashFailHtml('weekly', '출결 기록을 불러오지 못했어요.');
+    return;
+  }
   const dowLabels = ["일","월","화","수","목","금","토"];
   const cells = days7.map(d=>{
     const dateStr = toDateStr(d);
@@ -2569,9 +2585,15 @@ async function renderHomeworkRank(cache){
         getRecordsCached(toDateStr(ws), cache),
         apiGet({action:"homework", weekStart: toDateStr(ws)})
       ]);
+      if(recordRows === null || !Array.isArray(hwRows)) return null;
       return { recordRows, hwRows };
     }catch(e){ return null; }
   }));
+  if(weekResults.some(r=>r===null)){
+    el.className = 'reason-feed';
+    el.innerHTML = dashFailHtml('hwrank', '숙제 기록을 불러오지 못했어요.');
+    return;
+  }
   weekResults.forEach(res=>{
     if(!res) return;
     const { recordRows, hwRows } = res;
@@ -2626,6 +2648,11 @@ async function renderMakeupOldest(cache){
   }
   const items = [];
   const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
+  if(weekRows.some(r=>r===null)){
+    el.className = 'reason-feed';
+    el.innerHTML = dashFailHtml('makeupold', '보강 대기 현황을 불러오지 못했어요.');
+    return;
+  }
   weekRows.forEach(rows=>{
     (rows||[]).forEach(rec=>{
       if(rec.status !== 'absent') return;
@@ -2714,6 +2741,11 @@ async function renderReasonFeed(cache){
   }
   const items = [];
   const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
+  if(weekRows.some(r=>r===null)){
+    el.className = 'reason-feed';
+    el.innerHTML = dashFailHtml('reason', '지각·결석 사유를 불러오지 못했어요.');
+    return;
+  }
   weekRows.forEach(rows=>{
     (rows||[]).forEach(rec=>{
       if(!rec.statusNote) return;
@@ -3485,9 +3517,9 @@ async function renderGradesTestList(){
 async function loadTuitionStatusToday(){
   try{
     const rows = await apiGet({action:'tuitionStatusToday'});
-    return Array.isArray(rows) ? rows : [];
+    return Array.isArray(rows) ? rows : null; // 2026-10-25: 실패는 []가 아니라 null (빈 목록과 구분)
   }catch(e){
-    return [];
+    return null;
   }
 }
 async function renderTuitionSummary(){
@@ -3496,6 +3528,12 @@ async function renderTuitionSummary(){
   if(!el) return;
   // 서로 의존관계 없는 두 요청을 동시에 보낸다 (기존엔 순서대로 보내서 왕복시간이 두 배로 걸렸음).
   const [, statusRows] = await Promise.all([loadStudentInfoList(), loadTuitionStatusToday()]);
+  if(statusRows === null || !studentInfoListLoaded){
+    el.className = 'reason-feed';
+    el.innerHTML = dashFailHtml('tuition', '수강료 현황을 불러오지 못했어요.');
+    if(labelEl) labelEl.innerHTML = '';
+    return;
+  }
   const statusByName = {};
   statusRows.forEach(r=>{ statusByName[r.name] = r; });
   const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
@@ -3555,12 +3593,15 @@ async function renderTuitionList(){
       apiGet({action:'tuition', yearMonth}),
       isCurrentMonth ? loadTuitionStatusToday() : Promise.resolve([])
     ]);
+    // 학생 정보를 못 받았으면 "재원 중인 학생이 없어요"로 보이지 않도록 아래 불러오기 실패 안내로 보낸다
+    if(!studentInfoListLoaded) throw new Error('studentInfo');
+    const statusMissing = isCurrentMonth && statusRows === null; // 이번 달 "오늘 기준" 상태를 못 받음
     rows = Array.isArray(tuitionRows) ? tuitionRows : [];
     const rowByName = {};
     rows.forEach(r=>{ rowByName[r.name] = r; });
     // 결제기준일/회차 기준 "오늘" 상태는 이번 달을 보고 있을 때만 의미가 있다(과거·미래 달은 기존처럼 완납/미납만 표시).
     const statusByName = {};
-    statusRows.forEach(r=>{ statusByName[r.name] = r; });
+    (statusRows || []).forEach(r=>{ statusByName[r.name] = r; });
     const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
     if(!active.length){
       listEl.innerHTML = `<div class="tuition-list-empty">재원 중인 학생이 없어요.</div>`;
@@ -3568,7 +3609,9 @@ async function renderTuitionList(){
       return;
     }
     if(summaryEl){
-      if(isCurrentMonth){
+      if(statusMissing){
+        summaryEl.textContent = '수강료 현황을 불러오지 못해 집계를 표시하지 않았어요.';
+      } else if(isCurrentMonth){
         const paidCount = active.filter(s => (statusByName[s.name]||{}).status === 'paid').length;
         const upcomingCount = active.filter(s => (statusByName[s.name]||{}).status === 'upcoming').length;
         const overdueCount = active.length - paidCount - upcomingCount;
@@ -3772,6 +3815,15 @@ function switchPage(page){
         ${dashPanelHtml('reason', '최근 지각·결석 사유', '<span class="sub">(최근 2주)</span>', '<div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}`;
       dashPage.dataset.built = '1';
       initDashCollapsibles();
+      // 2026-10-25: 불러오기 실패 안내의 "다시 불러오기" 버튼 — 해당 패널만 다시 불러온다
+      dashPage.addEventListener('click', e=>{
+        const b = e.target.closest('.dash-retry');
+        if(!b) return;
+        const loader = dashPanelLoaders[b.getAttribute('data-retry')];
+        if(!loader) return;
+        b.disabled = true; b.textContent = '불러오는 중…';
+        loader(new Map());
+      });
     }
     renderDashboard();
     return;
