@@ -128,7 +128,13 @@ function doPost(e) {
     return jsonResponse({ status: 'ok' });
   }
   if (action === 'setStudentStatus') {
-    setStudentStatus(body.name, body.status);
+    // effectiveFrom(적용 시작일, 'YYYY-MM-DD') — 비어 있으면 오늘부터. 과거 기록은 지우지 않고 이력 시트에 줄을 추가한다.
+    setStudentStatus(body.name, body.status, body.effectiveFrom);
+    return jsonResponse({ status: 'ok' });
+  }
+  if (action === 'cancelStudentStatusChange') {
+    // 아직 적용 전인(미래 날짜) 예정 변경을 취소한다. 줄은 지우지 않고 '취소' 표시만 남긴다.
+    cancelStudentStatusChange(body.name, body.effectiveFrom);
     return jsonResponse({ status: 'ok' });
   }
   if (action === 'saveTuition') {
@@ -1173,7 +1179,7 @@ function regenerateReportId(name) {
   return null;
 }
 
-// "학생정보" 시트 열 구성 (1-based): 1 이름 / 2 학교 / 3 학년 / 4 report_id / 5 재원상태("퇴원"이면 퇴원, 그 외/빈칸은 재원중) /
+// "학생정보" 시트 열 구성 (1-based): 1 이름 / 2 학교 / 3 학년 / 4 report_id / 5 재원상태(2026-10부터는 참고용 — 실제 재원/퇴원은 "학생상태이력" 시트의 적용시작일 기준으로 계산하고, 이력이 없는 학생만 이 열을 따름. "퇴원"이면 퇴원, 그 외/빈칸은 재원중) /
 // 6 교재이미지ID / 7 교재이미지명 / 8 교재메모(교재명·준비 기한 등 간단한 문구) /
 // 9 링크만료일(선택, YYYY-MM-DD — 비어있으면 만료 없음. 지나면 해당 report_id 링크는 "만료됨"으로 처리) /
 // 10 결제방식(선택, "회차"면 회차제 — 그 외/빈칸은 기존과 동일한 월정액) /
@@ -1193,16 +1199,24 @@ function getStudentInfoList() {
   const sheet = getSheet('학생정보');
   const data = sheet.getDataRange().getValues();
   const rows = [];
+  // 2026-10: 재원/퇴원은 "학생상태이력" 시트(적용 시작일 기준)로 판단한다. 이력이 없는 학생은 예전처럼 E열을 따른다.
+  const todayStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const historyMap = getStatusHistoryMap_();
   for (let i = 1; i < data.length; i++) {
     const name = data[i][0];
     if (!name) continue;
+    const legacyStatus = (data[i][4] || '').trim() === '퇴원' ? '퇴원' : '재원';
+    const st = resolveStudentStatus_(historyMap[String(name).trim()], todayStr, legacyStatus);
     rows.push({
       rowNum: i + 1,
       name: name,
       school: data[i][1] || '',
       grade: data[i][2] || '',
       reportId: data[i][3] || '',
-      status: (data[i][4] || '').trim() === '퇴원' ? '퇴원' : '재원',
+      status: st.status,
+      statusSince: st.since,          // 현재 상태가 시작된 날짜 ('' = 이력 없음/처음부터)
+      pendingChange: st.pending,      // 아직 적용 전인 예정 변경 {status, effectiveFrom} 또는 null
+      statusHistory: st.history,      // 날짜순 전체 이력 (취소된 것 포함, cancelled 플래그)
       textbookImageId: data[i][5] || '',
       textbookImageName: data[i][6] || '',
       textbookMemo: data[i][7] || '',
@@ -1233,19 +1247,142 @@ function setTuitionSettings(name, billingType, dueDay, sessionCount, sessionBase
   }
 }
 
-// 학생 재원상태를 변경한다. status는 "재원" 또는 "퇴원"만 허용.
-function setStudentStatus(name, status) {
-  if (!name) return;
-  const normalizedStatus = (status === '퇴원') ? '퇴원' : '재원';
-  const sheet = getSheet('학생정보');
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === name) {
-      sheet.getRange(i + 1, 5).setValue(normalizedStatus);
-      adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday']);
-      return;
+// ---------- 재원/퇴원 상태 이력 (2026-10) ----------
+// "학생상태이력" 시트: 이름 / 상태(재원·퇴원) / 적용시작일(YYYY-MM-DD, 비면 '처음부터') / 기록일시 / 취소(빈칸 또는 '취소') / 취소일시
+// 상태를 바꿀 때마다 줄을 "추가"만 한다 (기존 줄은 지우거나 덮어쓰지 않음 — 취소도 표시만 남김).
+// 어떤 날짜의 상태 = 그 날짜 이하의 적용시작일 중 가장 늦은(같으면 나중에 기록된) 취소되지 않은 줄.
+function getStatusHistorySheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('학생상태이력');
+  if (!sheet) {
+    sheet = ss.insertSheet('학생상태이력');
+    sheet.appendRow(['이름', '상태', '적용시작일', '기록일시', '취소', '취소일시']);
+    sheet.getRange('C:C').setNumberFormat('@'); // 날짜가 자동으로 Date로 바뀌지 않게 텍스트로 고정
+  }
+  return sheet;
+}
+
+// { 이름: [ {rowNum, status, effectiveFrom, recordedAt, cancelled}, ... (시트 순서) ] } — 30초 캐시
+function getStatusHistoryMap_() {
+  const cacheKey = 'admin_studentStatusHistory';
+  const cached = reportCacheGet_(cacheKey);
+  if (cached) return cached;
+  const map = {};
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('학생상태이력');
+  if (sheet) {
+    const tz = Session.getScriptTimeZone();
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const name = String(data[i][0] || '').trim();
+      if (!name) continue;
+      const rec = data[i][3];
+      if (!map[name]) map[name] = [];
+      map[name].push({
+        rowNum: i + 1,
+        status: String(data[i][1] || '').trim() === '퇴원' ? '퇴원' : '재원',
+        effectiveFrom: data[i][2] ? normalizeDate_(data[i][2]) : '',
+        recordedAt: (Object.prototype.toString.call(rec) === '[object Date]') ? Utilities.formatDate(rec, tz, 'yyyy-MM-dd HH:mm') : String(rec || ''),
+        cancelled: String(data[i][4] || '').trim() === '취소'
+      });
     }
   }
+  reportCacheSet_(cacheKey, map, 30);
+  return map;
+}
+
+// 한 학생의 이력(rows)으로 dateStr 시점의 상태를 계산한다. 이력이 없으면 legacyStatus(학생정보 E열)를 쓴다.
+function resolveStudentStatus_(rows, dateStr, legacyStatus) {
+  const all = rows || [];
+  const live = all.filter(function (r) { return !r.cancelled; });
+  let cur = null;
+  let pending = null;
+  live.forEach(function (r) {
+    if (r.effectiveFrom <= dateStr) {
+      if (!cur || r.effectiveFrom >= cur.effectiveFrom) cur = r; // 같은 날짜면 나중에 기록된 줄이 이김
+    } else if (!pending || r.effectiveFrom < pending.effectiveFrom) {
+      pending = r;
+    }
+  });
+  const history = all.map(function (r) {
+    return { status: r.status, effectiveFrom: r.effectiveFrom, recordedAt: r.recordedAt, cancelled: r.cancelled };
+  }).sort(function (a, b) { return a.effectiveFrom < b.effectiveFrom ? -1 : (a.effectiveFrom > b.effectiveFrom ? 1 : 0); });
+  return {
+    status: cur ? cur.status : legacyStatus,
+    since: cur ? cur.effectiveFrom : '',
+    pending: pending ? { status: pending.status, effectiveFrom: pending.effectiveFrom } : null,
+    history: history
+  };
+}
+
+// 리포트 링크 검사 등에서 쓰는 "오늘 기준" 재원/퇴원 판단
+function studentStatusToday_(name, legacyStatus) {
+  const todayStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return resolveStudentStatus_(getStatusHistoryMap_()[String(name || '').trim()], todayStr, legacyStatus).status;
+}
+
+// 학생 재원상태를 변경한다. status는 "재원" 또는 "퇴원"만 허용.
+// effectiveFrom('YYYY-MM-DD')이 비면 오늘부터. 이력 시트에 줄을 추가할 뿐 과거 줄은 건드리지 않는다.
+function setStudentStatus(name, status, effectiveFrom) {
+  if (!name) return;
+  const normalizedStatus = (status === '퇴원') ? '퇴원' : '재원';
+  const tz = Session.getScriptTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(String(effectiveFrom || '').trim()) ? String(effectiveFrom).trim() : todayStr;
+  const infoSheet = getSheet('학생정보');
+  const data = infoSheet.getDataRange().getValues();
+  let infoRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === name) { infoRow = i + 1; break; }
+  }
+  if (infoRow < 0) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getStatusHistorySheet_();
+    const hist = sheet.getDataRange().getValues();
+    let hasHistory = false;
+    for (let i = 1; i < hist.length; i++) {
+      if (String(hist[i][0] || '').trim() === String(name).trim()) { hasHistory = true; break; }
+    }
+    const now = new Date();
+    if (!hasHistory) {
+      // 처음 이력을 남기는 학생: 지금까지의 상태(E열)를 "처음부터" 줄로 먼저 보존한다.
+      const legacy = (data[infoRow - 1][4] || '').trim() === '퇴원' ? '퇴원' : '재원';
+      sheet.appendRow([name, legacy, '', now, '', '']);
+    }
+    sheet.appendRow([name, normalizedStatus, from, now, '', '']);
+    sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('@').setValue(from);
+    // E열은 "기록 시점의 상태" 참고용으로만 유지한다 (실제 판단은 이력 시트 기준)
+    if (from <= todayStr) infoSheet.getRange(infoRow, 5).setValue(normalizedStatus);
+  } finally {
+    lock.releaseLock();
+  }
+  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_studentStatusHistory']);
+}
+
+// 아직 적용 전인(오늘보다 뒤 날짜) 예정 변경을 취소한다. 줄을 지우지 않고 '취소'와 취소일시만 표시한다.
+function cancelStudentStatusChange(name, effectiveFrom) {
+  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(String(effectiveFrom || '').trim())) return;
+  const tz = Session.getScriptTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  if (String(effectiveFrom).trim() <= todayStr) return; // 이미 적용된 변경은 취소할 수 없다 (되돌리려면 새 변경을 기록)
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('학생상태이력');
+  if (!sheet) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0] || '').trim() === String(name).trim()
+          && normalizeDate_(data[i][2]) === String(effectiveFrom).trim()
+          && String(data[i][4] || '').trim() !== '취소') {
+        sheet.getRange(i + 1, 5, 1, 2).setValues([['취소', new Date()]]);
+      }
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_studentStatusHistory']);
 }
 
 // 학생별 준비 교재 이미지를 Drive에 저장하고, "학생정보" 시트의 F,G열(교재이미지ID/명)에
@@ -1421,7 +1558,7 @@ function findStudentBasic_(reportId) {
   const infoData = infoSheet.getDataRange().getValues();
   for (let i = 1; i < infoData.length; i++) {
     if (infoData[i][3] === reportId) {
-      const status = (infoData[i][4] || '').trim() === '퇴원' ? '퇴원' : '재원';
+      const status = studentStatusToday_(infoData[i][0], (infoData[i][4] || '').trim() === '퇴원' ? '퇴원' : '재원');
       if (status === '퇴원') return { error: 'student inactive' };
       const expiresStr = parseExpiryDateStr_(infoData[i][8]);
       if (expiresStr) {
@@ -1516,7 +1653,7 @@ function buildStudentRecords_(reportId) {
   let student = null;
   for (let i = 1; i < infoData.length; i++) {
     if (infoData[i][3] === reportId) {
-      const status = (infoData[i][4] || '').trim() === '퇴원' ? '퇴원' : '재원';
+      const status = studentStatusToday_(infoData[i][0], (infoData[i][4] || '').trim() === '퇴원' ? '퇴원' : '재원');
       student = { name: infoData[i][0], school: infoData[i][1], grade: infoData[i][2], status: status,
         textbookImageId: infoData[i][5] || '', textbookImageName: infoData[i][6] || '', textbookMemo: infoData[i][7] || '' };
       student._expiresRaw = infoData[i][8] || ''; // I열: 링크만료일 (선택, 'YYYY-MM-DD' 형식일 때만 인정)
