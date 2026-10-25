@@ -452,6 +452,15 @@
     padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--paper);}
   .notice-field input[type=file]{width:100%;font-size:13px;color:var(--ink-soft);}
   .notice-attach-status{font-size:12.5px;color:var(--teal-dark);margin-top:6px;}
+  .notice-attach-status .na-box{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-top:8px;background:var(--paper);}
+  .notice-attach-status .na-box.staged{background:var(--soft);border-color:var(--teal);}
+  .notice-attach-status .na-box.removing{border:1px dashed var(--teal);background:var(--paper);}
+  .notice-attach-status .na-main{min-width:0;}
+  .notice-attach-status .na-title{font-weight:700;word-break:break-all;}
+  .notice-attach-status .na-hint{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .notice-attach-status .edit-toggle{flex-shrink:0;}
+  .notice-save-btn:disabled{opacity:.6;cursor:default;}
   .notice-save-btn{background:var(--teal);color:#fff;border:none;border-radius:10px;
     padding:12px 24px;font-size:14.5px;font-weight:700;cursor:pointer;}
   .notice-status-msg{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
@@ -1380,11 +1389,6 @@ async function apiPost(body){
   });
   return {status:"ok"};
 }
-// Apps Script 웹앱은 doPost 응답에 CORS 헤더를 붙일 수 없어(플랫폼 자체 제약),
-// POST는 no-cors로만 보낼 수 있고 브라우저가 응답 내용을 절대 읽지 못한다.
-// 그래서 파일 업로드처럼 결과값(생성된 파일 ID 등)이 꼭 필요한 요청은,
-// no-cors POST로 업로드를 요청해 서버가 CacheService에 결과를 잠시 저장하게 하고,
-// 그 결과를 CORS 문제가 없는 GET(apiGet)으로 폴링해서 가져오는 방식을 쓴다.
 // Apps Script 웹앱은 doPost 응답에 CORS 헤더를 붙일 수 없어(플랫폼 자체 제약) POST는 no-cors로만
 // 보낼 수 있고, 응답을 읽으려는 시도(GET 폴링 포함)는 exec URL의 내부 리다이렉트와 맞물려 불안정했다.
 // 그래서 파일 업로드는 결과를 돌려받지 않는 fire-and-forget으로 보내고, 서버(uploadNoticeAttachment)가
@@ -3119,7 +3123,39 @@ function renderReportGrid(){
   });
 }
 /* ============ 공지사항 (관리자 작성 화면) ============ */
-let currentAttachment = null;
+let currentAttachment = null;     // 서버에 올라가 있는 현재 첨부
+let stagedAttachment = null;      // 고른 뒤 아직 저장 전인 새 파일 {fileName, base64Data, mimeType}
+let attachRemoveMarked = false;   // 저장하면 현재 첨부를 지우겠다고 표시한 상태
+function renderNoticeAttachUI(){
+  const el = document.getElementById('noticeAttachStatus');
+  if(!el) return;
+  if(stagedAttachment){
+    el.innerHTML = `
+      <div class="na-box staged">
+        <div class="na-main">
+          <div class="na-title">첨부 예정: ${escapeHtml(stagedAttachment.fileName)}</div>
+          <div class="na-hint">${currentAttachment ? `저장하면 기존 첨부(${escapeHtml(currentAttachment.fileName)})가 이 파일로 바뀌어요.` : '저장하면 학부모 화면에 반영돼요.'}</div>
+        </div>
+        <button type="button" class="edit-toggle" data-attach-act="cancel">선택 취소</button>
+      </div>`;
+  }else if(currentAttachment && attachRemoveMarked){
+    el.innerHTML = `
+      <div class="na-box removing">
+        <div class="na-main">
+          <div class="na-title">저장하면 첨부가 삭제돼요: ${escapeHtml(currentAttachment.fileName)}</div>
+        </div>
+        <button type="button" class="edit-toggle" data-attach-act="undo">되돌리기</button>
+      </div>`;
+  }else if(currentAttachment){
+    el.innerHTML = `
+      <div class="na-box">
+        <div class="na-main"><div class="na-title">현재 첨부: ${escapeHtml(currentAttachment.fileName)}</div></div>
+        <button type="button" class="edit-toggle" data-attach-act="remove">첨부 삭제</button>
+      </div>`;
+  }else{
+    el.innerHTML = '';
+  }
+}
 async function renderNoticePage(){
   const el = document.getElementById('noticePageEl');
   if(!el.dataset.built){
@@ -3160,11 +3196,11 @@ async function renderNoticePage(){
     ['noticeTitle','noticeContent','noticeStart','noticeEnd'].forEach(fid=>{
       document.getElementById(fid).addEventListener('input', ()=>{ noticeDirty[fid] = true; });
     });
+    // 파일을 고르면 바로 올리지 않고 메모리에만 담아 둔다. 실제 업로드는 [저장]을 누를 때 한다.
     document.getElementById('noticeAttachInput').onchange = async (e)=>{
       const file = e.target.files[0];
       const statusEl = document.getElementById('noticeAttachStatus');
       if(!file) return;
-      noticeDirty.attach = true;
       const isPdf = file.type === 'application/pdf';
       const isImage = file.type.indexOf('image/') === 0;
       if(!isPdf && !isImage){
@@ -3172,7 +3208,6 @@ async function renderNoticePage(){
         e.target.value = '';
         return;
       }
-      statusEl.textContent = `업로드 중... (${file.name})`;
       try{
         const base64Data = await new Promise((resolve, reject)=>{
           const reader = new FileReader();
@@ -3180,15 +3215,33 @@ async function renderNoticePage(){
           reader.onerror = ()=> reject(new Error('파일을 읽지 못했어요.'));
           reader.readAsDataURL(file);
         });
-        await uploadFileAndWait(file.name, base64Data, file.type);
-        currentAttachment = { fileName: file.name };
-        statusEl.textContent = `첨부됨: ${file.name}`;
+        stagedAttachment = { fileName: file.name, base64Data, mimeType: file.type };
+        attachRemoveMarked = false;
+        noticeDirty.attach = true;
+        renderNoticeAttachUI();
       }catch(err){
-        statusEl.textContent = '업로드에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.';
-        currentAttachment = null;
+        statusEl.textContent = '파일을 읽지 못했어요. 다시 선택해주세요.';
         e.target.value = '';
       }
     };
+    // [선택 취소] / [첨부 삭제] / [되돌리기]
+    document.getElementById('noticeAttachStatus').addEventListener('click', (e)=>{
+      const b = e.target.closest('[data-attach-act]');
+      if(!b) return;
+      const act = b.getAttribute('data-attach-act');
+      if(act === 'cancel'){
+        stagedAttachment = null;
+        document.getElementById('noticeAttachInput').value = '';
+        if(!attachRemoveMarked) noticeDirty.attach = false;
+      }else if(act === 'remove'){
+        attachRemoveMarked = true;
+        noticeDirty.attach = true;
+      }else if(act === 'undo'){
+        attachRemoveMarked = false;
+        if(!stagedAttachment) noticeDirty.attach = false;
+      }
+      renderNoticeAttachUI();
+    });
     document.getElementById('noticeSaveBtn').onclick = async ()=>{
       const title = document.getElementById('noticeTitle').value.trim();
       const content = document.getElementById('noticeContent').value.trim();
@@ -3205,18 +3258,36 @@ async function renderNoticePage(){
         msgEl.classList.remove('ok');
         return;
       }
+      const saveBtn = document.getElementById('noticeSaveBtn');
+      saveBtn.disabled = true;
       msgEl.textContent = '저장 중...';
       msgEl.classList.remove('ok');
+      let textSaved = false;
       try{
-        await apiPost({ action:'saveNotice', notice:{ title, content, startDate, endDate } });
+        const notice = { title, content, startDate, endDate };
+        // 새 파일이 없고 삭제가 표시된 경우에만 서버에 첨부 삭제를 요청한다
+        if(attachRemoveMarked && !stagedAttachment) notice.removeAttachment = true;
+        await apiPost({ action:'saveNotice', notice });
         await new Promise(r=>setTimeout(r, 1200));
+        textSaved = true;
+        if(stagedAttachment){
+          msgEl.textContent = `첨부 파일 올리는 중... (${stagedAttachment.fileName})`;
+          await uploadFileAndWait(stagedAttachment.fileName, stagedAttachment.base64Data, stagedAttachment.mimeType);
+        }
+        stagedAttachment = null;
+        attachRemoveMarked = false;
+        document.getElementById('noticeAttachInput').value = '';
+        noticeDirty = {};
         msgEl.textContent = '저장했어요. 학부모 리포트에 바로 반영됩니다.';
         msgEl.classList.add('ok');
-        noticeDirty = {};
-        await renderNoticePreview();
+        await loadNoticeIntoForm();
       }catch(e){
-        msgEl.textContent = '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
+        msgEl.textContent = textSaved
+          ? '공지 내용은 저장했지만 첨부 파일 업로드에 실패했어요. 선택한 파일은 그대로 있으니 [저장]을 다시 눌러주세요.'
+          : '저장에 실패했어요. 인터넷 연결을 확인해주세요.';
         msgEl.classList.remove('ok');
+      }finally{
+        saveBtn.disabled = false;
       }
     };
     el.dataset.built = '1';
@@ -3235,11 +3306,13 @@ async function loadNoticeIntoForm(){
       if(!noticeDirty.noticeContent) document.getElementById('noticeContent').value = n.content || '';
       if(!noticeDirty.noticeStart) document.getElementById('noticeStart').value = n.startDate || '';
       if(!noticeDirty.noticeEnd) document.getElementById('noticeEnd').value = n.endDate || '';
-      if(n.attachmentName && !noticeDirty.attach){
-        currentAttachment = { fileId: n.attachmentId || '', fileName: n.attachmentName, fileType: n.attachmentType || 'pdf' };
-        const statusEl = document.getElementById('noticeAttachStatus');
-        if(statusEl) statusEl.textContent = `현재 첨부: ${n.attachmentName}`;
-      }
+    }
+    // 첨부는 사용자가 손대지 않았을 때만 서버 상태로 맞춘다 (선택/삭제 표시 중이면 유지)
+    if(!noticeDirty.attach){
+      currentAttachment = (n && n.attachmentName)
+        ? { fileId: n.attachmentId || '', fileName: n.attachmentName, fileType: n.attachmentType || 'pdf' }
+        : null;
+      renderNoticeAttachUI();
     }
   }catch(e){}
   await renderNoticePreview();
