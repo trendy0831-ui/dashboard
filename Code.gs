@@ -14,6 +14,9 @@ function doGet(e) {
   if (PUBLIC_GET_ACTIONS_.indexOf(action) < 0 && !authOk_(e.parameter.authToken)) {
     return jsonResponse({ error: 'auth' });
   }
+  if (action === 'scheduleAdjust') {
+    return jsonResponse(getScheduleAdjusts_());
+  }
   if (action === 'closures') {
     return jsonResponse(getClosures_());
   }
@@ -102,6 +105,12 @@ function doPost(e) {
     return jsonResponse({ error: 'auth' });
   }
 
+  if (action === 'saveScheduleAdjust') {
+    return jsonResponse(saveScheduleAdjust_(body.rows || []));
+  }
+  if (action === 'removeScheduleAdjust') {
+    return jsonResponse(removeScheduleAdjust_(body.ids || []));
+  }
   if (action === 'saveClosure') {
     return jsonResponse(saveClosure_(body.record || {}));
   }
@@ -923,7 +932,17 @@ function getAttendedDatesForStudent_(studentName) {
       candidateSlots.push({ day: parts[0], block: parts[1], slot: parts[2] });
     }
   });
+  // 2026-10-27 일정 조정: 이 학생의 특별수업(날짜|시간|슬롯)과 학생 개별 휴강일
+  const adjAll = getScheduleAdjusts_().filter(function (a) { return a.status === 'active' && a.name === studentName; });
+  const specialKeys = {};
+  const studentClosedDates = {};
+  adjAll.forEach(function (a) {
+    if (a.type === 'extra') specialKeys[a.date + '|' + normalizeBlock(a.block) + '|' + String(a.slot)] = true;
+    if (a.type === 'closed') studentClosedDates[a.date] = true;
+  });
+
   function isMyPeriod(day, block, slot, dateStr) {
+    if (specialKeys[dateStr + '|' + block + '|' + String(slot)]) return true;
     const isCandidate = candidateSlots.some(function (s) {
       return s.day === day && s.block === block && s.slot === String(slot);
     });
@@ -1754,7 +1773,17 @@ function buildStudentRecords_(reportId) {
     }
   });
 
+  // 2026-10-27 일정 조정: 이 학생의 특별수업(날짜|시간|슬롯)과 학생 개별 휴강일
+  const adjAll = getScheduleAdjusts_().filter(function (a) { return a.status === 'active' && a.name === student.name; });
+  const specialKeys = {};
+  const studentClosedDates = {};
+  adjAll.forEach(function (a) {
+    if (a.type === 'extra') specialKeys[a.date + '|' + normalizeBlock(a.block) + '|' + String(a.slot)] = true;
+    if (a.type === 'closed') studentClosedDates[a.date] = true;
+  });
+
   function isMyPeriod(day, block, slot, dateStr) {
+    if (specialKeys[dateStr + '|' + block + '|' + String(slot)]) return true;
     const isCandidate = candidateSlots.some(function (s) {
       return s.day === day && s.block === block && s.slot === String(slot);
     });
@@ -1815,7 +1844,7 @@ function buildStudentRecords_(reportId) {
   const records = [];
   const closureCtx = makeClosureCtx_(); // 휴강일(공휴일 기본 휴강 포함)의 기록은 출석·결석 집계에 넣지 않는다 (기록 자체는 시트에 그대로 남음)
   allKeys.forEach(key => {
-    if (isClosedDate_(key, closureCtx)) return;
+    if (isClosedDate_(key, closureCtx) || studentClosedDates[key]) return;
     const att = attendanceMap[key] || {};
     const hw = homeworkMap[key] || {};
     const hwStatus = hw.homeworkStatus || '미확인';
@@ -2301,4 +2330,87 @@ function isClosedDate_(dateStr, ctx) {
   const c = ctx.closures[dateStr];
   if (c) return c.status === 'closed';
   return !!ctx.holidays[dateStr];
+}
+
+
+// ===== 수업 일정 조정 (2026-10-27) =====
+// '일정조정' 시트: id | 날짜 | 구분 | 이름 | 시간블록 | 슬롯 | 메모 | 그룹 | 상태 | 변경시각
+//   구분: closed = 그 날짜에 그 학생만 휴강 / extra = 특별수업(보강·대체) — 시간블록·슬롯(1-based, 11 이상)에 배정
+//   상태: active / removed — 줄을 계속 추가만 하고, 같은 id는 가장 아래(최신) 줄이 적용된다 (이력 보존, 출결 기록은 건드리지 않음).
+// 전체 휴강(공휴일 포함)은 위의 '휴강일' 시트가 맡는다.
+function getScheduleAdjustSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName('일정조정');
+  if (!sh) {
+    sh = ss.insertSheet('일정조정');
+    sh.appendRow(['id', '날짜', '구분', '이름', '시간블록', '슬롯', '메모', '그룹', '상태', '변경시각']);
+  }
+  return sh;
+}
+
+// 반환: 모든 id의 최신 상태 목록(removed 포함 — 화면이 슬롯 번호를 겹치지 않게 새로 배정하는 데 쓴다)
+function getScheduleAdjusts_() {
+  const data = getScheduleAdjustSheet_().getDataRange().getValues();
+  const byId = {};
+  const order = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    const id = String(r[0] || '');
+    if (!id) continue;
+    if (!byId[id]) order.push(id);
+    byId[id] = {
+      id: id, date: normalizeDate_(r[1]), type: String(r[2] || ''), name: String(r[3] || ''),
+      block: r[4] ? normalizeBlock(r[4]) : '', slot: parseInt(r[5], 10) || 0,
+      memo: String(r[6] || ''), group: String(r[7] || ''), status: String(r[8] || '')
+    };
+  }
+  return order.map(function (id) { return byId[id]; });
+}
+
+function saveScheduleAdjust_(rows) {
+  if (!rows || !rows.length || rows.length > 80) return { error: 'bad rows' };
+  const clean = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || {};
+    const d = normalizeDate_(r.date);
+    const type = String(r.type || '');
+    const name = String(r.name || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || (type !== 'closed' && type !== 'extra') || !name || !r.id) return { error: 'bad row' };
+    if (type === 'extra' && (!r.block || !(parseInt(r.slot, 10) >= 11))) return { error: 'bad extra' };
+    clean.push([String(r.id), d, type, name, type === 'extra' ? String(r.block) : '', type === 'extra' ? parseInt(r.slot, 10) : '',
+      String(r.memo || '').slice(0, 100), String(r.group || ''), 'active']);
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sh = getScheduleAdjustSheet_();
+    const tz = Session.getScriptTimeZone();
+    const now = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+    clean.forEach(function (c) { sh.appendRow(c.concat([now])); });
+  } finally {
+    lock.release();
+  }
+  return { status: 'ok' };
+}
+
+function removeScheduleAdjust_(ids) {
+  if (!ids || !ids.length) return { error: 'no ids' };
+  const want = {};
+  ids.forEach(function (x) { want[String(x)] = true; });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const cur = getScheduleAdjusts_();
+    const sh = getScheduleAdjustSheet_();
+    const tz = Session.getScriptTimeZone();
+    const now = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+    cur.forEach(function (a) {
+      if (want[a.id] && a.status === 'active') {
+        sh.appendRow([a.id, a.date, a.type, a.name, a.block, a.slot || '', a.memo, a.group, 'removed', now]);
+      }
+    });
+  } finally {
+    lock.release();
+  }
+  return { status: 'ok' };
 }

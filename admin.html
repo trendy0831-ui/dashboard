@@ -864,6 +864,26 @@
   #closureModal .cm-err{display:none;font-size:13px;font-weight:700;color:var(--teal-dark);background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:8px;}
   #closureModal .cm-err.show{display:block;}
   .weekly-attend-rate.weekly-attend-closed{font-size:13px;color:var(--teal);}
+  .weekbar .range{text-align:center;line-height:1.3;}
+  .weekbar .range b{display:block;font-size:17px;font-weight:800;}
+  .weekbar .range span{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);}
+  .weekbar .wb-today{font-size:13px;font-weight:700;padding:8px 12px;}
+  .weekbar .wb-right{display:flex;align-items:center;gap:8px;}
+  .slot-card.cl-dim{opacity:.6;background:var(--paper);}
+  .empty-hint .cl-btn{margin-top:10px;}
+  #closureModal .cm-f{margin:10px 0;}
+  #closureModal .cm-f > label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:5px;}
+  #closureModal select{height:40px;border:1.5px solid #CFC8B4;border-radius:8px;background:#fff;padding:0 8px;font-size:14px;color:var(--ink);}
+  #closureModal .cm-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  #closureModal .cm-chip{border:1.5px solid #CFC8B4;background:#fff;color:var(--ink);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer;}
+  #closureModal .cm-chip.a{background:var(--soft);border-color:var(--teal);color:var(--teal-dark);font-weight:700;}
+  #closureModal .cm-chip.school{border-style:dashed;font-weight:700;color:var(--teal);}
+  #closureModal .cm-sug{border:1.5px dashed var(--teal);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--teal-dark);display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;background:var(--card);}
+  #closureModal .cm-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);}
+  #closureModal .cm-item .n{flex:1;font-size:13.5px;color:var(--ink);}
+  #closureModal .cm-item .n small{display:block;font-size:12px;color:var(--ink-soft);}
+  #closureModal .cm-submit{margin-top:12px;height:44px;width:100%;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:15px;font-weight:800;cursor:pointer;}
+  #closureModal .cm-submit:hover{background:var(--teal-dark);}
   /* ===================== 문제은행 ===================== */
   .fb{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;}
   .fb-row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;}
@@ -1282,19 +1302,25 @@
 </div>
 <div id="closureModal" role="dialog" aria-modal="true" aria-labelledby="closureTitle">
   <div class="cm-box">
-    <div class="cm-head"><h2 id="closureTitle">휴강일 설정</h2><button class="cm-x" id="closureClose" aria-label="닫기">×</button></div>
-    <p class="cm-note">정하지 않은 공휴일은 휴강으로 봐요. 휴강일은 출석률과 학부모 리포트의 결석 횟수에 들어가지 않고, 이미 입력한 출결 기록은 지워지지 않아요.</p>
+    <div class="cm-head"><h2 id="closureTitle">수업 일정 조정</h2><button class="cm-x" id="closureClose" aria-label="닫기">×</button></div>
+    <p class="cm-note">정하지 않은 공휴일은 휴강으로 봐요. 휴강일·휴강 학생은 출석률과 학부모 리포트의 결석 횟수에 들어가지 않고, 이미 입력한 출결 기록은 지워지지 않아요.</p>
     <div class="cm-body">
+      <div id="adjSuggest"></div>
+      <div class="cm-sec">일정 추가</div>
+      <div class="cm-f"><label for="adjDate">날짜</label><input type="date" id="adjDate"></div>
+      <div class="cm-f"><label>종류</label><div class="cm-seg" id="adjType"><button type="button" data-v="closed">휴강</button><button type="button" data-v="extra" class="a">특별수업 (보강·대체)</button></div></div>
+      <div class="cm-f" id="adjScopeRow"><label>휴강 대상</label><div class="cm-seg" id="adjScope"><button type="button" data-v="all">전체</button><button type="button" data-v="some" class="a">일부 학생</button></div></div>
+      <div class="cm-f" id="adjTimeRow"><label for="adjTime">시간</label><select id="adjTime"></select> <select id="adjLoadDay" aria-label="요일 시간표 불러오기"><option value="">요일 시간표 불러오기</option><option value="월">월요일 시간표</option><option value="화">화요일 시간표</option><option value="수">수요일 시간표</option><option value="목">목요일 시간표</option><option value="금">금요일 시간표</option><option value="토">토요일 시간표</option></select></div>
+      <div class="cm-f" id="adjStuRow"><label>대상 학생</label><div class="cm-chips" id="adjSchools"></div><div class="cm-chips" id="adjChips" style="margin-top:8px;"></div></div>
+      <div class="cm-f"><label for="adjMemo">메모</label><input type="text" id="adjMemo" maxlength="30" placeholder="예: 동도중 시험 직전 보강" style="width:100%;box-sizing:border-box;height:40px;border:1.5px solid #CFC8B4;border-radius:8px;background:#fff;padding:0 10px;font-size:14px;color:var(--ink);"></div>
+      <div class="cm-err" id="closureErr" role="alert"></div>
+      <button type="button" class="cm-submit" id="adjAdd">추가</button>
+      <div class="cm-sec" style="margin-top:22px;">추가한 일정 (최근 30일 이후)</div>
+      <div id="adjList"></div>
       <div class="cm-sec">공휴일</div>
       <div id="closureHolidayList"></div>
-      <div class="cm-sec">직접 추가한 휴강일 (학원 사정, 방학 등)</div>
+      <div class="cm-sec">직접 추가한 전체 휴강일</div>
       <div id="closureCustomList"></div>
-      <div class="cm-add">
-        <input type="date" id="closureDate" aria-label="휴강 날짜">
-        <input type="text" id="closureMemo" class="memo" maxlength="30" placeholder="메모 (예: 학원 사정)">
-        <button type="button" class="cl-btn" id="closureAdd">휴강 추가</button>
-      </div>
-      <div class="cm-err" id="closureErr" role="alert"></div>
     </div>
   </div>
 </div>
@@ -1360,6 +1386,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A6F5A" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
           <input type="date" id="datePick">
         </div>
+        <button class="edit-toggle" id="closureOpen">수업 일정 조정</button>
         <button class="edit-toggle" id="toggleEdit">명단 편집</button>
       </div>
     </div>
@@ -1373,9 +1400,8 @@
           <div class="weekbar">
             <button id="prevWeek">‹</button>
             <div class="range" id="weekRange"></div>
-            <button id="nextWeek">›</button>
+            <div class="wb-right"><button id="todayBtn" class="wb-today" type="button">오늘</button><button id="nextWeek">›</button></div>
           </div>
-          <div class="closure-bar"><button type="button" class="closure-open" id="closureOpen">휴강일 설정</button></div>
           <div class="daytabs" id="dayTabs"></div>
           <div class="daypanel" id="dayPanel"></div>
         </div>
@@ -1471,6 +1497,43 @@ async function loadClosures(){
     closures = (data && !Array.isArray(data) && !data.error) ? data : {};
   }catch(e){ closures = {}; }
 }
+// ===== 수업 일정 조정 (2026-10-27) — 학생별 휴강 / 특별수업(보강·대체) =====
+// adjusts: 시트('일정조정')의 모든 줄의 최신 상태 [{id,date,type:'closed'|'extra',name,block,slot,memo,group,status}]
+// 특별수업 슬롯은 11 이상(1-based) — 정규 수업 슬롯(1~4)과 겹치지 않는다. 화면 내부 slotIdx는 slot-1(10 이상).
+let adjusts = [];
+async function loadAdjusts(){
+  try{ const d = await apiGet({action:"scheduleAdjust"}); adjusts = Array.isArray(d) ? d : []; }
+  catch(e){ adjusts = []; }
+}
+function activeAdjusts(){ return adjusts.filter(a=>a.status === 'active'); }
+function extrasOn(ds){ return activeAdjusts().filter(a=>a.type === 'extra' && a.date === ds); }
+function partialClosedOn(ds){ return activeAdjusts().filter(a=>a.type === 'closed' && a.date === ds); }
+function studentClosedOn(ds, name){ return !!name && partialClosedOn(ds).some(a=>a.name === name); }
+let rawNameMemo = { key:-1, map:{} };
+function rawNameFor(name){
+  if(rawNameMemo.key !== rosterHistory.length){
+    const m = {};
+    allStudentNames().forEach(raw=>{ const st = parseStudentEntry(raw); if(st.name) m[st.name] = raw; });
+    rawNameMemo = { key: rosterHistory.length, map: m };
+  }
+  return rawNameMemo.map[name] || name;
+}
+// 그 날짜에 수업이 있는 (시간, 슬롯, 학생) 목록 — 전체 휴강일이면 비어 있고, 휴강인 학생은 빠지며, 특별수업이 더해진다.
+function classEntriesOn(ds){
+  if(isClosedDate(ds)) return [];
+  const dayName = dayNameForDate(ds);
+  const out = [];
+  BLOCKS.forEach(block=>{
+    for(let s=0;s<SUB;s++){
+      const raw = rosterNameAt(dayName, block, s, ds);
+      if(!raw || !raw.trim()) continue;
+      if(studentClosedOn(ds, parseStudentEntry(raw).name)) continue;
+      out.push({ block, s, name: raw });
+    }
+  });
+  extrasOn(ds).forEach(a=> out.push({ block: a.block, s: a.slot-1, name: rawNameFor(a.name) }));
+  return out;
+}
 const HW_CYCLE = {"완료":"미흡", "미흡":"안함", "안함":"미확인", "미확인":"완료", "미완료":"안함"};
 function hwStatusLabel(v){
   if(v === "완료") return "완료";
@@ -1484,6 +1547,10 @@ let rosterHistory = []; // 서버가 내려주는 명단 이력 원본: [{day, b
 // effectiveFrom이 없는(예전 방식) 행은 항상 유효한 것으로 보고, effectiveFrom이 있는 행들 중에는
 // dateStr 이전(또는 같은 날)에 시작된 것 중 가장 최근 것을 채택한다.
 function rosterNameAt(day, block, slot, dateStr){
+  if(slot >= 10){ // 특별수업 슬롯
+    const ex = activeAdjusts().find(x=>x.type === 'extra' && x.date === dateStr && String(x.block).trim() === String(block).trim() && x.slot === slot+1);
+    return ex ? rawNameFor(ex.name) : "";
+  }
   const candidates = rosterHistory.filter(it =>
     it.day === day && String(it.block).trim() === String(block).trim() && String(it.slot) === String(slot + 1)
   );
@@ -1640,7 +1707,15 @@ async function apiGetOnce(params){
 async function closureFilter(params, data){
   if((params.action === 'records' || params.action === 'recordsRange') && Array.isArray(data)){
     await closuresReady;
-    return data.filter(r => !isClosedDate(r.date));
+    const anyClosed = activeAdjusts().some(a=>a.type === 'closed');
+    return data.filter(r=>{
+      if(isClosedDate(r.date)) return false;
+      if(anyClosed){
+        const nm = parseStudentEntry(rosterNameAt(dayNameForDate(r.date), r.block, (parseInt(r.slot)||1)-1, r.date)).name;
+        if(studentClosedOn(r.date, nm)) return false;
+      }
+      return true;
+    });
   }
   return data;
 }
@@ -1793,16 +1868,21 @@ async function loadWeekData(){
 }
 function closureBannerHtml(dateStr){
   const name = escapeHtml(closureLabel(dateStr));
-  const btn = holidays[dateStr] || (closures[dateStr] && closures[dateStr].status === 'closed' && !holidays[dateStr])
-    ? (holidays[dateStr] ? '정상수업으로 바꾸기' : '휴강 해제')
-    : '정상수업으로 바꾸기';
-  const st = holidays[dateStr] ? 'open' : 'auto';
+  const isHol = !!holidays[dateStr];
+  const btn = isHol ? '정상수업으로 바꾸기' : '휴강 해제';
+  const st = isHol ? 'open' : 'auto';
   return `<div class="cl-banner"><div><b>${name}</b>은(는) 휴강일이에요.<br>출결 기록은 하지 않고, 출석률에도 들어가지 않아요.</div><button type="button" class="cl-btn" data-closure-date="${dateStr}" data-closure-st="${st}">${btn}</button></div>`;
 }
 function closureOpenBarHtml(dateStr){
   if(!(holidays[dateStr] || closures[dateStr])) return '';
   const name = escapeHtml(closureLabel(dateStr));
   return `<div class="cl-banner slim"><div><b>${name}</b> · 정상수업으로 진행해요</div><button type="button" class="cl-btn" data-closure-date="${dateStr}" data-closure-st="closed">휴강으로 바꾸기</button></div>`;
+}
+async function afterScheduleChange(){
+  weekRowsCache.clear();
+  await loadWeekData();
+  renderCardView(); renderUnchecked(); renderAdjustModal();
+  if(currentPage === 'dashboard'){ try{ renderDashboard(); }catch(e){} }
 }
 async function setClosure(dateStr, status, memo){
   const prev = closures[dateStr];
@@ -1812,51 +1892,215 @@ async function setClosure(dateStr, status, memo){
   }catch(e){
     if(prev) closures[dateStr] = prev; else delete closures[dateStr];
     showSaveFailToast('휴강 설정을 저장하지 못했어요. 다시 시도해주세요.');
-    renderClosureModal(); renderCardView();
+    renderAdjustModal(); renderCardView();
     return;
   }
-  weekRowsCache.clear();
-  await loadWeekData();
-  renderCardView(); renderUnchecked(); renderClosureModal();
-  if(currentPage === 'dashboard'){ try{ renderDashboard(); }catch(e){} }
+  await afterScheduleChange();
 }
-function renderClosureModal(){
+function newAdjId(){ return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+// 특별수업 슬롯: 지웠던 것까지 포함해 그 날짜에서 가장 큰 번호 다음부터 — 옛 기록이 다른 학생에게 붙지 않게 한다
+function nextExtraSlot(dateStr){
+  let mx = 10;
+  adjusts.forEach(a=>{ if(a.date === dateStr && a.type === 'extra' && a.slot > mx) mx = a.slot; });
+  return mx + 1;
+}
+async function saveAdjustRows(rows){
+  const added = rows.map(r=>({ ...r, status:'active' }));
+  adjusts = adjusts.concat(added);
+  try{
+    await apiPost({ action:'saveScheduleAdjust', rows });
+  }catch(e){
+    adjusts = adjusts.filter(a=>!rows.some(r=>r.id === a.id));
+    showSaveFailToast('일정을 저장하지 못했어요. 다시 시도해주세요.');
+    renderAdjustModal(); renderCardView();
+    return false;
+  }
+  await afterScheduleChange();
+  return true;
+}
+async function removeAdjustIds(ids){
+  const set = new Set(ids);
+  adjusts.forEach(a=>{ if(set.has(a.id)) a.status = 'removed'; });
+  try{
+    await apiPost({ action:'removeScheduleAdjust', ids });
+  }catch(e){
+    adjusts.forEach(a=>{ if(set.has(a.id)) a.status = 'active'; });
+    showSaveFailToast('일정을 취소하지 못했어요. 다시 시도해주세요.');
+    renderAdjustModal(); renderCardView();
+    return;
+  }
+  await afterScheduleChange();
+}
+/* ---- 수업 일정 조정 창 ---- */
+const adjForm = { type:'extra', scope:'some', sel:new Map() }; // sel: 이름 -> 시간(특별수업일 때)
+let adjExamRows = null;
+const dowK2 = ["일","월","화","수","목","금","토"];
+function fmtKoDay(ds){ const [y,m,dd] = ds.split('-').map(Number); return `${m}월 ${dd}일 (${dowK2[new Date(y,m-1,dd).getDay()]})`; }
+function activeStudentEntries(){
+  return allStudentNames().map(parseStudentEntry).filter(st=>st.name && st.status !== '종료');
+}
+function normSchool(x){ return String(x||'').replace(/학교$/,'').trim(); }
+function renderAdjustForm(){
+  const needStudents = !(adjForm.type === 'closed' && adjForm.scope === 'all');
+  document.querySelectorAll('#adjType button').forEach(b=> b.classList.toggle('a', b.dataset.v === adjForm.type));
+  document.querySelectorAll('#adjScope button').forEach(b=> b.classList.toggle('a', b.dataset.v === adjForm.scope));
+  document.getElementById('adjScopeRow').style.display = adjForm.type === 'closed' ? '' : 'none';
+  document.getElementById('adjTimeRow').style.display = adjForm.type === 'extra' ? '' : 'none';
+  document.getElementById('adjStuRow').style.display = needStudents ? '' : 'none';
+  const studs = activeStudentEntries();
+  const schools = [...new Set(studs.map(st=>st.school).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  document.getElementById('adjSchools').innerHTML = schools.map(sc=>{
+    const names = studs.filter(st=>st.school === sc).map(st=>st.name);
+    const all = names.every(n=>adjForm.sel.has(n));
+    return `<button type="button" class="cm-chip school ${all?'a':''}" data-adj-school="${escapeHtml(sc)}">${escapeHtml(sc)} 전체</button>`;
+  }).join('');
+  document.getElementById('adjChips').innerHTML = studs.map(st=>{
+    const on = adjForm.sel.has(st.name);
+    const t = (on && adjForm.type === 'extra') ? ` (${adjForm.sel.get(st.name)})` : '';
+    return `<button type="button" class="cm-chip ${on?'a':''}" data-adj-stu="${escapeHtml(st.name)}">${escapeHtml(st.name)}${st.school?` · ${escapeHtml(st.school)}`:''}${t}</button>`;
+  }).join('') || '<div class="cm-empty">등록된 학생이 없어요.</div>';
+}
+function adjGroupList(){
+  const from = toDateStr(addDays(new Date(), -30));
+  const groups = {};
+  activeAdjusts().filter(a=>a.date >= from).forEach(a=>{ const g = a.group || a.id; (groups[g] = groups[g] || []).push(a); });
+  return Object.values(groups).sort((x,y)=> x[0].date.localeCompare(y[0].date));
+}
+function renderAdjustModal(){
   const hEl = document.getElementById('closureHolidayList');
   const cEl = document.getElementById('closureCustomList');
   if(!hEl || !cEl) return;
-  const dow = ["일","월","화","수","목","금","토"];
   const from = toDateStr(addDays(new Date(), -60));
-  const fmt = ds => { const [y,m,dd] = ds.split('-').map(Number); return `${y}년 ${m}월 ${dd}일 (${dow[new Date(y,m-1,dd).getDay()]})`; };
   const hKeys = Object.keys(holidays).filter(k => k >= from).sort();
   hEl.innerHTML = hKeys.length ? hKeys.map(k=>{
     const closed = isClosedDate(k);
-    return `<div class="cm-row"><div class="n">${escapeHtml(holidays[k])}<small>${fmt(k)}</small></div><div class="cm-seg"><button type="button" class="${closed?'a':''}" data-cm-date="${k}" data-cm-st="closed">휴강</button><button type="button" class="${closed?'':'a'}" data-cm-date="${k}" data-cm-st="open">정상수업</button></div></div>`;
+    return `<div class="cm-row"><div class="n">${escapeHtml(holidays[k])}<small>${fmtKoDay(k)}</small></div><div class="cm-seg"><button type="button" class="${closed?'a':''}" data-cm-date="${k}" data-cm-st="closed">휴강</button><button type="button" class="${closed?'':'a'}" data-cm-date="${k}" data-cm-st="open">정상수업</button></div></div>`;
   }).join('') : `<div class="cm-empty">불러온 공휴일이 없어요.</div>`;
   const cKeys = Object.keys(closures).filter(k => !holidays[k] && k >= from && closures[k].status === 'closed').sort();
-  cEl.innerHTML = cKeys.length ? cKeys.map(k=>`<div class="cm-row"><div class="n">${escapeHtml(closures[k].memo || '휴강')}<small>${fmt(k)}</small></div><button type="button" class="cl-btn" data-cm-date="${k}" data-cm-st="auto">삭제</button></div>`).join('')
-    : `<div class="cm-empty">추가한 휴강일이 없어요.</div>`;
+  cEl.innerHTML = cKeys.length ? cKeys.map(k=>`<div class="cm-row"><div class="n">${escapeHtml(closures[k].memo || '휴강')}<small>${fmtKoDay(k)}</small></div><button type="button" class="cl-btn" data-cm-date="${k}" data-cm-st="auto">삭제</button></div>`).join('')
+    : `<div class="cm-empty">추가한 전체 휴강일이 없어요.</div>`;
+  const gl = adjGroupList();
+  document.getElementById('adjList').innerHTML = gl.length ? gl.map(list=>{
+    const a0 = list[0];
+    const names = list.map(a=> a.type === 'extra' ? `${escapeHtml(a.name)}(${a.block})` : escapeHtml(a.name)).join(', ');
+    const label = a0.type === 'extra' ? '특별수업' : '휴강(일부 학생)';
+    return `<div class="cm-item"><div class="n"><b>${fmtKoDay(a0.date)}</b> · ${label}${a0.memo?` · ${escapeHtml(a0.memo)}`:''}<small>${names}</small></div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="${label}">취소</button></div>`;
+  }).join('') : `<div class="cm-empty">추가한 일정이 없어요.</div>`;
+  renderAdjustSuggest();
 }
-function openClosureModal(){ renderClosureModal(); document.getElementById('closureErr').classList.remove('show'); document.getElementById('closureModal').classList.add('open'); }
-function closeClosureModal(){ document.getElementById('closureModal').classList.remove('open'); }
-document.getElementById('closureOpen').addEventListener('click', openClosureModal);
-document.getElementById('closureClose').addEventListener('click', closeClosureModal);
-document.getElementById('closureModal').addEventListener('click', e=>{
-  if(e.target.id === 'closureModal'){ closeClosureModal(); return; }
-  const b = e.target.closest('[data-cm-date]');
-  if(b) setClosure(b.getAttribute('data-cm-date'), b.getAttribute('data-cm-st'));
+async function renderAdjustSuggest(){
+  const el = document.getElementById('adjSuggest');
+  if(!el) return;
+  if(adjExamRows === null){
+    try{ const r = await apiGet({action:"examSchedule"}); adjExamRows = Array.isArray(r) ? r : []; }catch(e){ adjExamRows = []; }
+  }
+  const today = toDateStr(new Date()), horizon = toDateStr(addDays(new Date(), 45));
+  const studs = activeStudentEntries();
+  const items = adjExamRows.filter(r=>r.school && (r.examEnd || r.examStart) && (r.examEnd || r.examStart) >= today && (r.examEnd || r.examStart) <= horizon)
+    .map(r=>{
+      const end = r.examEnd || r.examStart;
+      const names = studs.filter(st=> normSchool(st.school) && normSchool(st.school) === normSchool(r.school)).map(st=>st.name);
+      return { school: r.school, end, names };
+    })
+    .filter(it=> it.names.length && !it.names.every(n=>studentClosedOn(it.end, n)) && !isClosedDate(it.end))
+    .sort((a,b)=>a.end.localeCompare(b.end)).slice(0,4);
+  el.innerHTML = items.length ? `<div class="cm-sec" style="margin-top:6px;">시험일정 기준 추천</div>` + items.map((it,i)=>
+    `<div class="cm-sug"><span>${escapeHtml(it.school)} 시험 종료 ${fmtKoDay(it.end)} → 그날 ${escapeHtml(it.school)} 학생 ${it.names.length}명 쉬기</span><button type="button" class="cl-btn" data-adj-sug="${i}">휴강으로 추가</button></div>`).join('') : '';
+  el._items = items;
+}
+function openAdjustModal(dateStr){
+  adjForm.sel = new Map();
+  const sel = document.getElementById('adjTime');
+  if(!sel.options.length) sel.innerHTML = BLOCKS.map(b=>`<option value="${b}">${b} 시작</option>`).join('');
+  document.getElementById('adjDate').value = dateStr || '';
+  document.getElementById('adjMemo').value = '';
+  document.getElementById('adjLoadDay').value = '';
+  document.getElementById('closureErr').classList.remove('show');
+  renderAdjustForm(); renderAdjustModal();
+  document.getElementById('closureModal').classList.add('open');
+}
+function closeAdjustModal(){ document.getElementById('closureModal').classList.remove('open'); }
+function adjError(msg){ const e = document.getElementById('closureErr'); e.textContent = msg; e.classList.add('show'); }
+document.getElementById('closureOpen').addEventListener('click', ()=> openAdjustModal(toDateStr(selectedDate)));
+document.getElementById('closureClose').addEventListener('click', closeAdjustModal);
+document.getElementById('closureModal').addEventListener('click', async e=>{
+  if(e.target.id === 'closureModal'){ closeAdjustModal(); return; }
+  const t = e.target.closest('button'); if(!t) return;
+  if(t.dataset.cmDate){ setClosure(t.dataset.cmDate, t.dataset.cmSt); return; }
+  if(t.dataset.adjIds){
+    if(window.confirm(`${t.dataset.adjLabel || '일정'}을(를) 취소할까요?\n이미 입력한 출결 기록은 지워지지 않아요.`)) removeAdjustIds(t.dataset.adjIds.split(','));
+    return;
+  }
+  if(t.dataset.adjSug !== undefined){
+    const it = document.getElementById('adjSuggest')._items[parseInt(t.dataset.adjSug,10)];
+    if(!it) return;
+    const group = newAdjId();
+    await saveAdjustRows(it.names.map(n=>({ id: newAdjId(), date: it.end, type:'closed', name:n, block:'', slot:0, memo: `${it.school} 시험 종료`, group })));
+    return;
+  }
+  if(t.parentElement.id === 'adjType'){ adjForm.type = t.dataset.v; renderAdjustForm(); return; }
+  if(t.parentElement.id === 'adjScope'){ adjForm.scope = t.dataset.v; renderAdjustForm(); return; }
+  if(t.dataset.adjStu){
+    const n = t.dataset.adjStu;
+    if(adjForm.sel.has(n)) adjForm.sel.delete(n); else adjForm.sel.set(n, document.getElementById('adjTime').value);
+    renderAdjustForm(); return;
+  }
+  if(t.dataset.adjSchool){
+    const names = activeStudentEntries().filter(st=>st.school === t.dataset.adjSchool).map(st=>st.name);
+    const all = names.every(n=>adjForm.sel.has(n));
+    names.forEach(n=>{ if(all) adjForm.sel.delete(n); else if(!adjForm.sel.has(n)) adjForm.sel.set(n, document.getElementById('adjTime').value); });
+    renderAdjustForm(); return;
+  }
+  if(t.id === 'adjAdd') submitAdjust();
 });
-document.getElementById('closureAdd').addEventListener('click', ()=>{
-  const dEl = document.getElementById('closureDate'), err = document.getElementById('closureErr');
-  const d = dEl.value;
-  if(!d){ err.textContent = '휴강할 날짜를 골라주세요.'; err.classList.add('show'); return; }
-  err.classList.remove('show');
-  const memo = document.getElementById('closureMemo').value.trim();
-  dEl.value = ''; document.getElementById('closureMemo').value = '';
-  setClosure(d, 'closed', memo);
+document.getElementById('adjLoadDay').addEventListener('change', e=>{
+  const day = e.target.value; e.target.value = '';
+  if(!day) return;
+  const date = document.getElementById('adjDate').value;
+  if(!date){ adjError('날짜를 먼저 골라주세요.'); return; }
+  document.getElementById('closureErr').classList.remove('show');
+  BLOCKS.forEach(block=>{
+    for(let s=0;s<SUB;s++){
+      const raw = rosterNameAt(day, block, s, date);
+      if(!raw || !raw.trim()) continue;
+      const st = parseStudentEntry(raw);
+      if(st.name && st.status !== '종료') adjForm.sel.set(st.name, block);
+    }
+  });
+  renderAdjustForm();
 });
+async function submitAdjust(){
+  const date = document.getElementById('adjDate').value;
+  const memo = document.getElementById('adjMemo').value.trim();
+  if(!date){ adjError('날짜를 골라주세요.'); return; }
+  const wholeDay = adjForm.type === 'closed' && adjForm.scope === 'all';
+  if(!wholeDay && !adjForm.sel.size){ adjError('대상 학생을 한 명 이상 골라주세요.'); return; }
+  document.getElementById('closureErr').classList.remove('show');
+  if(wholeDay){
+    await setClosure(date, 'closed', memo);
+  } else {
+    const group = newAdjId();
+    let slot = nextExtraSlot(date) - 1;
+    const rows = [...adjForm.sel.entries()].map(([name, block])=>{
+      const r = { id: newAdjId(), date, type: adjForm.type, name, block: adjForm.type === 'extra' ? block : '', slot: 0, memo, group };
+      if(adjForm.type === 'extra'){ slot++; r.slot = slot; }
+      return r;
+    });
+    const ok = await saveAdjustRows(rows);
+    if(!ok) return;
+  }
+  adjForm.sel = new Map();
+  document.getElementById('adjMemo').value = '';
+  renderAdjustForm();
+}
 document.getElementById('dayPanel').addEventListener('click', e=>{
-  const b = e.target.closest('[data-closure-date]');
-  if(b) setClosure(b.getAttribute('data-closure-date'), b.getAttribute('data-closure-st'));
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.closureDate){ setClosure(b.dataset.closureDate, b.dataset.closureSt); return; }
+  if(b.dataset.adjIds){
+    if(window.confirm(`${b.dataset.adjLabel || '일정'}을(를) 취소할까요?\n이미 입력한 출결 기록은 지워지지 않아요.`)) removeAdjustIds(b.dataset.adjIds.split(','));
+    return;
+  }
+  if(b.dataset.adjOpen !== undefined) openAdjustModal(b.dataset.adjOpen);
 });
 async function loadHolidays(){
   try{
@@ -1963,7 +2207,7 @@ async function pushRoster(prevSnapshot, effOverrides){
 }
 function dayNameForDate(dateStr){
   const d = new Date(dateStr+"T00:00:00");
-  return DAYS[(d.getDay()+6)%7];
+  return d.getDay()===0 ? "일" : DAYS[(d.getDay()+6)%7];
 }
 /* ============ 학생 목록 (roster 전체에서 고유 이름 추출) ============ */
 // 같은 학생이 "종료"된 옛 슬롯과 새 슬롯에 이름/학교/학년/상태 형태로 각각 등록되어 있을 수 있으므로,
@@ -1993,43 +2237,56 @@ function parseStudentEntry(raw){
 /* ============ 날짜 선택 ============ */
 const datePick = document.getElementById('datePick');
 datePick.value = toDateStr(selectedDate);
-datePick.onchange = async ()=>{
-  selectedDate = new Date(datePick.value+"T00:00:00");
-  weekStart = mondayOf(selectedDate);
-  activeDayIdx = (selectedDate.getDay()+6)%7;
-  if(activeDayIdx>5) activeDayIdx = 0;
+// 2026-10-27: 화살표는 하루씩 이동 — 일요일은 특별수업이 있는 날만 들르고, 아니면 건너뛴다.
+async function gotoDate(d){
+  const prevWs = toDateStr(weekStart);
+  weekStart = mondayOf(d);
+  activeDayIdx = (d.getDay()+6)%7; // 일요일 = 6
+  selectedDate = d;
+  datePick.value = toDateStr(d);
   openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
-  await loadWeekData();
+  renderCardView();
+  if(toDateStr(weekStart) !== prevWs){
+    await loadWeekData();
+    renderCardView();
+  }
+}
+function stepDay(dir){
+  let d = addDays(selectedDate, dir);
+  if(d.getDay() === 0 && !extrasOn(toDateStr(d)).length) d = addDays(d, dir);
+  return gotoDate(d);
+}
+datePick.onchange = async ()=>{
+  if(!datePick.value) return;
+  const d = new Date(datePick.value+"T00:00:00");
+  await gotoDate(d);
   renderAll();
 };
-document.getElementById('prevWeek').onclick = async ()=>{
-  weekStart = addDays(weekStart, -7);
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
-  renderCardView();
-  await loadWeekData();
-  renderCardView();
-};
-document.getElementById('nextWeek').onclick = async ()=>{
-  weekStart = addDays(weekStart, 7);
-  openAttKey = null; openStatusKey = null; openHwMemoKey = null; openMakeupDateKey = null;
-  renderCardView();
-  await loadWeekData();
-  renderCardView();
+document.getElementById('prevWeek').onclick = ()=> stepDay(-1);
+document.getElementById('nextWeek').onclick = ()=> stepDay(1);
+document.getElementById('todayBtn').onclick = ()=>{
+  const t = new Date();
+  if(t.getDay() === 0 && !extrasOn(toDateStr(t)).length) return gotoDate(addDays(t, 1)); // 일요일엔 수업이 없으니 다음 월요일로
+  return gotoDate(t);
 };
 /* ============ 카드형 렌더링 (출결 + 숙제 통합) ============ */
 function renderCardView(){
-  const weekEnd = addDays(weekStart,5);
-  document.getElementById('weekRange').textContent = fmtMD(weekStart)+" ~ "+fmtMD(weekEnd);
+  selectedDate = addDays(weekStart, activeDayIdx);
+  const dowK = ["일","월","화","수","목","금","토"];
+  const thisWeek = toDateStr(mondayOf(new Date())) === toDateStr(weekStart);
+  document.getElementById('weekRange').innerHTML = `<b>${selectedDate.getMonth()+1}/${selectedDate.getDate()} (${dowK[selectedDate.getDay()]})</b><span>${thisWeek?'이번 주 ':''}${fmtMD(weekStart)} ~ ${fmtMD(addDays(weekStart,6))}</span>`;
   const tabsEl = document.getElementById('dayTabs');
   let th = "";
-  DAYS.forEach((day,i)=>{
+  const sunStr = toDateStr(addDays(weekStart, 6));
+  const tabDays = (activeDayIdx === 6 || extrasOn(sunStr).length) ? DAYS.concat(["일"]) : DAYS; // 일요일 탭은 특별수업이 있는 주에만
+  tabDays.forEach((day,i)=>{
     const d = addDays(weekStart, i);
     const dateStr = toDateStr(d);
     const clo = closures[dateStr];
     const isHoliday = !!holidays[dateStr] || !!clo;
     const closedDay = isClosedDate(dateStr);
     const hLabel = holidays[dateStr] || (clo && clo.memo) || '';
-    th += `<button class="daytab ${activeDayIdx===i?'active':''} ${isHoliday?'holiday':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span>${hLabel?`<span class="holiday-name">${escapeHtml(hLabel)}</span>`:''}${isHoliday?`<span class="cl-chip ${closedDay?'off':'on'}">${closedDay?'휴강':'정상수업'}</span>`:''}</button>`;
+    th += `<button class="daytab ${activeDayIdx===i?'active':''} ${isHoliday?'holiday':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span>${hLabel?`<span class="holiday-name">${escapeHtml(hLabel)}</span>`:''}${isHoliday?`<span class="cl-chip ${closedDay?'off':'on'}">${closedDay?'휴강':'정상수업'}</span>`:''}${(!closedDay && partialClosedOn(dateStr).length)?'<span class="cl-chip off">일부 휴강</span>':''}${(!closedDay && extrasOn(dateStr).length)?'<span class="cl-chip on">특별수업</span>':''}</button>`;
   });
   tabsEl.innerHTML = th;
   tabsEl.querySelectorAll('.daytab').forEach(el=>{
@@ -2065,21 +2322,16 @@ function renderCardView(){
 function renderDayContent(){
   const d = addDays(weekStart, activeDayIdx);
   const dateStr = toDateStr(d);
-  const dayName = DAYS[activeDayIdx];
+  const dayName = dayNameForDate(dateStr);
   if(isClosedDate(dateStr)) return closureBannerHtml(dateStr);
   let html = (holidays[dateStr] || closures[dateStr]) ? closureOpenBarHtml(dateStr) : "";
-  BLOCKS.forEach(block=>{
-    // 이 카드가 그리는 날짜(dateStr) 기준으로 그 시점에 유효했던 이름을 계산한다.
-    // 요일/시간이 나중에 바뀌어도, 과거 날짜 카드는 그 당시 배정된 학생 이름을 그대로 보여준다.
-    const names = [0,1,2,3].map(s => rosterNameAt(dayName, block, s, dateStr));
-    const hasAny = names.some(n=>n && n.trim());
-    if(!hasAny) return;
-    html += `<div class="time-label">${block}</div><div class="slot-group">`;
-    for(let s=0;s<SUB;s++){
-      const name = names[s];
-      if(!name || !name.trim()) continue;
+  const slotHtml = (block, s, name)=>{
+    let html = "";
       const stu = parseStudentEntry(name);
       const meta = escapeHtml([stu.school, stu.grade].filter(Boolean).join(' · '));
+      if(studentClosedOn(dateStr, stu.name)){
+        return `<div class="slot-card cl-dim"><div class="slot-top"><span><span class="slot-name">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span><span class="cl-chip off">휴강</span></div></div>`;
+      }
       const rec = getRec(dateStr, block, s);
       const hw = getHwRec(dateStr, block, name);
       const mk = dateStr+"|"+block+"|"+s;
@@ -2196,10 +2448,47 @@ function renderDayContent(){
         html += `<div class="quad-sub muted">결석으로 숙제 확인 불가</div>`;
       }
       html += `</div>`;
+    return html;
+  };
+  const pcl = partialClosedOn(dateStr);
+  if(pcl.length){
+    const pg = {};
+    pcl.forEach(a=>{ const g = a.group || a.id; (pg[g] = pg[g] || []).push(a); });
+    Object.keys(pg).forEach(g=>{
+      const list = pg[g];
+      html += `<div class="cl-banner slim"><div><b>${escapeHtml(list[0].memo || '일부 학생 휴강')}</b> · ${list.map(a=>escapeHtml(a.name)).join(', ')} (${list.length}명)</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="휴강">휴강 취소</button></div>`;
+    });
+  }
+  BLOCKS.forEach(block=>{
+    // 이 카드가 그리는 날짜(dateStr) 기준으로 그 시점에 유효했던 이름을 계산한다.
+    // 요일/시간이 나중에 바뀌어도, 과거 날짜 카드는 그 당시 배정된 학생 이름을 그대로 보여준다.
+    const names = [0,1,2,3].map(s => rosterNameAt(dayName, block, s, dateStr));
+    const hasAny = names.some(n=>n && n.trim());
+    if(!hasAny) return;
+    html += `<div class="time-label">${block}</div><div class="slot-group">`;
+    for(let s=0;s<SUB;s++){
+      const name = names[s];
+      if(!name || !name.trim()) continue;
+      html += slotHtml(block, s, name);
     }
     html += `</div>`;
   });
-  if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.</div>`;
+  // 특별수업(보강·대체) 카드 — 정규 수업 아래에 모아서 보여준다
+  const exs = extrasOn(dateStr);
+  if(exs.length){
+    const groups = {};
+    exs.forEach(a=>{ const g = a.group || a.id; (groups[g] = groups[g] || []).push(a); });
+    Object.keys(groups).forEach(g=>{
+      const list = groups[g];
+      html += `<div class="cl-banner slim"><div><b>특별수업</b>${list[0].memo?` · ${escapeHtml(list[0].memo)}`:''}</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="특별수업">특별수업 취소</button></div>`;
+      const byBlock = {};
+      list.forEach(a=>{ (byBlock[a.block] = byBlock[a.block] || []).push(a); });
+      Object.keys(byBlock).sort().forEach(b=>{
+        html += `<div class="time-label">${b}</div><div class="slot-group">` + byBlock[b].map(a=>slotHtml(b, a.slot-1, rawNameFor(a.name))).join('') + `</div>`;
+      });
+    });
+  }
+  if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.<br><button type="button" class="cl-btn" data-adj-open="${dateStr}">이 날 수업 일정 조정</button></div>`;
   return html;
 }
 const ATT_CYCLE = {present:"late", late:"absent", absent:"normal", normal:"present"};
@@ -2440,20 +2729,13 @@ async function renderUnchecked(){
   }
   let items = [];
   let assignedCount = 0;
-  if(dayName && roster[dayName]){
-    BLOCKS.forEach(block=>{
-      const names = roster[dayName][block];
-      for(let s=0;s<SUB;s++){
-        const name = names[s];
-        if(!name || !name.trim()) continue;
-        assignedCount++;
-        const rec = src.records[todayStr+"|"+block+"|"+s];
-        if(!rec || rec.status === "normal" || !rec.status){
-          items.push({name, block});
-        }
-      }
-    });
-  }
+  classEntriesOn(todayStr).forEach(en=>{
+    assignedCount++;
+    const rec = src.records[todayStr+"|"+en.block+"|"+en.s];
+    if(!rec || rec.status === "normal" || !rec.status){
+      items.push({name: en.name, block: en.block});
+    }
+  });
   if(!items.length){
     listEl.innerHTML = assignedCount
       ? `<div class="unchecked-empty" style="color:var(--teal-dark);font-weight:600;">오늘 배정된 학생은 모두 출결 체크를 완료했어요.</div>`
@@ -3019,20 +3301,15 @@ async function renderWeeklyAttendance(cache){
   const dowLabels = ["일","월","화","수","목","금","토"];
   const cells = days7.map(d=>{
     const dateStr = toDateStr(d);
-    const dayName = dayNameForDate(dateStr);
     const ws = toDateStr(mondayOf(d));
     if(isClosedDate(dateStr)) return { dateStr, dow: dowLabels[d.getDay()], rate: null, closed: true, isToday: dateStr === toDateStr(today) };
     const rows = (recordsByWeek[ws] || []).filter(r => r.date === dateStr);
     let total = 0, present = 0;
-    BLOCKS.forEach(block=>{
-      for(let s=0; s<SUB; s++){
-        const name = rosterNameAt(dayName, block, s, dateStr);
-        if(!name || !name.trim()) continue;
-        total++;
-        const rec = rows.find(r => r.block === block && String((parseInt(r.slot)||1)-1) === String(s));
-        const status = rec ? rec.status : null;
-        if(status === 'present' || status === 'late') present++;
-      }
+    classEntriesOn(dateStr).forEach(en=>{
+      total++;
+      const rec = rows.find(r => r.block === en.block && String((parseInt(r.slot)||1)-1) === String(en.s));
+      const status = rec ? rec.status : null;
+      if(status === 'present' || status === 'late') present++;
     });
     const rate = total ? Math.round((present/total)*100) : null;
     return { dateStr, dow: dowLabels[d.getDay()], rate, isToday: dateStr === toDateStr(today) };
@@ -3179,23 +3456,19 @@ async function renderDashSummary(){
   const sameWeek = !!src;
   let totalStudents=0, uncheckedCount=0;
   let hwScore=0, hwTotal=0;
-  if(src && dayName && roster[dayName]){
-    BLOCKS.forEach(block=>{
-      const names = roster[dayName][block];
-      for(let s=0;s<SUB;s++){
-        const name = names[s];
-        if(!name || !name.trim()) continue;
-        totalStudents++;
-        const rec = src.records[todayStr+"|"+block+"|"+s] || {status:"normal"};
-        if(rec.status === "normal" || !rec.status) uncheckedCount++;
-        if(rec.status === "absent") continue;
-        const hw = src.hw[todayStr+"|"+block+"|"+name] || {completed:"미확인"};
-        const hwState = hwStatusLabel(hw.completed);
-        if(hwState === "미확인") continue;
-        hwTotal++;
-        if(hwState === "완료") hwScore += 1;
-        else if(hwState === "미흡") hwScore += 0.5;
-      }
+  if(src){
+    classEntriesOn(todayStr).forEach(en=>{
+      totalStudents++;
+      const block = en.block, name = en.name;
+      const rec = src.records[todayStr+"|"+block+"|"+en.s] || {status:"normal"};
+      if(rec.status === "normal" || !rec.status) uncheckedCount++;
+      if(rec.status === "absent") return;
+      const hw = src.hw[todayStr+"|"+block+"|"+name] || {completed:"미확인"};
+      const hwState = hwStatusLabel(hw.completed);
+      if(hwState === "미확인") return;
+      hwTotal++;
+      if(hwState === "완료") hwScore += 1;
+      else if(hwState === "미흡") hwScore += 0.5;
     });
   }
   const hwRate = hwTotal ? Math.round((hwScore/hwTotal)*100) : 0;
@@ -5751,8 +6024,9 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   await adminAuthBootstrap(); // 로그인 보호가 켜져 있으면 여기서 로그인 창을 띄우고 통과할 때까지 기다린다
   loadTheme(); //출결 데이터와 병렬로 — 테마는 기다리지 않아도 됨
   // 2026-09: loadRoster()와 loadWeekData()는 서로 의존하지 않아 병렬 호출로 초기 로딩 단축
-  closuresReady = Promise.all([loadHolidays(), loadClosures()]); // 출결 기록은 이 둘이 준비된 뒤에 걸러서 쓴다
-  await Promise.all([loadRoster(), loadWeekData(), closuresReady]);
+  const rosterP = loadRoster();
+  closuresReady = Promise.all([loadHolidays(), loadClosures(), loadAdjusts(), rosterP]); // 출결 기록은 이것들이 준비된 뒤에 걸러서 쓴다
+  await Promise.all([rosterP, loadWeekData(), closuresReady]);
   populateStudentSelect();
   renderAll();
   renderCalendar();
