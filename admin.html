@@ -1710,6 +1710,8 @@ async function closureFilter(params, data){
     const anyClosed = activeAdjusts().some(a=>a.type === 'closed');
     return data.filter(r=>{
       if(isClosedDate(r.date)) return false;
+      // 보강은 정규 수업이 아니라서 보강 결석은 결석으로 세지 않는다 (카드·오늘 미체크처럼 keepExtra 를 붙인 요청만 그대로 받는다)
+      if(!params.keepExtra && (parseInt(r.slot)||0) >= 11 && r.status === 'absent') return false;
       if(anyClosed){
         const nm = parseStudentEntry(rosterNameAt(dayNameForDate(r.date), r.block, (parseInt(r.slot)||1)-1, r.date)).name;
         if(studentClosedOn(r.date, nm)) return false;
@@ -1791,7 +1793,7 @@ async function loadRoster(){
 }
 async function loadRecordsForWeek(){
   try{
-    const rows = await apiGet({action:"records", weekStart: toDateStr(weekStart)});
+    const rows = await apiGet({action:"records", weekStart: toDateStr(weekStart), keepExtra:1});
     const next = {};
     rows.forEach(rec=>{
       const slotIdx = (parseInt(rec.slot) || 1) - 1;
@@ -2689,7 +2691,7 @@ async function ensureTodayData(){
   if(!todayDataPromise){
     todayDataPromise = (async ()=>{
       const [recRows, hwRows] = await Promise.all([
-        apiGet({action:"records", weekStart: thisWeekKey}),
+        apiGet({action:"records", weekStart: thisWeekKey, keepExtra:1}),
         apiGet({action:"homework", weekStart: thisWeekKey}).catch(()=>[])
       ]);
       const recMap = {}, hwMap = {};
@@ -3306,10 +3308,15 @@ async function renderWeeklyAttendance(cache){
     const rows = (recordsByWeek[ws] || []).filter(r => r.date === dateStr);
     let total = 0, present = 0;
     classEntriesOn(dateStr).forEach(en=>{
-      total++;
       const rec = rows.find(r => r.block === en.block && String((parseInt(r.slot)||1)-1) === String(en.s));
       const status = rec ? rec.status : null;
-      if(status === 'present' || status === 'late') present++;
+      const attended = (status === 'present' || status === 'late');
+      if(en.s >= 10){ // 보강은 참석한 경우에만 센다 — 빠져도 출석률이 내려가지 않는다
+        if(attended){ total++; present++; }
+        return;
+      }
+      total++;
+      if(attended) present++;
     });
     const rate = total ? Math.round((present/total)*100) : null;
     return { dateStr, dow: dowLabels[d.getDay()], rate, isToday: dateStr === toDateStr(today) };

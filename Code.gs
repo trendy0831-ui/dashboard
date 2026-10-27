@@ -1848,6 +1848,7 @@ function buildStudentRecords_(reportId) {
   allKeys.forEach(key => {
     if (isClosedDate_(key, closureCtx) || studentClosedDates[key]) return;
     const att = attendanceMap[key] || {};
+    if (att.extra && att.status === 'absent') return; // 보강은 정규 수업이 아니므로 보강 결석은 결석·기록에 넣지 않는다
     const hw = homeworkMap[key] || {};
     const hwStatus = hw.homeworkStatus || '미확인';
     records.push({
