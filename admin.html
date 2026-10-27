@@ -2485,10 +2485,10 @@ async function renderUpcomingExams(){
     const isDDay7 = it.dday === 7;
     const examSoon = it.examDday <= 7;
     const periodLabel = it.examEnd && it.examEnd !== it.examStart
-      ? `${fmtMD(new Date(it.examStart+"T00:00:00"))} ~ ${fmtMD(new Date(it.examEnd+"T00:00:00"))}`
-      : fmtMD(new Date(it.examStart+"T00:00:00"));
+      ? `${fmtMDW(it.examStart)} ~ ${fmtMDW(it.examEnd)}`
+      : fmtMDW(it.examStart);
     const mathLabel = it.mathExamDate
-      ? `수학 ${fmtMD(new Date(it.mathExamDate+"T00:00:00"))}${it.dday!==null ? ` (D-${it.dday})` : ''}${isDDay7?' — 보강 확인!':''}`
+      ? `수학 ${fmtMDW(it.mathExamDate)}${it.dday!==null ? ` (D-${it.dday})` : ''}${isDDay7?' — 보강 확인!':''}`
       : '';
     return `<div class="cc-exam${examSoon?' soon':''}${isDDay7?' math-warn':''}">
       <div class="cc-dday">D-${it.examDday}</div>
@@ -2840,9 +2840,16 @@ function localTodayStr(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-function fmtMD(dateStr){
+function fmtMDStr(dateStr){
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(dateStr||'');
   return m ? `${parseInt(m[1],10)}/${parseInt(m[2],10)}` : (dateStr||'');
+}
+// 'YYYY-MM-DD' 문자열 -> '10/28(수)' (다가오는 시험 카드용)
+function fmtMDW(dateStr){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr||'');
+  if(!m) return dateStr||'';
+  const d = new Date(+m[1], +m[2]-1, +m[3]);
+  return m[2]+'/'+m[3]+'('+['일','월','화','수','목','금','토'][d.getDay()]+')';
 }
 // 재원/퇴원 변경 창: 적용 시작일을 받는다 (비우면 오늘부터). 확인하면 {effectiveFrom}, 취소하면 null.
 function askStatusChange(name, nextStatus){
@@ -2963,7 +2970,7 @@ async function renderStudentGrid(){
         </button>
       </div>
       <div class="sc-slots">${badges}</div>
-      ${pending ? `<div class="sc-status-pending"><span>${escapeHtml(fmtMD(pending.effectiveFrom))}부터 ${escapeHtml(pending.status)} 예정</span><button type="button" class="sc-status-cancel" data-student-name="${escapeHtml(stu.name)}" data-from="${escapeHtml(pending.effectiveFrom)}">예정 취소</button></div>` : ''}
+      ${pending ? `<div class="sc-status-pending"><span>${escapeHtml(fmtMDStr(pending.effectiveFrom))}부터 ${escapeHtml(pending.status)} 예정</span><button type="button" class="sc-status-cancel" data-student-name="${escapeHtml(stu.name)}" data-from="${escapeHtml(pending.effectiveFrom)}">예정 취소</button></div>` : ''}
       ${histHtml}
       <div class="sc-tuition" data-student-name="${escapeHtml(stu.name)}">
         <label class="sc-tuition-label">💳 수강료 결제 방식</label>
