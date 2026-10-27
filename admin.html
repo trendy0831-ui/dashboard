@@ -350,6 +350,18 @@
   .cc-note .cc-meta{font-size:11px;color:var(--ink-soft);margin-top:1px;}
   .cc-note .cc-date{font-size:11px;color:var(--ink-soft);margin-top:4px;}
   .cc-note .cc-reason{font-size:11.5px;color:var(--ink);margin-top:4px;line-height:1.4;}
+  /* 대시보드 보강 대기 카드의 "보강 완료" 버튼 + 안내(되돌리기) -- 학원 틸색 (2026-10-27) */
+  .cc-makeup-done{display:block;width:100%;margin-top:8px;padding:6px 10px;font-size:12.5px;font-weight:700;
+    color:var(--teal);background:var(--card);border:1.5px solid var(--teal);border-radius:8px;cursor:pointer;}
+  .cc-makeup-done:hover{background:var(--teal);color:#fff;}
+  .cc-makeup-done:disabled{opacity:.6;cursor:default;}
+  #dashToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--teal);color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:700;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:999;opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;display:flex;align-items:center;gap:14px;}
+  #dashToast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+  #dashToast button{background:transparent;color:#fff;border:1px solid #fff;border-radius:7px;
+    padding:4px 12px;font-size:13px;font-weight:700;cursor:pointer;}
   @media (max-width:420px){
     .compact-grid2{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
     .compact-grid3{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));}
@@ -1092,6 +1104,7 @@
 </head>
 <body>
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
+<div id="dashToast"><span id="dashToastText"></span><button type="button" id="dashToastUndo">되돌리기</button></div>
 <div id="mobileTopbar">
   <div class="mt-brand mt-brand-wordmark">
     <img src="assets/logo-wordmark.png" alt="수학의 결">
@@ -2498,6 +2511,86 @@ async function renderUpcomingExams(){
     </div>`;
   }).join("");
 }
+// ---- 대시보드에서 바로 "보강 대기 -> 보강 완료" 바꾸기 (2026-10-27) ----
+// 출결 화면의 보강 토글과 같은 저장 방식(pushRecord -> saveRecord)을 그대로 쓴다.
+// 결석 기록은 지우지 않고 보강 상태만 바꾸며, 입력해 둔 보강 예정일은 그대로 남는다.
+function makeupItemKey(it){ return escapeHtml(it.date+'|'+it.block+'|'+it.slotIdx); }
+function makeupDoneBtnHtml(it, displayName){
+  return `<button type="button" class="cc-makeup-done" data-date="${escapeHtml(it.date)}" data-block="${escapeHtml(it.block)}" data-slot="${it.slotIdx}" data-name="${escapeHtml(displayName)}" data-note="${escapeHtml(it.note||'')}" data-att="${escapeHtml(it.attNote||'')}" data-mkdate="${escapeHtml(it.makeupDate||'')}">보강 완료</button>`;
+}
+function bindMakeupDoneButtons(root){
+  root.querySelectorAll('.cc-makeup-done').forEach(btn=>{
+    btn.onclick = ()=>{
+      btn.disabled = true;
+      completeMakeupFromDash({
+        date: btn.dataset.date, block: btn.dataset.block, slotIdx: parseInt(btn.dataset.slot,10)||0,
+        displayName: btn.dataset.name, note: btn.dataset.note, attNote: btn.dataset.att, makeupDate: btn.dataset.mkdate
+      });
+    };
+  });
+}
+let dashToastTimer = null, dashUndoItem = null;
+function showDashToast(text, undoItem){
+  const el = document.getElementById('dashToast');
+  if(!el) return;
+  dashUndoItem = undoItem || null;
+  document.getElementById('dashToastText').textContent = text;
+  document.getElementById('dashToastUndo').style.display = undoItem ? '' : 'none';
+  el.classList.add('show');
+  clearTimeout(dashToastTimer);
+  dashToastTimer = setTimeout(()=>{ el.classList.remove('show'); dashUndoItem = null; }, undoItem ? 7000 : 2500);
+}
+function removeMakeupCards(mk){
+  [['makeupFeed','이번 달 보강 대기 건이 없어요.'],['makeupOldestFeed','보강 대기 중인 건이 없어요.']].forEach(([id, emptyMsg])=>{
+    const feed = document.getElementById(id);
+    if(!feed) return;
+    let removed = 0;
+    feed.querySelectorAll('[data-mk]').forEach(c=>{ if(c.getAttribute('data-mk') === mk){ c.remove(); removed++; } });
+    if(!removed) return;
+    const left = feed.querySelectorAll('[data-mk]').length;
+    if(id === 'makeupFeed'){
+      const lab = document.getElementById('makeupCountLabel');
+      if(lab) lab.innerHTML = left ? `<span class="badge-count">${left}건</span>` : '';
+    }
+    if(!left){
+      feed.className = 'reason-feed';
+      feed.innerHTML = `<div class="reason-feed-empty">${emptyMsg}</div>`;
+    }
+  });
+}
+async function refreshMakeupPanels(){
+  if(pendingSaveCount > 0) return; // 다른 저장이 아직 진행 중이면, 마지막으로 끝나는 저장이 새로 불러온다
+  const cache = new Map();
+  const jobs = [];
+  if(dashPanelLoaded['makeup']) jobs.push(renderMakeupFeed(cache));
+  if(dashPanelLoaded['makeupold']) jobs.push(renderMakeupOldest(cache));
+  await Promise.all(jobs);
+}
+async function setMakeupStatusFromDash(it, status){
+  const key = it.date+'|'+it.block+'|'+it.slotIdx;
+  const local = records[key]; // 출결 화면에 이미 불러와 둔 주라면 그 화면도 같이 맞춘다
+  if(local){ local.makeupStatus = status; local.makeupDone = status === 'done'; }
+  await pushRecord(it.date, dayNameForDate(it.date), it.block, it.slotIdx,
+    { status:'absent', statusNote: it.note, attNote: it.attNote, makeupDate: it.makeupDate, makeupStatus: status });
+  invalidateTodayData();
+}
+async function completeMakeupFromDash(it){
+  removeMakeupCards(it.date+'|'+it.block+'|'+it.slotIdx);
+  showDashToast(`${it.displayName} 보강 완료로 바꿨어요`, it);
+  await setMakeupStatusFromDash(it, 'done');
+  await refreshMakeupPanels();
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const undoBtn = document.getElementById('dashToastUndo');
+  if(!undoBtn) return;
+  undoBtn.onclick = async ()=>{
+    const it = dashUndoItem;
+    if(!it) return;
+    showDashToast(`${it.displayName} 보강 대기로 되돌렸어요`, null);
+    await setMakeupStatusFromDash(it, 'wait');
+    await refreshMakeupPanels();
+  };
+});
 async function renderMakeupFeed(cache){
   cache = cache || new Map();
   const el = document.getElementById('makeupFeed');
@@ -2528,7 +2621,8 @@ async function renderMakeupFeed(cache){
       const slotIdx = (parseInt(rec.slot)||1)-1;
       const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
       if(!rawName) return;
-      items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName });
+      items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName,
+        slotIdx: slotIdx, attNote: rec.attNote||"", makeupDate: rec.makeupDate||"" });
     });
   });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
@@ -2545,14 +2639,16 @@ async function renderMakeupFeed(cache){
     const meta = escapeHtml([stu.school, stu.grade].filter(Boolean).join(' · '));
     const d = new Date(it.date+"T00:00:00");
     const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days[d.getDay()]})`;
-    return `<div class="cc-note">
+    return `<div class="cc-note" data-mk="${makeupItemKey(it)}">
       <span class="cc-badge">결석</span>
       <div class="cc-name">${escapeHtml(stu.name)}</div>
       ${meta?`<div class="cc-meta">${meta}</div>`:''}
       <div class="cc-date">${dateLabel} · ${it.block}</div>
       ${it.note ? `<div class="cc-reason">사유: ${escapeHtml(it.note)}</div>` : ''}
+      ${makeupDoneBtnHtml(it, stu.name)}
     </div>`;
   }).join("");
+  bindMakeupDoneButtons(el);
 }
 async function renderWeeklyAttendance(cache){
   cache = cache || new Map();
@@ -2694,7 +2790,8 @@ async function renderMakeupOldest(cache){
       const slotIdx = (parseInt(rec.slot)||1)-1;
       const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
       if(!rawName) return;
-      items.push({ date: rec.date, block: rec.block, name: rawName });
+      items.push({ date: rec.date, block: rec.block, name: rawName,
+        slotIdx: slotIdx, note: rec.statusNote||"", attNote: rec.attNote||"", makeupDate: rec.makeupDate||"" });
     });
   });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
@@ -2710,12 +2807,14 @@ async function renderMakeupOldest(cache){
     const meta = escapeHtml([stu.school, stu.grade].filter(Boolean).join(' · '));
     const d = new Date(it.date+"T00:00:00");
     const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days2[d.getDay()]})`;
-    return `<div class="cc-simple">
+    return `<div class="cc-simple" data-mk="${makeupItemKey(it)}">
       <div class="cc-name">${escapeHtml(stu.name)}</div>
       ${meta?`<div class="cc-meta">${meta}</div>`:''}
       <div class="cc-sub">${dateLabel} 결석 · ${it.block}</div>
+      ${makeupDoneBtnHtml(it, stu.name)}
     </div>`;
   }).join("");
+  bindMakeupDoneButtons(el);
 }
 async function renderDashSummary(){
   const el = document.getElementById('dashSummary');
