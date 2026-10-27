@@ -14,6 +14,9 @@ function doGet(e) {
   if (PUBLIC_GET_ACTIONS_.indexOf(action) < 0 && !authOk_(e.parameter.authToken)) {
     return jsonResponse({ error: 'auth' });
   }
+  if (action === 'closures') {
+    return jsonResponse(getClosures_());
+  }
   if (action === 'roster') {
     return jsonResponse(getRoster());
   }
@@ -97,6 +100,10 @@ function doPost(e) {
   // POST는 응답을 읽을 수 없어서(no-cors) 토큰이 없거나 틀리면 아무것도 저장하지 않고 조용히 끝낸다.
   if (PUBLIC_POST_ACTIONS_.indexOf(action) < 0 && !authOk_(body.authToken)) {
     return jsonResponse({ error: 'auth' });
+  }
+
+  if (action === 'saveClosure') {
+    return jsonResponse(saveClosure_(body.record || {}));
   }
 
   if (action === 'saveRoster') {
@@ -1806,7 +1813,9 @@ function buildStudentRecords_(reportId) {
   // 5. 두 맵을 날짜 기준으로 합치기
   const allKeys = new Set([...Object.keys(attendanceMap), ...Object.keys(homeworkMap)]);
   const records = [];
+  const closureCtx = makeClosureCtx_(); // 휴강일(공휴일 기본 휴강 포함)의 기록은 출석·결석 집계에 넣지 않는다 (기록 자체는 시트에 그대로 남음)
   allKeys.forEach(key => {
+    if (isClosedDate_(key, closureCtx)) return;
     const att = attendanceMap[key] || {};
     const hw = homeworkMap[key] || {};
     const hwStatus = hw.homeworkStatus || '미확인';
@@ -2225,4 +2234,71 @@ function loginAction_(password) {
   }
   cache.put('admin_login_fails', String(fails + 1), AUTH_LOCK_SECONDS_);
   return { ok: false, error: 'wrong', remaining: Math.max(0, AUTH_MAX_FAILS_ - fails - 1) };
+}
+
+
+// ===== 휴강일 (2026-10-27) =====
+// '휴강일' 시트: 날짜 | 상태(closed/open/auto) | 메모 | 변경시각 — 줄을 계속 추가만 하고(이력 보존), 같은 날짜는 가장 아래(최신) 줄이 적용된다.
+//   closed = 휴강, open = 정상수업, auto = 자동(공휴일이면 휴강, 아니면 정상수업)
+// 공휴일은 따로 정하지 않으면 휴강으로 본다. 휴강일에 이미 입력된 출결 기록은 지우지 않고 집계에서만 빼며,
+// 정상수업(open)으로 바꾸면 그 기록이 다시 집계에 들어간다.
+function getClosureSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName('휴강일');
+  if (!sh) {
+    sh = ss.insertSheet('휴강일');
+    sh.appendRow(['날짜', '상태', '메모', '변경시각']);
+  }
+  return sh;
+}
+
+// 반환: { 'YYYY-MM-DD': { status: 'closed'|'open', memo: '...' } } — 'auto'로 되돌린 날짜는 목록에서 빠진다.
+function getClosures_() {
+  const sh = getClosureSheet_();
+  const data = sh.getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < data.length; i++) {
+    const d = normalizeDate_(data[i][0]);
+    const st = String(data[i][1] || '').trim();
+    if (!d) continue;
+    if (st === 'closed' || st === 'open') map[d] = { status: st, memo: String(data[i][2] || '') };
+    else delete map[d];
+  }
+  return map;
+}
+
+function saveClosure_(rec) {
+  const d = normalizeDate_(rec.date);
+  const st = String(rec.status || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { error: 'bad date' };
+  if (st !== 'closed' && st !== 'open' && st !== 'auto') return { error: 'bad status' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const tz = Session.getScriptTimeZone();
+    getClosureSheet_().appendRow([d, st, String(rec.memo || '').slice(0, 100), Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss')]);
+  } finally {
+    lock.release();
+  }
+  CacheService.getScriptCache().remove('closures_ctx');
+  return { status: 'ok' };
+}
+
+// 집계용 묶음(휴강일 + 공휴일). 학부모 리포트가 학생마다 반복 호출하므로 5분 캐시한다.
+function makeClosureCtx_() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('closures_ctx');
+  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  const y = new Date().getFullYear();
+  let hol = {};
+  try { hol = getHolidays([y - 1, y, y + 1]); } catch (e) { hol = {}; }
+  const ctx = { closures: getClosures_(), holidays: hol };
+  try { cache.put('closures_ctx', JSON.stringify(ctx), 300); } catch (e) {}
+  return ctx;
+}
+
+function isClosedDate_(dateStr, ctx) {
+  const c = ctx.closures[dateStr];
+  if (c) return c.status === 'closed';
+  return !!ctx.holidays[dateStr];
 }
