@@ -793,6 +793,38 @@
     transition:opacity .2s, transform .2s;display:flex;align-items:center;gap:10px;}
   #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   #saveToast svg{width:18px;height:18px;flex-shrink:0;}
+  /* ===================== 관리자 로그인 (2026-10-27) ===================== */
+  #adminLogin{display:none;position:fixed;inset:0;z-index:2000;background:var(--paper);
+    align-items:center;justify-content:center;padding:20px;}
+  #adminLogin.show{display:flex;}
+  #adminLogin .al-card{width:100%;max-width:340px;background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:26px 22px;display:flex;flex-direction:column;gap:14px;}
+  #adminLogin .al-ic{width:46px;height:46px;border-radius:13px;background:var(--teal);color:#fff;
+    display:flex;align-items:center;justify-content:center;align-self:center;}
+  #adminLogin .al-ic svg{width:24px;height:24px;}
+  #adminLogin .al-title{font-size:18px;font-weight:800;color:var(--ink);text-align:center;margin:0;}
+  #adminLogin .al-sub{font-size:13px;color:var(--ink-soft);text-align:center;margin:-8px 0 0;}
+  #adminLogin label.al-lb{font-size:13px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;}
+  #adminLogin .al-field{position:relative;}
+  #adminLogin .al-input{width:100%;box-sizing:border-box;height:46px;border:1.5px solid #CFC8B4;border-radius:10px;
+    background:#fff;padding:0 46px 0 12px;font-size:16px;color:var(--ink);}
+  #adminLogin .al-input:focus{outline:none;border-color:var(--teal);}
+  #adminLogin .al-input.err{border-color:var(--teal);background:#F1F5F2;}
+  #adminLogin .al-eye{position:absolute;right:6px;top:7px;width:32px;height:32px;border:none;background:transparent;
+    color:var(--ink-soft);cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  #adminLogin .al-eye:hover{background:rgba(127,127,127,.14);}
+  #adminLogin .al-eye svg{width:20px;height:20px;}
+  #adminLogin .al-keep{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;}
+  #adminLogin .al-keep input{width:16px;height:16px;accent-color:var(--teal);}
+  #adminLogin .al-msg{display:none;font-size:13px;font-weight:700;color:var(--teal-dark);background:var(--soft);
+    border-radius:8px;padding:9px 11px;margin:0;line-height:1.45;}
+  #adminLogin .al-msg.show{display:block;}
+  #adminLogin .al-btn{height:48px;border:none;border-radius:10px;background:var(--teal);color:#fff;
+    font-size:15px;font-weight:800;cursor:pointer;}
+  #adminLogin .al-btn:hover{background:var(--teal-dark);}
+  #adminLogin .al-btn:disabled{opacity:.65;cursor:default;}
+  .logout-btn{display:none;}
+  html.admin-authed .logout-btn{display:flex;}
   /* ===================== 문제은행 ===================== */
   .fb{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;}
   .fb-row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;}
@@ -1103,6 +1135,23 @@
 </script>
 </head>
 <body>
+<div id="adminLogin" role="dialog" aria-modal="true" aria-labelledby="alTitle">
+  <form class="al-card" id="alForm" autocomplete="on">
+    <div class="al-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <h2 class="al-title" id="alTitle">관리자 로그인</h2>
+    <p class="al-sub">비밀번호를 입력해 주세요</p>
+    <div>
+      <label class="al-lb" for="alPw">비밀번호</label>
+      <div class="al-field">
+        <input class="al-input" id="alPw" type="password" autocomplete="current-password" required>
+        <button class="al-eye" id="alEye" type="button" aria-label="비밀번호 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+    </div>
+    <label class="al-keep"><input type="checkbox" id="alKeep" checked> 이 기기에서 30일 동안 로그인 유지</label>
+    <p class="al-msg" id="alMsg" role="alert"></p>
+    <button class="al-btn" id="alBtn" type="submit">로그인</button>
+  </form>
+</div>
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
 <div id="dashToast"><span id="dashToastText"></span><button type="button" id="dashToastUndo">되돌리기</button></div>
 <div id="mobileTopbar">
@@ -1162,6 +1211,7 @@
       </button>
     </nav>
     <button class="theme-open-btn" type="button" data-theme-open><span class="theme-dot"></span>🎨 색상 테마</button>
+    <button class="theme-open-btn logout-btn" type="button" data-admin-logout>🔓 로그아웃</button>
   </div>
 </div>
 <!-- ===================== 색상 테마 모달 ===================== -->
@@ -1235,6 +1285,7 @@
     </nav>
     <div class="side-foot">
       <button class="theme-open-btn" type="button" data-theme-open><span class="theme-dot"></span>🎨 색상 테마</button>
+      <button class="theme-open-btn logout-btn" type="button" data-admin-logout>🔓 로그아웃</button>
       모든 데이터는 Google Sheets에<br>자동 저장됩니다.
     </div>
   </div>
@@ -1398,13 +1449,114 @@ function apiReleaseSlot(){
   if(next) next(); // 대기 중이던 요청에게 슬롯을 그대로 넘김 (apiActiveCount 변화 없음)
   else apiActiveCount--;
 }
+// ===================== 관리자 로그인 (2026-10-27) =====================
+// 서버(Code.gs)의 ADMIN_AUTH_ENABLED 가 '1' 일 때만 동작. 꺼져 있으면 예전과 똑같이 로그인 없이 열린다.
+// 토큰은 "만료시각.서명" 형태이며, 모든 GET/POST 요청에 authToken 으로 실어 보낸다.
+const AUTH_LS_KEY = 'adminAuthToken';
+let adminAuthEnabled = false;
+let adminLoginResolvers = [];
+function authGetToken(){
+  try{ return localStorage.getItem(AUTH_LS_KEY) || sessionStorage.getItem(AUTH_LS_KEY) || ''; }catch(e){ return ''; }
+}
+function authTokenValid(t){
+  const exp = parseInt(String(t||'').split('.')[0], 10);
+  return !!exp && exp > Date.now();
+}
+function authSetToken(t, keep){
+  try{ localStorage.removeItem(AUTH_LS_KEY); sessionStorage.removeItem(AUTH_LS_KEY); }catch(e){}
+  try{ (keep ? localStorage : sessionStorage).setItem(AUTH_LS_KEY, t); }catch(e){}
+}
+function authClearToken(){
+  try{ localStorage.removeItem(AUTH_LS_KEY); sessionStorage.removeItem(AUTH_LS_KEY); }catch(e){}
+}
+function showAdminLogin(msg){
+  const box = document.getElementById('adminLogin');
+  if(!box) return Promise.resolve();
+  const m = document.getElementById('alMsg');
+  if(msg){ m.textContent = msg; m.classList.add('show'); } else { m.classList.remove('show'); }
+  box.classList.add('show');
+  setTimeout(()=>{ const i=document.getElementById('alPw'); if(i) i.focus(); }, 50);
+  return new Promise(res => adminLoginResolvers.push(res));
+}
+function hideAdminLogin(){
+  const box = document.getElementById('adminLogin');
+  if(box) box.classList.remove('show');
+  const pw = document.getElementById('alPw'); if(pw) pw.value='';
+  const rs = adminLoginResolvers; adminLoginResolvers = [];
+  rs.forEach(r=>r());
+}
+function authExpired(){
+  authClearToken();
+  return showAdminLogin('로그인이 만료되었어요. 다시 로그인해 주세요.');
+}
+async function adminAuthBootstrap(){
+  try{
+    const res = await fetch(SCRIPT_URL + "?" + new URLSearchParams({action:'authStatus', _t: Date.now()}).toString(), {cache:'no-store'});
+    const j = await res.json();
+    adminAuthEnabled = !!(j && j.enabled);
+  }catch(e){ adminAuthEnabled = false; } // 확인 실패 시엔 일단 진행 — 서버가 막으면 첫 요청에서 로그인 창이 뜬다
+  if(!adminAuthEnabled) return;
+  document.documentElement.classList.add('admin-authed');
+  if(!authTokenValid(authGetToken())){ authClearToken(); await showAdminLogin(); }
+}
+async function adminLoginSubmit(ev){
+  ev.preventDefault();
+  const pwEl = document.getElementById('alPw'), btn = document.getElementById('alBtn'), msg = document.getElementById('alMsg');
+  const pw = pwEl.value;
+  if(!pw) return;
+  btn.disabled = true; btn.textContent = '확인 중…'; msg.classList.remove('show'); pwEl.classList.remove('err');
+  try{
+    const res = await fetch(SCRIPT_URL + "?" + new URLSearchParams({action:'login', password: pw, _t: Date.now()}).toString(), {cache:'no-store'});
+    const j = await res.json();
+    if(j && j.ok){
+      if(j.enabled && j.token){
+        authSetToken(j.token, document.getElementById('alKeep').checked);
+        adminAuthEnabled = true;
+        document.documentElement.classList.add('admin-authed');
+      }
+      hideAdminLogin();
+    } else if(j && j.error === 'locked'){
+      msg.textContent = '비밀번호를 여러 번 틀려서 10분 동안 로그인이 잠겼어요. 잠시 후 다시 시도해 주세요.';
+      msg.classList.add('show');
+    } else {
+      pwEl.classList.add('err');
+      msg.textContent = '비밀번호가 맞지 않아요.' + (j && typeof j.remaining === 'number' ? ' (남은 시도 ' + j.remaining + '회)' : '');
+      msg.classList.add('show'); pwEl.select();
+    }
+  }catch(e){
+    msg.textContent = '연결에 실패했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+    msg.classList.add('show');
+  }finally{
+    btn.disabled = false; btn.textContent = '로그인';
+  }
+}
+document.getElementById('alForm').addEventListener('submit', adminLoginSubmit);
+document.getElementById('alEye').addEventListener('click', ()=>{
+  const i = document.getElementById('alPw'); i.type = (i.type === 'password') ? 'text' : 'password'; i.focus();
+});
+document.querySelectorAll('[data-admin-logout]').forEach(b=> b.addEventListener('click', ()=>{
+  authClearToken(); location.reload();
+}));
+// 오답노트(note.html iframe)에서 인증 오류가 나면 부모 창에서 로그인 창을 띄운다
+window.addEventListener('message', ev=>{
+  if(ev.origin === location.origin && ev.data && ev.data.type === 'authRequired'){ authExpired(); }
+});
 async function apiGetOnce(params){
   await apiAcquireSlot();
   try{
-    const url = SCRIPT_URL + "?" + new URLSearchParams({...params, _t: Date.now()}).toString();
+    const tk = authGetToken();
+    const q = {...params, _t: Date.now()};
+    if(tk) q.authToken = tk;
+    const url = SCRIPT_URL + "?" + new URLSearchParams(q).toString();
     const res = await fetch(url, { cache: "no-store" });
     if(!res.ok) throw new Error("HTTP "+res.status);
-    return await res.json();
+    const data = await res.json();
+    if(data && !Array.isArray(data) && data.error === 'auth'){
+      const e = new Error('auth'); e.isAuth = true;
+      authExpired();
+      throw e;
+    }
+    return data;
   } finally {
     apiReleaseSlot();
   }
@@ -1416,12 +1568,18 @@ async function apiGet(params){
       return await apiGetOnce(params);
     }catch(e){
       lastErr = e;
+      if(e && e.isAuth) throw e; // 인증 오류는 재시도해도 소용없음
       if(attempt<2) await new Promise(r=>setTimeout(r, 800));
     }
   }
   throw lastErr;
 }
 async function apiPost(body){
+  if(adminAuthEnabled){
+    const tk = authGetToken();
+    if(!authTokenValid(tk)){ authExpired(); throw new Error('auth'); } // 만료된 상태로 저장하면 서버가 조용히 거절하므로 미리 막는다
+    body = {...body, authToken: tk};
+  }
   await fetch(SCRIPT_URL, {
     method:"POST",
     mode:"no-cors",
@@ -3675,7 +3833,7 @@ function applyGradesTab(){
 function ensureGradesNoteFrame(){
   const wrap = document.getElementById('gradesNoteWrap');
   if(wrap.dataset.built) return;
-  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261019" title="오답노트"></iframe>';
+  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261027" title="오답노트"></iframe>';
   wrap.dataset.built = '1';
   document.getElementById('gradesNoteFrame').addEventListener('load', sendGradesNoteStudent);
 }
@@ -4175,7 +4333,7 @@ function switchPage(page){
     el.style.display = '';
     if(!el.dataset.built){
       // 2026-10-15: v 값은 note.html을 고쳐서 올릴 때마다 바꿔 주면, 브라우저 캐시에 남은 옛 버전 대신 새 파일을 불러온다.
-      el.innerHTML = '<iframe class="note-frame" src="note.html?embed=1&v=20261015" title="오답노트" loading="lazy"></iframe>';
+      el.innerHTML = '<iframe class="note-frame" src="note.html?embed=1&v=20261027" title="오답노트" loading="lazy"></iframe>';
       el.dataset.built = '1';
     }
   }
@@ -5432,7 +5590,8 @@ document.getElementById('themeModal').addEventListener('click', e=>{ if(e.target
 document.getElementById('themeColorInput').addEventListener('input', e=> themeSetPreview_(e.target.value));
 
 (async function init(){
-  loadTheme(); // 출결 데이터와 병렬로 — 테마는 기다리지 않아도 됨
+  await adminAuthBootstrap(); // 로그인 보호가 켜져 있으면 여기서 로그인 창을 띄우고 통과할 때까지 기다린다
+  loadTheme(); //출결 데이터와 병렬로 — 테마는 기다리지 않아도 됨
   // 2026-09: loadRoster()와 loadWeekData()는 서로 의존하지 않아 병렬 호출로 초기 로딩 단축
   await Promise.all([loadRoster(), loadWeekData()]);
   populateStudentSelect();

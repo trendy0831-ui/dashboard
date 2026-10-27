@@ -1330,17 +1330,30 @@ function nowHM(){
   return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
 }
 
+// 관리자 로그인 토큰 (admin.html 이 저장한 것을 같은 출처라 그대로 읽어 쓴다)
+function authToken_(){
+  try{ return localStorage.getItem('adminAuthToken') || sessionStorage.getItem('adminAuthToken') || ''; }catch(e){ return ''; }
+}
+function authRequired_(){
+  try{ if(window.parent && window.parent !== window) window.parent.postMessage({ type:'authRequired' }, location.origin); }catch(e){}
+}
 async function remoteGetOnce(action){
-  const url = SCRIPT_URL + '?' + new URLSearchParams({ action, _t: Date.now() }).toString();
-  const res = await fetch(url, { cache:'no-store' });
+  const q = { action, _t: Date.now() };
+  const tk = authToken_();
+  if(tk) q.authToken = tk;
+  const res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(q).toString(), { cache:'no-store' });
   if(!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  const data = await res.json();
+  if(data && !Array.isArray(data) && data.error === 'auth'){
+    const e = new Error('auth'); e.isAuth = true; authRequired_(); throw e;
+  }
+  return data;
 }
 async function remoteGet(action){
   let lastErr;
   for(let i=0;i<3;i++){
     try{ return await remoteGetOnce(action); }
-    catch(e){ lastErr = e; if(i<2) await new Promise(r=>setTimeout(r, 800)); }
+    catch(e){ lastErr = e; if(e && e.isAuth) throw e; if(i<2) await new Promise(r=>setTimeout(r, 800)); }
   }
   throw lastErr;
 }
@@ -1350,7 +1363,7 @@ async function remotePost(action, body){
       method:'POST',
       mode:'no-cors',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify(Object.assign({ action }, body))
+      body: JSON.stringify(Object.assign({ action, authToken: authToken_() }, body))
     });
     setSync('saving');
     scheduleSync(4000);
@@ -1394,7 +1407,7 @@ async function syncFromRemote(){
     saveData();
     renderAll();
     if(resend.length){
-      await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'importWrongNotes', records: resend }) }).catch(()=>{});
+      await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'importWrongNotes', records: resend, authToken: authToken_() }) }).catch(()=>{});
       setSync('saving');
       scheduleSync(5000);
     } else {

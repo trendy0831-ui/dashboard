@@ -3,6 +3,17 @@
 
 function doGet(e) {
   const action = e.parameter.action;
+  // 2026-10-27 관리자 로그인: 로그인 관련 요청은 먼저 처리하고, 공개 목록에 없는 요청은 토큰이 있어야 통과한다.
+  // (스크립트 속성 ADMIN_AUTH_ENABLED 가 '1' 이고 ADMIN_PASSWORD 가 있을 때만 검사한다 — 그 전에는 예전처럼 동작)
+  if (action === 'authStatus') {
+    return jsonResponse({ enabled: authEnabled_() });
+  }
+  if (action === 'login') {
+    return jsonResponse(loginAction_(e.parameter.password));
+  }
+  if (PUBLIC_GET_ACTIONS_.indexOf(action) < 0 && !authOk_(e.parameter.authToken)) {
+    return jsonResponse({ error: 'auth' });
+  }
   if (action === 'roster') {
     return jsonResponse(getRoster());
   }
@@ -82,6 +93,11 @@ function doGet(e) {
 function doPost(e) {
   const body = JSON.parse(e.postData.contents);
   const action = body.action;
+  // 2026-10-27 관리자 로그인: 공개 목록(홈페이지 상담 신청)이 아니면 토큰을 확인한다.
+  // POST는 응답을 읽을 수 없어서(no-cors) 토큰이 없거나 틀리면 아무것도 저장하지 않고 조용히 끝낸다.
+  if (PUBLIC_POST_ACTIONS_.indexOf(action) < 0 && !authOk_(body.authToken)) {
+    return jsonResponse({ error: 'auth' });
+  }
 
   if (action === 'saveRoster') {
     saveRoster(body.roster);
@@ -2129,4 +2145,78 @@ function saveConsult(rec) {
     ];
     MailApp.sendEmail(CONSULT_NOTIFY_EMAIL_, '[이끌림수학학원] 상담 신청 · ' + (rec.parentName || ''), lines.join('\n'));
   } catch (e) { console.error('상담 신청 메일 발송 실패: ' + e); /* 메일 실패해도 시트 기록은 이미 완료됨 */ }
+}
+
+// ===== 관리자 로그인 (2026-10-27) =====
+// 설정 위치: Apps Script > 프로젝트 설정 > 스크립트 속성
+//   ADMIN_PASSWORD      관리자 비밀번호 (직접 입력 — 코드나 채팅에는 적지 않는다)
+//   ADMIN_AUTH_ENABLED  '1' 이면 보호 시작. '0' 이거나 없으면 예전처럼 누구나 사용 (문제가 생겼을 때 끄는 스위치)
+// ADMIN_SECRET 은 서버가 처음 필요할 때 스스로 만들어 저장한다 (직접 만들 필요 없음).
+// 로그인하면 30일짜리 토큰을 주고, 관리자 화면의 모든 요청이 그 토큰(authToken)을 붙여 보낸다.
+// 비밀번호를 바꾸면 이전에 받은 토큰은 모두 무효가 된다.
+const PUBLIC_GET_ACTIONS_ = ['studentReport', 'studentReportSummary', 'studentReportExam', 'studentReportTuition', 'studentReportNotice', 'holidays'];
+const PUBLIC_POST_ACTIONS_ = ['saveConsult'];
+const AUTH_TOKEN_DAYS_ = 30;
+const AUTH_MAX_FAILS_ = 5;
+const AUTH_LOCK_SECONDS_ = 600;
+
+function authEnabled_() {
+  const p = PropertiesService.getScriptProperties();
+  return p.getProperty('ADMIN_AUTH_ENABLED') === '1' && !!String(p.getProperty('ADMIN_PASSWORD') || '').trim();
+}
+
+function authSecret_() {
+  const p = PropertiesService.getScriptProperties();
+  let s = p.getProperty('ADMIN_SECRET');
+  if (!s) {
+    s = Utilities.getUuid() + Utilities.getUuid();
+    p.setProperty('ADMIN_SECRET', s);
+  }
+  return s;
+}
+
+function bytesToHex_(bytes) {
+  return bytes.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+}
+
+function safeEqual_(a, b) {
+  a = String(a); b = String(b);
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+function signAuthToken_(exp) {
+  const pw = String(PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '').trim();
+  const sig = Utilities.computeHmacSha256Signature(exp + '|' + pw, authSecret_());
+  return exp + '.' + bytesToHex_(sig);
+}
+
+// 보호가 꺼져 있으면 항상 통과. 켜져 있으면 만료 전이고 서명이 맞는 토큰만 통과한다.
+function authOk_(token) {
+  if (!authEnabled_()) return true;
+  const t = String(token || '');
+  const parts = t.split('.');
+  if (parts.length !== 2) return false;
+  const exp = parseInt(parts[0], 10);
+  if (!exp || exp < Date.now()) return false;
+  return safeEqual_(signAuthToken_(exp), t);
+}
+
+// 로그인 결과: { ok:true, token, enabled:true } / { ok:false, error:'wrong'|'locked' }
+// 비밀번호를 5번 연속 틀리면 마지막으로 틀린 때부터 10분 동안 로그인을 막는다.
+function loginAction_(password) {
+  if (!authEnabled_()) return { ok: true, enabled: false, token: '' };
+  const cache = CacheService.getScriptCache();
+  const fails = parseInt(cache.get('admin_login_fails') || '0', 10);
+  if (fails >= AUTH_MAX_FAILS_) return { ok: false, error: 'locked' };
+  const pw = String(PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '').trim();
+  if (safeEqual_(String(password || '').trim(), pw)) {
+    cache.remove('admin_login_fails');
+    const exp = Date.now() + AUTH_TOKEN_DAYS_ * 86400000;
+    return { ok: true, enabled: true, token: signAuthToken_(exp) };
+  }
+  cache.put('admin_login_fails', String(fails + 1), AUTH_LOCK_SECONDS_);
+  return { ok: false, error: 'wrong', remaining: Math.max(0, AUTH_MAX_FAILS_ - fails - 1) };
 }
