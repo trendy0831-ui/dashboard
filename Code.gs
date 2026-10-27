@@ -479,17 +479,24 @@ function getHomeworkSheet() {
 }
 
 function getHomeworkForWeek(weekStart) {
+  // 2026-10-27 속도 개선: 행마다 getRange를 따로 호출하던 것을 한 번에 읽도록 바꿨다
+  // (기록 시트의 getRecordsInRange_와 같은 방식). 결과 값은 예전과 동일하다.
   const sheet = getHomeworkSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
   const tz = Session.getScriptTimeZone();
   const endStr = weekEndDateStr(weekStart, tz);
-  const rowNums = findRowsInDateRange_(sheet, weekStart, endStr);
-  if (!rowNums.length) return [];
+  const lo = new Date(weekStart + 'T00:00:00').getTime() - 2 * 86400000;
+  const hi = new Date(endStr + 'T00:00:00').getTime() + 3 * 86400000;
+  const vals = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
 
   const byKey = {};
-  rowNums.forEach(rowNum => {
-    const r = sheet.getRange(rowNum, 1, 1, 6).getValues()[0];
+  vals.forEach(r => {
     if (!r[0]) return;
+    const t = new Date(r[0]).getTime();
+    if (isNaN(t) || t < lo || t > hi) return; // 범위 밖은 날짜 변환 없이 빠르게 건너뜀
     const dateStr = Utilities.formatDate(new Date(r[0]), tz, 'yyyy-MM-dd');
+    if (dateStr < weekStart || dateStr > endStr) return;
     const block = normalizeBlock(r[2]);
     const key = dateStr + '|' + block + '|' + String(r[3]).trim();
     byKey[key] = {

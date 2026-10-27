@@ -2385,11 +2385,46 @@ function emptyPagePanel(icon, title, desc){
 // 예전 값이 남아 다음 새로고침에서도 계속 쓰이는 일이 없도록 한다 (2026-09-02, 속도 개선).
 // 2026-10-25: 불러오기에 실패하면 빈 목록([]) 대신 null을 돌려준다.
 // (예전에는 실패해도 []로 처리돼 "보강 대기 없음", 출석률 "0%"처럼 평소 화면과 똑같이 보였다.)
+// 2026-10-27 속도 개선: 같은 순간에 여러 주를 요청하면(보강 대기 패널은 최대 14주) 주마다 서버를 따로
+// 부르지 않고, 필요한 주를 모아서 recordsRange 요청 1번으로 받아 주별로 나눠 돌려준다.
+// (서버는 요청 1번마다 기록 시트 전체를 읽기 때문에 요청 수를 줄이는 것이 가장 효과가 크다.)
+// recordsRange를 못 받으면(옛 서버 등) 예전처럼 주 단위 요청으로 자동 대체한다.
 function getRecordsCached(weekStart, cache){
-  if(!cache.has(weekStart)){
-    cache.set(weekStart, apiGet({action:"records", weekStart}).catch(()=>null));
+  if(cache.has(weekStart)) return cache.get(weekStart);
+  if(!cache._batch) cache._batch = new Map();
+  const batch = cache._batch;
+  const p = new Promise(resolve => { batch.set(weekStart, resolve); });
+  cache.set(weekStart, p);
+  if(batch.size === 1){
+    setTimeout(()=>{
+      if(cache._batch === batch) cache._batch = null;
+      flushRecordsBatch(batch);
+    }, 0);
   }
-  return cache.get(weekStart);
+  return p;
+}
+async function flushRecordsBatch(batch){
+  const weeks = [...batch.keys()].sort();
+  const weekEnd = ws => toDateStr(addDays(new Date(ws+"T00:00:00"), 6));
+  let rows = null;
+  if(weeks.length > 1){
+    try{
+      const r = await apiGet({action:"recordsRange", start: weeks[0], end: weekEnd(weeks[weeks.length-1])});
+      if(Array.isArray(r)) rows = r;
+    }catch(e){}
+  }
+  if(rows){
+    weeks.forEach(ws=>{
+      const we = weekEnd(ws);
+      batch.get(ws)(rows.filter(r => r.date >= ws && r.date <= we));
+    });
+    return;
+  }
+  await Promise.all(weeks.map(async ws=>{
+    let v = null;
+    try{ v = await apiGet({action:"records", weekStart: ws}); }catch(e){ v = null; }
+    batch.get(ws)(Array.isArray(v) ? v : null);
+  }));
 }
 // 대시보드 패널의 불러오기 실패 안내 (+ 다시 불러오기 버튼). 버튼 동작은 switchPage의 dash-retry 처리에서 한다.
 function dashFailHtml(panelId, msg){
