@@ -434,6 +434,7 @@
     border-bottom:1px solid var(--line);
   }
   .log-item:last-child{ border-bottom:none; }
+  .extra-tag{ display:inline-block; font-size:11px; font-weight:700; line-height:1; color:var(--teal); border:1px solid var(--teal); border-radius:6px; padding:3px 6px; margin-left:6px; background:#fff; }
   .log-date{
     width:64px;
     flex-shrink:0;
@@ -1059,8 +1060,9 @@
   function renderStatGrid(monthAttendance, homework){
     const el = document.getElementById('stat-grid');
     const att = monthAttendance || { count:0, lateCount:0, absentCount:0 };
-    const attSub = att.absentCount > 0 ? `지각 ${att.lateCount}회 · 결석 ${att.absentCount}회`
+    const attBase = att.absentCount > 0 ? `지각 ${att.lateCount}회 · 결석 ${att.absentCount}회`
                  : (att.lateCount > 0 ? `지각 ${att.lateCount}회` : '결석 없이 잘 다니고 있어요');
+    const attSub = att.extraCount > 0 ? `보강 수업 ${att.extraCount}회 포함 · ${attBase}` : attBase;
     const hw = homework || { rate:null };
     const hwValue = hw.rate == null ? '-' : hw.rate + '<small>%</small>';
     const hwSub = hw.rate == null ? '이번 달 기록 없음' : `${hw.eligibleCount}회 중 ${hw.doneCount}회 완료`;
@@ -1106,9 +1108,10 @@
         </div>
         <div class="log-body">
           <div class="log-status-row">
-            <span class="status-pill ${st.cls}">${st.text}</span>
+            <span class="status-pill ${st.cls}">${st.text}</span>${r.extra ? '<span class="extra-tag">보강</span>' : ''}
             <span class="hw-tag ${hwTagCls}">${hwTagText}</span>
           </div>
+          ${r.extra && r.extraMemo ? `<div class="log-reason">${escapeHtml(r.extraMemo)}</div>` : ''}
           ${hwMemo ? `<div class="log-hw-memo">${escapeHtml(hwMemo)}</div>` : ''}
           ${reason ? `<div class="log-reason">${escapeHtml(reason)}</div>` : ''}
         </div>

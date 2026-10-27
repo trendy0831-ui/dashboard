@@ -1308,7 +1308,7 @@
       <div id="adjSuggest"></div>
       <div class="cm-sec">일정 추가</div>
       <div class="cm-f"><label for="adjDate">날짜</label><input type="date" id="adjDate"></div>
-      <div class="cm-f"><label>종류</label><div class="cm-seg" id="adjType"><button type="button" data-v="closed">휴강</button><button type="button" data-v="extra" class="a">특별수업 (보강·대체)</button></div></div>
+      <div class="cm-f"><label>종류</label><div class="cm-seg" id="adjType"><button type="button" data-v="closed">휴강</button><button type="button" data-v="extra" class="a">보강 (추가·대체 수업)</button></div></div>
       <div class="cm-f" id="adjScopeRow"><label>휴강 대상</label><div class="cm-seg" id="adjScope"><button type="button" data-v="all">전체</button><button type="button" data-v="some" class="a">일부 학생</button></div></div>
       <div class="cm-f" id="adjTimeRow"><label for="adjTime">시간</label><select id="adjTime"></select> <select id="adjLoadDay" aria-label="요일 시간표 불러오기"><option value="">요일 시간표 불러오기</option><option value="월">월요일 시간표</option><option value="화">화요일 시간표</option><option value="수">수요일 시간표</option><option value="목">목요일 시간표</option><option value="금">금요일 시간표</option><option value="토">토요일 시간표</option></select></div>
       <div class="cm-f" id="adjStuRow"><label>대상 학생</label><div class="cm-chips" id="adjSchools"></div><div class="cm-chips" id="adjChips" style="margin-top:8px;"></div></div>
@@ -1497,9 +1497,9 @@ async function loadClosures(){
     closures = (data && !Array.isArray(data) && !data.error) ? data : {};
   }catch(e){ closures = {}; }
 }
-// ===== 수업 일정 조정 (2026-10-27) — 학생별 휴강 / 특별수업(보강·대체) =====
+// ===== 수업 일정 조정 (2026-10-27) — 학생별 휴강 / 보강(추가·대체 수업) =====
 // adjusts: 시트('일정조정')의 모든 줄의 최신 상태 [{id,date,type:'closed'|'extra',name,block,slot,memo,group,status}]
-// 특별수업 슬롯은 11 이상(1-based) — 정규 수업 슬롯(1~4)과 겹치지 않는다. 화면 내부 slotIdx는 slot-1(10 이상).
+// 보강 슬롯은 11 이상(1-based) — 정규 수업 슬롯(1~4)과 겹치지 않는다. 화면 내부 slotIdx는 slot-1(10 이상).
 let adjusts = [];
 async function loadAdjusts(){
   try{ const d = await apiGet({action:"scheduleAdjust"}); adjusts = Array.isArray(d) ? d : []; }
@@ -1518,7 +1518,7 @@ function rawNameFor(name){
   }
   return rawNameMemo.map[name] || name;
 }
-// 그 날짜에 수업이 있는 (시간, 슬롯, 학생) 목록 — 전체 휴강일이면 비어 있고, 휴강인 학생은 빠지며, 특별수업이 더해진다.
+// 그 날짜에 수업이 있는 (시간, 슬롯, 학생) 목록 — 전체 휴강일이면 비어 있고, 휴강인 학생은 빠지며, 보강이 더해진다.
 function classEntriesOn(ds){
   if(isClosedDate(ds)) return [];
   const dayName = dayNameForDate(ds);
@@ -1547,7 +1547,7 @@ let rosterHistory = []; // 서버가 내려주는 명단 이력 원본: [{day, b
 // effectiveFrom이 없는(예전 방식) 행은 항상 유효한 것으로 보고, effectiveFrom이 있는 행들 중에는
 // dateStr 이전(또는 같은 날)에 시작된 것 중 가장 최근 것을 채택한다.
 function rosterNameAt(day, block, slot, dateStr){
-  if(slot >= 10){ // 특별수업 슬롯
+  if(slot >= 10){ // 보강 슬롯
     const ex = activeAdjusts().find(x=>x.type === 'extra' && x.date === dateStr && String(x.block).trim() === String(block).trim() && x.slot === slot+1);
     return ex ? rawNameFor(ex.name) : "";
   }
@@ -1898,7 +1898,7 @@ async function setClosure(dateStr, status, memo){
   await afterScheduleChange();
 }
 function newAdjId(){ return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
-// 특별수업 슬롯: 지웠던 것까지 포함해 그 날짜에서 가장 큰 번호 다음부터 — 옛 기록이 다른 학생에게 붙지 않게 한다
+// 보강 슬롯: 지웠던 것까지 포함해 그 날짜에서 가장 큰 번호 다음부터 — 옛 기록이 다른 학생에게 붙지 않게 한다
 function nextExtraSlot(dateStr){
   let mx = 10;
   adjusts.forEach(a=>{ if(a.date === dateStr && a.type === 'extra' && a.slot > mx) mx = a.slot; });
@@ -1932,7 +1932,7 @@ async function removeAdjustIds(ids){
   await afterScheduleChange();
 }
 /* ---- 수업 일정 조정 창 ---- */
-const adjForm = { type:'extra', scope:'some', sel:new Map() }; // sel: 이름 -> 시간(특별수업일 때)
+const adjForm = { type:'extra', scope:'some', sel:new Map() }; // sel: 이름 -> 시간(보강일 때)
 let adjExamRows = null;
 const dowK2 = ["일","월","화","수","목","금","토"];
 function fmtKoDay(ds){ const [y,m,dd] = ds.split('-').map(Number); return `${m}월 ${dd}일 (${dowK2[new Date(y,m-1,dd).getDay()]})`; }
@@ -1983,7 +1983,7 @@ function renderAdjustModal(){
   document.getElementById('adjList').innerHTML = gl.length ? gl.map(list=>{
     const a0 = list[0];
     const names = list.map(a=> a.type === 'extra' ? `${escapeHtml(a.name)}(${a.block})` : escapeHtml(a.name)).join(', ');
-    const label = a0.type === 'extra' ? '특별수업' : '휴강(일부 학생)';
+    const label = a0.type === 'extra' ? '보강' : '휴강(일부 학생)';
     return `<div class="cm-item"><div class="n"><b>${fmtKoDay(a0.date)}</b> · ${label}${a0.memo?` · ${escapeHtml(a0.memo)}`:''}<small>${names}</small></div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="${label}">취소</button></div>`;
   }).join('') : `<div class="cm-empty">추가한 일정이 없어요.</div>`;
   renderAdjustSuggest();
@@ -2237,7 +2237,7 @@ function parseStudentEntry(raw){
 /* ============ 날짜 선택 ============ */
 const datePick = document.getElementById('datePick');
 datePick.value = toDateStr(selectedDate);
-// 2026-10-27: 화살표는 하루씩 이동 — 일요일은 특별수업이 있는 날만 들르고, 아니면 건너뛴다.
+// 2026-10-27: 화살표는 하루씩 이동 — 일요일은 보강이 있는 날만 들르고, 아니면 건너뛴다.
 async function gotoDate(d){
   const prevWs = toDateStr(weekStart);
   weekStart = mondayOf(d);
@@ -2278,7 +2278,7 @@ function renderCardView(){
   const tabsEl = document.getElementById('dayTabs');
   let th = "";
   const sunStr = toDateStr(addDays(weekStart, 6));
-  const tabDays = (activeDayIdx === 6 || extrasOn(sunStr).length) ? DAYS.concat(["일"]) : DAYS; // 일요일 탭은 특별수업이 있는 주에만
+  const tabDays = (activeDayIdx === 6 || extrasOn(sunStr).length) ? DAYS.concat(["일"]) : DAYS; // 일요일 탭은 보강이 있는 주에만
   tabDays.forEach((day,i)=>{
     const d = addDays(weekStart, i);
     const dateStr = toDateStr(d);
@@ -2286,7 +2286,7 @@ function renderCardView(){
     const isHoliday = !!holidays[dateStr] || !!clo;
     const closedDay = isClosedDate(dateStr);
     const hLabel = holidays[dateStr] || (clo && clo.memo) || '';
-    th += `<button class="daytab ${activeDayIdx===i?'active':''} ${isHoliday?'holiday':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span>${hLabel?`<span class="holiday-name">${escapeHtml(hLabel)}</span>`:''}${isHoliday?`<span class="cl-chip ${closedDay?'off':'on'}">${closedDay?'휴강':'정상수업'}</span>`:''}${(!closedDay && partialClosedOn(dateStr).length)?'<span class="cl-chip off">일부 휴강</span>':''}${(!closedDay && extrasOn(dateStr).length)?'<span class="cl-chip on">특별수업</span>':''}</button>`;
+    th += `<button class="daytab ${activeDayIdx===i?'active':''} ${isHoliday?'holiday':''}" data-idx="${i}"><span>${day}</span><span class="d">${fmtMD(d)}</span>${hLabel?`<span class="holiday-name">${escapeHtml(hLabel)}</span>`:''}${isHoliday?`<span class="cl-chip ${closedDay?'off':'on'}">${closedDay?'휴강':'정상수업'}</span>`:''}${(!closedDay && partialClosedOn(dateStr).length)?'<span class="cl-chip off">일부 휴강</span>':''}${(!closedDay && extrasOn(dateStr).length)?'<span class="cl-chip on">보강</span>':''}</button>`;
   });
   tabsEl.innerHTML = th;
   tabsEl.querySelectorAll('.daytab').forEach(el=>{
@@ -2473,14 +2473,14 @@ function renderDayContent(){
     }
     html += `</div>`;
   });
-  // 특별수업(보강·대체) 카드 — 정규 수업 아래에 모아서 보여준다
+  // 보강(추가·대체 수업) 카드 — 정규 수업 아래에 모아서 보여준다
   const exs = extrasOn(dateStr);
   if(exs.length){
     const groups = {};
     exs.forEach(a=>{ const g = a.group || a.id; (groups[g] = groups[g] || []).push(a); });
     Object.keys(groups).forEach(g=>{
       const list = groups[g];
-      html += `<div class="cl-banner slim"><div><b>특별수업</b>${list[0].memo?` · ${escapeHtml(list[0].memo)}`:''}</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="특별수업">특별수업 취소</button></div>`;
+      html += `<div class="cl-banner slim"><div><b>보강</b>${list[0].memo?` · ${escapeHtml(list[0].memo)}`:''}</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="보강">보강 취소</button></div>`;
       const byBlock = {};
       list.forEach(a=>{ (byBlock[a.block] = byBlock[a.block] || []).push(a); });
       Object.keys(byBlock).sort().forEach(b=>{

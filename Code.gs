@@ -932,12 +932,12 @@ function getAttendedDatesForStudent_(studentName) {
       candidateSlots.push({ day: parts[0], block: parts[1], slot: parts[2] });
     }
   });
-  // 2026-10-27 일정 조정: 이 학생의 특별수업(날짜|시간|슬롯)과 학생 개별 휴강일
+  // 2026-10-27 일정 조정: 이 학생의 보강(날짜|시간|슬롯)과 학생 개별 휴강일
   const adjAll = getScheduleAdjusts_().filter(function (a) { return a.status === 'active' && a.name === studentName; });
   const specialKeys = {};
   const studentClosedDates = {};
   adjAll.forEach(function (a) {
-    if (a.type === 'extra') specialKeys[a.date + '|' + normalizeBlock(a.block) + '|' + String(a.slot)] = true;
+    if (a.type === 'extra') specialKeys[a.date + '|' + normalizeBlock(a.block) + '|' + String(a.slot)] = { memo: a.memo || '' };
     if (a.type === 'closed') studentClosedDates[a.date] = true;
   });
 
@@ -1773,12 +1773,12 @@ function buildStudentRecords_(reportId) {
     }
   });
 
-  // 2026-10-27 일정 조정: 이 학생의 특별수업(날짜|시간|슬롯)과 학생 개별 휴강일
+  // 2026-10-27 일정 조정: 이 학생의 보강(날짜|시간|슬롯)과 학생 개별 휴강일
   const adjAll = getScheduleAdjusts_().filter(function (a) { return a.status === 'active' && a.name === student.name; });
   const specialKeys = {};
   const studentClosedDates = {};
   adjAll.forEach(function (a) {
-    if (a.type === 'extra') specialKeys[a.date + '|' + normalizeBlock(a.block) + '|' + String(a.slot)] = true;
+    if (a.type === 'extra') specialKeys[a.date + '|' + normalizeBlock(a.block) + '|' + String(a.slot)] = { memo: a.memo || '' };
     if (a.type === 'closed') studentClosedDates[a.date] = true;
   });
 
@@ -1807,7 +1807,9 @@ function buildStudentRecords_(reportId) {
     const match = isMyPeriod(rDay, rBlock, rSlot, rDateStr);
     if (match) {
       const dateKey = rDateStr;
+      const spHit = specialKeys[rDateStr + '|' + rBlock + '|' + String(rSlot)];
       attendanceMap[dateKey] = {
+        extra: !!spHit, extraMemo: spHit ? spHit.memo : '',
         date: row[0], day: row[1], block: row[2],
         status: row[4],
         statusMemo: row[8], attitudeMemo: row[9],
@@ -1853,6 +1855,8 @@ function buildStudentRecords_(reportId) {
       day: att.day || '',
       block: normalizeBlock(att.block) || '',
       status: att.status || null,
+      extra: !!att.extra,           // 보강(추가·대체) 수업에서 남긴 기록인지
+      extraMemo: att.extraMemo || '',
       statusMemo: att.statusMemo || '',
       attitudeMemo: att.attitudeMemo || '',
       makeupDone: att.makeupDone || false,
@@ -1926,6 +1930,7 @@ function getStudentReportSummary(reportId) {
   const presentCnt = monthRecords.filter(r => r.status === 'present').length;
   const lateCnt = monthRecords.filter(r => r.status === 'late').length;
   const absentCnt = monthRecords.filter(r => r.status === 'absent').length;
+  const extraCnt = monthRecords.filter(r => r.extra && (r.status === 'present' || r.status === 'late')).length; // 보강 수업 출석(포함 집계)
 
   // 숙제 완료율 — 결석·미확인은 분모에서 제외, 완료=100%, 미흡=50%, 안함=0%
   const hwEligible = monthRecords.filter(r => r.status !== 'absent' && r.homeworkStatus !== '미확인');
@@ -1983,7 +1988,7 @@ function getStudentReportSummary(reportId) {
   const result = {
     updatedAt: Utilities.formatDate(now, tz, "yyyy-MM-dd'T'HH:mm:ssXXX"),
     student: { name: student.name, school: student.school, grade: student.grade, isElementary: built.isElementary },
-    monthAttendance: { count: presentCnt + lateCnt, lateCount: lateCnt, absentCount: absentCnt, unit: '회' },
+    monthAttendance: { count: presentCnt + lateCnt, lateCount: lateCnt, absentCount: absentCnt, extraCount: extraCnt, unit: '회' },
     homework: homework,
     recentRecords: recentRecords,
     makeupItems: makeupItems,
@@ -2335,7 +2340,7 @@ function isClosedDate_(dateStr, ctx) {
 
 // ===== 수업 일정 조정 (2026-10-27) =====
 // '일정조정' 시트: id | 날짜 | 구분 | 이름 | 시간블록 | 슬롯 | 메모 | 그룹 | 상태 | 변경시각
-//   구분: closed = 그 날짜에 그 학생만 휴강 / extra = 특별수업(보강·대체) — 시간블록·슬롯(1-based, 11 이상)에 배정
+//   구분: closed = 그 날짜에 그 학생만 휴강 / extra = 보강(보강·대체) — 시간블록·슬롯(1-based, 11 이상)에 배정
 //   상태: active / removed — 줄을 계속 추가만 하고, 같은 id는 가장 아래(최신) 줄이 적용된다 (이력 보존, 출결 기록은 건드리지 않음).
 // 전체 휴강(공휴일 포함)은 위의 '휴강일' 시트가 맡는다.
 function getScheduleAdjustSheet_() {
