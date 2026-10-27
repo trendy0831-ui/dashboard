@@ -165,6 +165,11 @@ function doPost(e) {
     importWrongNotes(body.records);
     return jsonResponse({ status: 'ok' });
   }
+  if (action === 'saveConsult') {
+    // 2026-10: 홈페이지 상담 신청. POST(no-cors)라 응답을 못 읽으므로 서버가 시트에 직접 기록하고 메일로 알린다.
+    saveConsult(body.record);
+    return jsonResponse({ status: 'ok' });
+  }
   return jsonResponse({ error: 'unknown action' });
 }
 
@@ -2066,4 +2071,62 @@ function importWrongNotes(records) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ===== 상담 신청 (홈페이지) =====
+const CONSULT_NOTIFY_EMAIL_ = 'trendy0831@gmail.com'; // 알림 받을 메일 — 바꾸려면 여기만 수정
+
+// "상담신청" 시트가 없으면 자동 생성:
+//   신청ID / 신청시각 / 경로 / 학교급 / 학년 / 학생이름 / 학부모성함 / 연락처 / 상담방식 / 궁금한점 / 처리상태 / 처리메모
+// 기록은 지우지 않는다 — 처리 여부는 "처리상태" 칸에 표시만 한다.
+function getConsultSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('상담신청');
+  if (!sheet) {
+    sheet = ss.insertSheet('상담신청');
+    sheet.appendRow(['신청ID', '신청시각', '경로', '학교급', '학년', '학생이름', '학부모성함', '연락처', '상담방식', '궁금한점', '처리상태', '처리메모']);
+    sheet.getRange(1, 1, 1, 12).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    sheet.getRange(2, 8, sheet.getMaxRows() - 1, 1).setNumberFormat('@'); // 연락처 앞자리 0이 사라지지 않게 텍스트로 고정
+  }
+  return sheet;
+}
+
+// POST(no-cors)라 브라우저는 응답을 읽지 못한다 — 서버가 시트에 직접 기록하고 메일로 알린다.
+// 같은 신청ID가 이미 있으면 다시 넣지 않는다(버튼 두 번 눌러도 중복되지 않음).
+function saveConsult(rec) {
+  if (!rec || !rec.id || !rec.parentName || !rec.phone) return;
+  const clip = (v, n) => String(v || '').trim().slice(0, n);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sheet = getConsultSheet_();
+    const last = sheet.getLastRow();
+    const ids = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getValues() : [];
+    if (ids.some(r => String(r[0]) === String(rec.id))) return;
+    const row = [
+      clip(rec.id, 40), new Date(), clip(rec.source || '홈페이지', 20),
+      clip(rec.level, 10), clip(rec.grade, 20), clip(rec.studentName, 30),
+      clip(rec.parentName, 30), clip(rec.phone, 20), clip(rec.way, 20),
+      clip(rec.memo, 1000), '신규', ''
+    ];
+    const rowNum = last + 1;
+    sheet.getRange(rowNum, 8).setNumberFormat('@');
+    sheet.getRange(rowNum, 1, 1, 12).setValues([row]);
+  } finally {
+    lock.releaseLock();
+  }
+  try {
+    const lines = [
+      '새 상담 신청이 들어왔습니다.', '',
+      '학부모: ' + (rec.parentName || ''),
+      '연락처: ' + (rec.phone || ''),
+      '학생: ' + [rec.grade, rec.studentName].filter(Boolean).join(' '),
+      '상담 방식: ' + (rec.way || ''),
+      '궁금한 점: ' + (rec.memo || '-'), '',
+      '"상담신청" 시트에서 전체 목록을 확인하세요.',
+      SpreadsheetApp.getActiveSpreadsheet().getUrl()
+    ];
+    MailApp.sendEmail(CONSULT_NOTIFY_EMAIL_, '[이끌림수학학원] 상담 신청 · ' + (rec.parentName || ''), lines.join('\n'));
+  } catch (e) { console.error('상담 신청 메일 발송 실패: ' + e); /* 메일 실패해도 시트 기록은 이미 완료됨 */ }
 }
