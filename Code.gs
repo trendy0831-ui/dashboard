@@ -1065,7 +1065,11 @@ function getTuitionStatusToday() {
 }
 
 // ---------- 공휴일 (한국천문연구원 특일정보 API) ----------
-const HOLIDAY_API_KEY = "3xGFaw8GKPkrpf8c%2F8dNckyt98Uyv47u5%2BkDmYA8tPE3LbBHez764DKmgoJHiyNNMGO7iHXTzyUdsvjNwEg0CA%3D%3D";
+// 2026-10-27: 인증키는 코드에 적지 않고 스크립트 속성 HOLIDAY_API_KEY 에 넣어 둔다 (공공데이터포털의 "일반 인증키(Encoding)" 값 그대로).
+// 키가 없거나 API가 실패해도 이미 저장된(holidays_연도) 공휴일은 그대로 쓰인다.
+function getHolidayApiKey_() {
+  return String(PropertiesService.getScriptProperties().getProperty('HOLIDAY_API_KEY') || '').trim();
+}
 
 function getHolidays(years) {
   const result = {};
@@ -1101,8 +1105,10 @@ function cacheHolidays(year, data) {
 }
 
 function fetchHolidaysFromApi(year) {
+  const apiKey = getHolidayApiKey_();
+  if (!apiKey) return {};
   const url = "http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo"
-    + "?ServiceKey=" + HOLIDAY_API_KEY
+    + "?ServiceKey=" + apiKey
     + "&solYear=" + year
     + "&numOfRows=100"
     + "&_type=json";
