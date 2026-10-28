@@ -1799,7 +1799,7 @@ async function loadRecordsForWeek(){
       const slotIdx = (parseInt(rec.slot) || 1) - 1;
       const key = rec.date+"|"+rec.block+"|"+slotIdx;
       next[key] = { status: rec.status||"normal", statusNote: rec.statusNote||"", attNote: rec.attNote||"",
-        makeupDone: !!rec.makeupDone, makeupDate: rec.makeupDate||"",
+        makeupDone: !!rec.makeupDone, makeupDate: fmtMakeupDate(rec.makeupDate),
         makeupStatus: rec.makeupStatus || (rec.makeupDone ? "done" : "none"),
         checkIn: rec.checkIn||"", checkOut: rec.checkOut||"" };
     });
@@ -1818,7 +1818,7 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   const body = { action:"saveRecord", record:{ date:dateStr, day:dayName, block:block, slot:slot+1,
     status:rec.status, hw:false, hwNote:"", attitude:!!rec.attNote,
     statusNote:rec.statusNote||"", attNote:rec.attNote||"",
-    makeupDone: rec.makeupStatus === "done", makeupDate: rec.makeupDate||"",
+    makeupDone: rec.makeupStatus === "done", makeupDate: fmtMakeupDate(rec.makeupDate),
     makeupStatus: rec.makeupStatus || "none" } };
   pendingSaveCount++;
   try{
@@ -3256,7 +3256,7 @@ async function renderMakeupFeed(cache){
       const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
       if(!rawName) return;
       items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName,
-        slotIdx: slotIdx, attNote: rec.attNote||"", makeupDate: rec.makeupDate||"" });
+        slotIdx: slotIdx, attNote: rec.attNote||"", makeupDate: fmtMakeupDate(rec.makeupDate) });
     });
   });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
@@ -3426,7 +3426,7 @@ async function renderMakeupOldest(cache){
       const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
       if(!rawName) return;
       items.push({ date: rec.date, block: rec.block, name: rawName,
-        slotIdx: slotIdx, note: rec.statusNote||"", attNote: rec.attNote||"", makeupDate: rec.makeupDate||"" });
+        slotIdx: slotIdx, note: rec.statusNote||"", attNote: rec.attNote||"", makeupDate: fmtMakeupDate(rec.makeupDate) });
     });
   });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
@@ -3573,6 +3573,26 @@ function localTodayStr(){
 function fmtMDStr(dateStr){
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(dateStr||'');
   return m ? `${parseInt(m[1],10)}/${parseInt(m[2],10)}` : (dateStr||'');
+}
+// 보강 예정일 표시용 (2026-10-28): 시트가 날짜처럼 보이는 글자를 Date로 바꿔 '2026-10-27T15:00:00.000Z'로 내려와도
+// 한국시간 기준 '10/28 (수)'로 보여준다. 'YYYY-MM-DD'도 같은 형식으로, 그 외 직접 입력한 글자('8/25 화')는 그대로 둔다.
+function fmtMakeupDate(v){
+  const s = String(v==null?'':v).trim();
+  if(!s) return '';
+  const W = ['일','월','화','수','목','금','토'];
+  let y,m,d;
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){
+    const t = new Date(s);
+    if(isNaN(t.getTime())) return s;
+    const k = new Date(t.getTime() + 9*3600*1000); // UTC -> KST
+    y=k.getUTCFullYear(); m=k.getUTCMonth()+1; d=k.getUTCDate();
+  } else {
+    const mm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if(!mm) return s;
+    y=+mm[1]; m=+mm[2]; d=+mm[3];
+  }
+  const dow = W[new Date(Date.UTC(y,m-1,d)).getUTCDay()];
+  return m+'/'+d+' ('+dow+')';
 }
 // 'YYYY-MM-DD' 문자열 -> '10/28(수)' (다가오는 시험 카드용)
 function fmtMDW(dateStr){
