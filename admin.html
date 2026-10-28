@@ -2482,12 +2482,13 @@ function renderDayContent(){
     exs.forEach(a=>{ const g = a.group || a.id; (groups[g] = groups[g] || []).push(a); });
     Object.keys(groups).forEach(g=>{
       const list = groups[g];
-      html += `<div class="cl-banner slim"><div><b>보강</b>${list[0].memo?` · ${escapeHtml(list[0].memo)}`:''}</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="보강">보강 취소</button></div>`;
       const byBlock = {};
       list.forEach(a=>{ (byBlock[a.block] = byBlock[a.block] || []).push(a); });
       Object.keys(byBlock).sort().forEach(b=>{
         html += `<div class="time-label">${b}</div><div class="slot-group">` + byBlock[b].map(a=>slotHtml(b, a.slot-1, rawNameFor(a.name))).join('') + `</div>`;
       });
+      // 2026-10-29: 보강 안내 띠("보강 취소")는 학생 카드 아래에 둔다
+      html += `<div class="cl-banner slim" style="margin-top:6px"><div><b>보강</b>${list[0].memo?` · ${escapeHtml(list[0].memo)}`:''}</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="보강">보강 취소</button></div>`;
     });
   }
   if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.<br><button type="button" class="cl-btn" data-adj-open="${dateStr}">이 날 수업 일정 조정</button></div>`;
