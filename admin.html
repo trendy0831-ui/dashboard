@@ -1712,7 +1712,8 @@ async function closureFilter(params, data){
       if(isClosedDate(r.date)) return false;
       // 보강은 정규 수업이 아니라서 보강 결석은 결석으로 세지 않는다 (카드·오늘 미체크처럼 keepExtra 를 붙인 요청만 그대로 받는다)
       if(!params.keepExtra && (parseInt(r.slot)||0) >= 11 && r.status === 'absent') return false;
-      if(anyClosed){
+      // 학생 휴강은 정규 수업 기록(slot 1~4)에만 적용한다 — 보강 기록(slot 11 이상)은 휴강 학생이어도 남긴다
+      if(anyClosed && (parseInt(r.slot)||1) < 11){
         const nm = parseStudentEntry(rosterNameAt(dayNameForDate(r.date), r.block, (parseInt(r.slot)||1)-1, r.date)).name;
         if(studentClosedOn(r.date, nm)) return false;
       }
@@ -2331,7 +2332,8 @@ function renderDayContent(){
     let html = "";
       const stu = parseStudentEntry(name);
       const meta = escapeHtml([stu.school, stu.grade].filter(Boolean).join(' · '));
-      if(studentClosedOn(dateStr, stu.name)){
+      // 학생 휴강은 정규 수업 칸에만 적용한다 — 보강 칸(s >= 10)은 그대로 두어 출석을 체크할 수 있게 한다
+      if(s < 10 && studentClosedOn(dateStr, stu.name)){
         return `<div class="slot-card cl-dim"><div class="slot-top"><span><span class="slot-name">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span><span class="cl-chip off">휴강</span></div></div>`;
       }
       const rec = getRec(dateStr, block, s);
