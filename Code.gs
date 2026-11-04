@@ -116,7 +116,13 @@ function doPost(e) {
   }
 
   if (action === 'saveRoster') {
-    saveRoster(body.roster);
+    // 저장 실패를 화면은 알 수 없으므로(no-cors) 최소한 Apps Script "실행" 기록에 원인이 남게 한다.
+    try {
+      saveRoster(body.roster);
+    } catch (err) {
+      console.error('saveRoster 실패: ' + (err && err.message ? err.message : err));
+      return jsonResponse({ error: 'saveRoster' });
+    }
     return jsonResponse({ status: 'ok' });
   }
   if (action === 'saveRecord') {
@@ -338,7 +344,19 @@ function getRoster() {
 // 중복 전송), 서버 쪽에서 한 번 더 "이 항목의 새 이름이 그 슬롯의 적용시작일 시점 기준 유효 이름과
 // 이미 같은가"를 확인해, 같으면 아무 행도 추가/수정하지 않고 건너뛴다. 이렇게 하면 클라이언트 쪽
 // 비교 로직에 결함이 있어도 시트에 무의미한 중복 이력이 쌓이는 것을 막을 수 있다.
+// 2026-11-04: 명단 저장이 가끔 조용히 사라지던 문제 대응 — 동시에 두 요청이 들어와도(재시도·여러 기기)
+// 한 번에 하나씩만 시트를 수정하도록 스크립트 잠금을 건다. 같은 요청을 두 번 받아도 결과가 같다(중복 이력 없음).
 function saveRoster(rosterRows) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    saveRosterUnlocked_(rosterRows || []);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function saveRosterUnlocked_(rosterRows) {
   const sheet = getSheet('명단');
   const tz = Session.getScriptTimeZone();
   const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');

@@ -123,6 +123,7 @@
   .sync-dot{width:7px;height:7px;border-radius:50%;background:#6FA05A;flex-shrink:0;}
   .sync-dot.busy{background:var(--yellow);animation:syncPulse 1s infinite;}
   .sync-dot.error{background:var(--red);}
+  .sync-dot.saving{background:var(--teal);animation:syncPulse 1s infinite;}
   @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   @keyframes refreshSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
   #pageContent{flex:1;padding:28px 32px 48px;}
@@ -245,6 +246,29 @@
   /* ===================== 명단 편집 ===================== */
   #editView{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:26px;}
+  /* 2026-11-04: 명단 편집 화면이 길어서 맨 위로 올라가지 않고도 저장할 수 있게, 화면 아래에 따라다니는 저장 바 */
+  #editSaveBar{display:none;position:sticky;bottom:0;z-index:40;margin-top:10px;
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -6px 16px rgba(0,0,0,.08);
+    align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;}
+  #editSaveBar .es-info{font-size:13px;font-weight:700;color:var(--teal-dark);}
+  #editSaveBar .es-btns{display:flex;gap:8px;margin-left:auto;}
+  #editSaveBar button{border:1.5px solid var(--teal);background:var(--card);color:var(--teal);
+    border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  #editSaveBar button.primary{background:var(--teal);color:#fff;}
+  #editSaveBar button:disabled{cursor:default;}
+  .es-spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+    border-radius:50%;animation:refreshSpin .7s linear infinite;margin-right:6px;vertical-align:-2px;}
+  /* 명단 저장 결과 토스트 — 학원 틸색 (저장 확인 완료 / 확인 실패 + 다시 저장) */
+  #rosterToast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);
+    background:var(--teal);color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:700;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:999;opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);}
+  #rosterToast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+  #rosterToast svg{width:18px;height:18px;flex-shrink:0;}
+  #rosterToast button{background:var(--paper);color:var(--teal-dark);border:0;border-radius:8px;padding:6px 12px;
+    font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  #rosterToast button[hidden]{display:none;}
   .edit-hint{font-size:13.5px;color:var(--ink-soft);margin-bottom:18px;line-height:1.6;}
   .edit-day{font-size:16px;font-weight:800;margin:20px 0 10px;color:var(--teal-dark);}
   .edit-day:first-child{margin-top:0;}
@@ -1212,6 +1236,7 @@
   </form>
 </div>
 <div id="saveToast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="saveToastText">저장에 실패했어요. 인터넷 연결을 확인해주세요.</span></div>
+<div id="rosterToast"><svg id="rosterToastIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg><span id="rosterToastText"></span><button type="button" id="rosterToastAct" hidden>다시 저장</button></div>
 <div id="dashToast"><span id="dashToastText"></span><button type="button" id="dashToastUndo">되돌리기</button></div>
 <div id="mobileTopbar">
   <div class="mt-brand mt-brand-wordmark">
@@ -1406,6 +1431,13 @@
           <div class="daypanel" id="dayPanel"></div>
         </div>
         <div id="editView"></div>
+        <div id="editSaveBar">
+          <span class="es-info" id="editSaveInfo">바뀐 칸이 없어요</span>
+          <div class="es-btns">
+            <button type="button" id="editCancelBtn">취소</button>
+            <button type="button" class="primary" id="editSaveBtn">저장하고 종료</button>
+          </div>
+        </div>
         <div class="bottom-grid" id="bottomGrid">
           <div class="panel">
             <h2>오늘의 미체크 학생 <span class="sub" id="uncheckedDateLabel"></span></h2>
@@ -1770,7 +1802,9 @@ function showSaveFailToast(msg){
 // roster는 "오늘 기준 유효 명단"의 캐시 — 명단 편집 화면, 학생 목록 등
 // "지금 현재"를 다루는 화면에서 그대로 사용한다. 특정 과거/미래 날짜를 기준으로 카드를
 // 그릴 때는 rosterNameAt()으로 그 날짜에 맞는 이름을 다시 계산해서 써야 한다.
-async function loadRoster(){
+// opts.quiet: 저장 직후 서버 값을 확인하는 용도 — 실패해도 빨간 안내를 띄우지 않고 true/false 만 돌려준다.
+async function loadRoster(opts){
+  const quiet = !!(opts && opts.quiet);
   try{
     const rows = await apiGet({action:"roster"});
     rosterHistory = rows.map(item => ({
@@ -1787,9 +1821,11 @@ async function loadRoster(){
       });
     });
     roster = r;
+    return true;
   }catch(e){
     if(!roster || !Object.keys(roster).length) roster = emptyRoster();
-    showSaveFailToast('명단을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
+    if(!quiet) showSaveFailToast('명단을 불러오지 못했어요. 새로고침해서 다시 시도해주세요.');
+    return false;
   }
 }
 async function loadRecordsForWeek(){
@@ -2121,10 +2157,13 @@ function setSyncStatus(state){
   const dot = document.getElementById('syncDot');
   const text = document.getElementById('syncStatusText');
   if(!dot || !text) return;
-  dot.classList.remove('busy','error');
+  dot.classList.remove('busy','error','saving');
   if(state === 'busy'){
     dot.classList.add('busy');
     text.textContent = '동기화 중';
+  } else if(state === 'saving'){
+    dot.classList.add('saving');
+    text.textContent = '저장 중… 창을 닫지 마세요';
   } else if(state === 'error'){
     dot.classList.add('error');
     text.textContent = '동기화 실패';
@@ -2136,7 +2175,7 @@ function setSyncStatus(state){
 function syncStatusTick(){
   const text = document.getElementById('syncStatusText');
   const dot = document.getElementById('syncDot');
-  if(!text || !lastSyncAt || (dot && (dot.classList.contains('busy')||dot.classList.contains('error')))) return;
+  if(!text || !lastSyncAt || (dot && (dot.classList.contains('busy')||dot.classList.contains('error')||dot.classList.contains('saving')))) return;
   const secs = Math.floor((Date.now() - lastSyncAt.getTime())/1000);
   if(secs < 5) text.textContent = '방금 업데이트됨';
   else if(secs < 60) text.textContent = secs+'초 전 업데이트';
@@ -2180,9 +2219,10 @@ function startAutoRefresh(){
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible') refreshData(true);
 });
-async function pushRoster(prevSnapshot, effOverrides){
+// 편집 전 명단(prevSnapshot)과 편집 후 명단(nextRoster)을 비교해, 실제로 바뀐 슬롯만 서버로 보낼 행으로 만든다.
+function diffRosterRows(prevSnapshot, nextRoster, effOverrides){
   const rows = [];
-  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ roster[day][block].forEach((name, idx)=>{
+  DAYS.forEach(day=>{ BLOCKS.forEach(block=>{ nextRoster[day][block].forEach((name, idx)=>{
     const prevNameRaw = prevSnapshot && prevSnapshot[day] && prevSnapshot[day][block] ? (prevSnapshot[day][block][idx] || "") : "";
     const prevName = String(prevNameRaw).trim();
     const curName = String(name || "").trim();
@@ -2193,21 +2233,137 @@ async function pushRoster(prevSnapshot, effOverrides){
       rows.push(item);
     }
   }); }); });
-  if(!rows.length) return; // 실제로 바뀐 슬롯이 없으면 아무것도 보내지 않는다
+  return rows;
+}
+// 방금 보낸 행들이 서버(rosterHistory)에 실제로 반영됐는지: 각 슬롯의 "적용 시작일 시점 유효 이름"이 보낸 이름과 같은지 본다.
+function rosterRowsApplied(rows){
+  const today = toDateStr(new Date());
+  return rows.every(it=>{
+    const eff = it.effectiveFrom || today;
+    return String(rosterNameAt(it.day, it.block, it.slot - 1, eff) || '').trim() === String(it.name || '').trim();
+  });
+}
+// 저장 요청은 응답을 읽을 수 없는 방식(no-cors)이라, 보낸 뒤 서버 값을 다시 받아 대조해서 "정말 저장됐는지" 확인한다.
+// 확인이 안 되면 한 번 더 보낸다 (서버는 같은 요청을 두 번 받아도 결과가 같다). 끝내 안 되면 false.
+async function saveRosterRowsVerified(rows){
   const body = {action:"saveRoster", roster: rows};
-  pendingSaveCount++;
-  try{
-    try{
-      await apiPost(body);
-    }catch(e){
-      try{ await apiPost(body); }
-      catch(e2){ showSaveFailToast('명단 저장에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); }
+  for(let attempt=0; attempt<2; attempt++){
+    try{ await apiPost(body); }
+    catch(e){ if(e && e.message === 'auth') return false; /* 그 밖의 오류는 아래 확인 단계에서 걸러진다 */ }
+    for(let check=0; check<2; check++){
+      await new Promise(r=>setTimeout(r, check === 0 ? 600 : 2500));
+      const loaded = await loadRoster({quiet:true});
+      if(loaded && rosterRowsApplied(rows)) return true;
     }
-    await loadRoster(); // 새로 추가된 이력을 rosterHistory에 반영
+  }
+  return false;
+}
+// 명단 저장 결과 토스트 (학원 틸색). kind: 'ok' | 'fail' — fail 이면 "다시 저장" 버튼을 함께 보여준다.
+let rosterToastTimer = null;
+function showRosterToast(msg, kind){
+  const el = document.getElementById('rosterToast');
+  if(!el) return;
+  document.getElementById('rosterToastText').textContent = msg;
+  document.getElementById('rosterToastIcon').innerHTML = kind === 'fail'
+    ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>'
+    : '<path d="M5 12.5l4.5 4.5L19 7.5"/>';
+  document.getElementById('rosterToastAct').hidden = kind !== 'fail';
+  el.classList.add('show');
+  if(rosterToastTimer) clearTimeout(rosterToastTimer);
+  rosterToastTimer = setTimeout(hideRosterToast, kind === 'fail' ? 15000 : 2500);
+}
+function hideRosterToast(){
+  const el = document.getElementById('rosterToast');
+  if(el) el.classList.remove('show');
+  if(rosterToastTimer){ clearTimeout(rosterToastTimer); rosterToastTimer = null; }
+}
+// 편집 화면에서 지금 입력칸에 "바뀐 칸"이 몇 개인지 (원래 값은 칸마다 data-orig 에 들어 있다)
+function rosterEditChangedCount(){
+  let n = 0;
+  document.querySelectorAll('#editView .edit-name-input').forEach(inp=>{
+    if(inp.value.trim() !== (inp.getAttribute('data-orig') || '').trim()) n++;
+  });
+  return n;
+}
+function updateEditSaveInfo(){
+  const info = document.getElementById('editSaveInfo');
+  if(!info) return;
+  const n = rosterEditChangedCount();
+  info.textContent = n ? `바뀐 칸 ${n}개 · 적용 시작일을 비우면 오늘부터 적용돼요` : '바뀐 칸이 없어요';
+}
+let rosterSaving = false;
+function setRosterSavingUi(on){
+  const top = document.getElementById('toggleEdit');
+  const saveBtn = document.getElementById('editSaveBtn');
+  const cancelBtn = document.getElementById('editCancelBtn');
+  top.disabled = on;
+  saveBtn.disabled = on;
+  cancelBtn.disabled = on;
+  saveBtn.innerHTML = on ? '<span class="es-spin"></span>저장 중…' : '저장하고 종료';
+  top.textContent = on ? '저장 중…' : (editMode ? '편집 종료' : '명단 편집');
+  document.querySelectorAll('#editView input').forEach(inp=>{ inp.readOnly = on; }); // 저장하는 동안 입력이 바뀌지 않게
+}
+// 편집 종료(위 버튼)·저장하고 종료(아래 바) 공통 저장 흐름.
+// 저장이 서버에서 확인된 뒤에만 편집 화면을 닫는다. 끝내 확인이 안 되면 편집 화면과 입력값을 그대로 둔다.
+async function commitRosterEdit(){
+  if(rosterSaving || !editMode) return;
+  rosterSaving = true;
+  hideRosterToast();
+  pendingSaveCount++;
+  setRosterSavingUi(true);
+  setSyncStatus('saving');
+  let saved = false;
+  try{
+    const effOverrides = {};
+    document.querySelectorAll('#editView .edit-eff-input').forEach(inp=>{
+      const v = inp.value.trim();
+      if(!v) return;
+      const key = inp.getAttribute('data-day')+'|'+inp.getAttribute('data-block')+'|'+inp.getAttribute('data-slot');
+      effOverrides[key] = v;
+    });
+    const next = JSON.parse(JSON.stringify(roster));
+    document.querySelectorAll('#editView .edit-name-input').forEach(inp=>{
+      next[inp.getAttribute('data-day')][inp.getAttribute('data-block')][parseInt(inp.getAttribute('data-slot'))] = inp.value.trim();
+    });
+    const rows = diffRosterRows(rosterEditSnapshot, next, effOverrides);
+    if(rows.length){
+      saved = await saveRosterRowsVerified(rows);
+      if(!saved){
+        setSyncStatus('error');
+        showRosterToast('저장이 확인되지 않았어요. 입력한 내용은 그대로 남아 있어요.', 'fail');
+        return;
+      }
+    }
+    rosterEditSnapshot = null;
+    setEditMode(false);
+    renderCardView();
+    setSyncStatus('ok');
+    if(rows.length) showRosterToast('명단을 저장했어요', 'ok');
   }finally{
     pendingSaveCount--;
+    rosterSaving = false;
+    setRosterSavingUi(false);
   }
 }
+document.getElementById('rosterToastAct').onclick = ()=>{ hideRosterToast(); commitRosterEdit(); };
+document.getElementById('editSaveBtn').onclick = ()=> commitRosterEdit();
+document.getElementById('editCancelBtn').onclick = ()=>{
+  if(rosterSaving || !editMode) return;
+  if(rosterEditChangedCount() > 0 && !window.confirm('바뀐 내용을 저장하지 않고 닫을까요?')) return;
+  hideRosterToast();
+  rosterEditSnapshot = null;
+  setEditMode(false);
+  renderCardView();
+};
+document.getElementById('editView').addEventListener('input', updateEditSaveInfo);
+// 저장 중이거나 아직 저장하지 않은 편집 내용이 있을 때 새로고침·탭 닫기를 하면 브라우저가 한 번 물어본다.
+window.addEventListener('beforeunload', e=>{
+  if(rosterSaving || (editMode && rosterEditChangedCount() > 0)){
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
 function dayNameForDate(dateStr){
   const d = new Date(dateStr+"T00:00:00");
   return d.getDay()===0 ? "일" : DAYS[(d.getDay()+6)%7];
@@ -2883,7 +3039,7 @@ function renderEditView(){
   const editView = document.getElementById('editView');
   let html = `<div class="edit-hint">요일 × 시간블록별 고정 명단을 입력하세요. "이름/학교/학년" 형식으로 입력하면 카드에 함께 표시돼요 (예: 김휘은/동부고/중1). 학교·학년은 생략 가능해요. 빈칸은 배정 가능 자리로 표시됩니다.<br>
   <b>요일·시간을 옮길 때는</b>: 이 자리를 새 학생 이름으로(또는 빈칸으로) 바꾸고, 학생이 옮겨간 새 요일·시간에 이름을 등록해주세요. 이름을 바꾼 슬롯 아래에 "적용 시작일"이 나타나요 — 비워두면 오늘부터, 날짜를 직접 넣으면 그 날짜부터 적용돼요. 지난 수업이 실제로는 다른 날짜에 이미 바뀌었다면, 시작일을 그 날짜로 맞춰주세요.<br>
-  "편집 종료"를 누르면 저장됩니다.</div>`;
+  화면 아래의 <b>"저장하고 종료"</b>(또는 위쪽 "편집 종료")를 누르면 저장됩니다. 저장되는 동안에는 창을 닫거나 새로고침하지 마세요.</div>`;
   DAYS.forEach(day=>{
     html += `<div class="edit-day">${day}요일</div>`;
     BLOCKS.forEach(block=>{
@@ -2892,7 +3048,7 @@ function renderEditView(){
         const val = roster[day][block][s] || "";
         const escVal = escapeHtml(val);
         html += `<div class="edit-slot">
-          <input type="text" class="edit-name-input" data-day="${day}" data-block="${block}" data-slot="${s}" value="${escVal}" placeholder="이름/학교/학년">
+          <input type="text" class="edit-name-input" data-day="${day}" data-block="${block}" data-slot="${s}" data-orig="${escVal}" value="${escVal}" placeholder="이름/학교/학년">
           <div class="edit-eff-row" data-day="${day}" data-block="${block}" data-slot="${s}" style="display:none;">
             <label>적용 시작일</label>
             <input type="date" class="edit-eff-input" data-day="${day}" data-block="${block}" data-slot="${s}">
@@ -2924,36 +3080,16 @@ function setEditMode(on){
   const btn = document.getElementById('toggleEdit');
   btn.textContent = on ? '편집 종료' : '명단 편집';
   btn.classList.toggle('active', on);
+  document.getElementById('editSaveBar').style.display = on ? 'flex' : 'none';
   if(on){
     rosterEditSnapshot = JSON.parse(JSON.stringify(roster));
     renderEditView();
+    updateEditSaveInfo();
   }
 }
 document.getElementById('toggleEdit').onclick = async ()=>{
   if(editMode){
-    const btn = document.getElementById('toggleEdit');
-    btn.disabled = true;
-    try{
-      const effOverrides = {};
-      document.querySelectorAll('#editView .edit-eff-input').forEach(inp=>{
-        const v = inp.value.trim();
-        if(!v) return;
-        const key = inp.getAttribute('data-day')+'|'+inp.getAttribute('data-block')+'|'+inp.getAttribute('data-slot');
-        effOverrides[key] = v;
-      });
-      document.querySelectorAll('#editView .edit-name-input').forEach(inp=>{
-        const day = inp.getAttribute('data-day');
-        const block = inp.getAttribute('data-block');
-        const slot = parseInt(inp.getAttribute('data-slot'));
-        roster[day][block][slot] = inp.value.trim();
-      });
-      setEditMode(false);
-      renderCardView();
-      await pushRoster(rosterEditSnapshot, effOverrides);
-      rosterEditSnapshot = null;
-    } finally {
-      btn.disabled = false;
-    }
+    await commitRosterEdit();
   } else {
     const btn = document.getElementById('toggleEdit');
     btn.disabled = true;
