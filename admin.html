@@ -75,8 +75,10 @@
   .side-brand .t2{font-size:11.5px;color:var(--side-fg-soft);}
   .side-brand-wordmark{flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:24px 18px 16px;
     border-bottom:1px solid rgba(255,255,255,.12);}
-  .side-brand-wordmark img{width:100px;height:auto;flex-shrink:0;filter:brightness(1.12) saturate(.72);}
-  .side-brand-caption{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--side-fg-soft);text-align:center;}
+  .side-brand-wordmark img{width:176px;max-width:100%;height:auto;flex-shrink:0;}
+  .side-brand-caption{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--side-fg-soft);text-align:center;display:flex;align-items:center;justify-content:center;gap:9px;white-space:nowrap;}
+  /* 2026-11: 로고 태그라인처럼 글자 양옆에 샴페인골드 선 */
+  .side-brand-caption::before,.side-brand-caption::after,.mmo-brand-caption::before,.mmo-brand-caption::after{content:"";width:22px;height:1px;background:#D6B67A;flex-shrink:0;}
   .side-brand-divider{width:30px;height:2px;background:var(--logo-gold);border-radius:2px;margin-top:8px;}
   .side-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
   .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;
@@ -716,8 +718,7 @@
     #mobileTopbar .mt-brand img{width:26px;height:26px;object-fit:contain;flex-shrink:0;border-radius:6px;}
     #mobileTopbar .mt-brand .t1{font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     #mobileTopbar .mt-brand.mt-brand-wordmark{flex-direction:column;align-items:flex-start;gap:2px;}
-    #mobileTopbar .mt-brand.mt-brand-wordmark img{width:auto;height:34px;object-fit:contain;border-radius:0;
-      filter:brightness(1.12) saturate(.72);}
+    #mobileTopbar .mt-brand.mt-brand-wordmark img{width:auto;height:30px;object-fit:contain;border-radius:0;}
     #mobileTopbar .mt-brand-caption{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--side-fg-soft);}
     #mobileMenuBtn{display:flex;align-items:center;justify-content:center;
       width:34px;height:34px;border:none;background:none;color:var(--side-fg);cursor:pointer;flex-shrink:0;}
@@ -732,9 +733,8 @@
     #mobileMenuOverlay .mmo-head .mt-brand img{width:24px;height:24px;border-radius:6px;}
     .mmo-brand-text{font-size:17px !important;font-weight:800;}
     #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark{flex-direction:column;align-items:center;gap:6px;}
-    #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark img{width:100px;height:auto;border-radius:0;
-      filter:brightness(1.12) saturate(.72);}
-    .mmo-brand-caption{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--side-fg-soft);}
+    #mobileMenuOverlay .mmo-head .mt-brand.mt-brand-wordmark img{width:170px;height:auto;border-radius:0;}
+    .mmo-brand-caption{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--side-fg-soft);display:flex;align-items:center;justify-content:center;gap:9px;white-space:nowrap;}
     #mobileMenuClose{position:absolute;right:14px;top:16px;}
     #mobileMenuClose{background:none;border:none;color:var(--side-fg);cursor:pointer;width:32px;height:32px;
       display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -1240,7 +1240,7 @@
 <div id="dashToast"><span id="dashToastText"></span><button type="button" id="dashToastUndo">되돌리기</button></div>
 <div id="mobileTopbar">
   <div class="mt-brand mt-brand-wordmark">
-    <img src="assets/logo-wordmark.png" alt="혜원수학">
+    <img src="assets/logo-wordmark-notag.png" alt="혜원수학">
     <div class="mt-brand-caption">학생 관리 시스템</div>
   </div>
   <button id="mobileMenuBtn" aria-label="메뉴 열기">
@@ -1252,9 +1252,8 @@
   <div class="mmo-panel">
     <div class="mmo-head">
       <div class="mt-brand mt-brand-wordmark">
-        <img src="assets/logo-wordmark.png" alt="혜원수학">
+        <img src="assets/logo-wordmark-notag.png" alt="혜원수학">
         <div class="mmo-brand-caption">Math Standard</div>
-        <div class="side-brand-divider"></div>
       </div>
       <button id="mobileMenuClose" aria-label="메뉴 닫기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -1353,9 +1352,8 @@
   <div id="sidebarBackdrop"></div>
   <div id="sidebar">
     <div class="side-brand side-brand-wordmark">
-      <img src="assets/logo-wordmark.png" alt="혜원수학">
+      <img src="assets/logo-wordmark-notag.png" alt="혜원수학">
       <div class="side-brand-caption">Math Standard</div>
-      <div class="side-brand-divider"></div>
     </div>
     <nav class="side-nav" id="sideNav">
       <button class="nav-item active" data-page="dashboard">
