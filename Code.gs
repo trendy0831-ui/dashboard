@@ -116,7 +116,7 @@ function doPost(e) {
   }
 
   if (action === 'saveRoster') {
-    // 저장 실패를 화면은 알 수 없으므로(no-cors) 최소한 Apps Script "실행" 기록에 원인이 남게 한다.
+    // 저장 실패를 화면은 알 수 없으므로(no-cors) 최소한 Apps Script 실행 기록에 원인이 남게 한다.
     try {
       saveRoster(body.roster);
     } catch (err) {
@@ -344,16 +344,19 @@ function getRoster() {
 // 중복 전송), 서버 쪽에서 한 번 더 "이 항목의 새 이름이 그 슬롯의 적용시작일 시점 기준 유효 이름과
 // 이미 같은가"를 확인해, 같으면 아무 행도 추가/수정하지 않고 건너뛴다. 이렇게 하면 클라이언트 쪽
 // 비교 로직에 결함이 있어도 시트에 무의미한 중복 이력이 쌓이는 것을 막을 수 있다.
-// 2026-11-04: 명단 저장이 가끔 조용히 사라지던 문제 대응 — 동시에 두 요청이 들어와도(재시도·여러 기기)
+// 2026-11-04: 명단 저장이 가끔 조용히 사라지던 문제 대응 - 동시에 두 요청이 들어와도(재시도, 여러 기기)
 // 한 번에 하나씩만 시트를 수정하도록 스크립트 잠금을 건다. 같은 요청을 두 번 받아도 결과가 같다(중복 이력 없음).
 function saveRoster(rosterRows) {
+  rosterRows = rosterRows || [];
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    saveRosterUnlocked_(rosterRows || []);
+    saveRosterUnlocked_(rosterRows);
   } finally {
     lock.releaseLock();
   }
+  // 학생정보 행 만들기는 자체 잠금을 쓰므로, 명단 저장 잠금을 푼 뒤에 부른다 (잠금 중첩 방지)
+  ensureStudentInfoRows_(rosterRows.map(function (it) { return it.name; })); // 새 학생이면 학생정보 행 자동 생성 (수강료·리포트 연동)
 }
 
 function saveRosterUnlocked_(rosterRows) {
@@ -420,6 +423,76 @@ function saveRosterUnlocked_(rosterRows) {
     }
   });
   adminCacheClear_(['admin_roster']); // 명단이 바뀌었으니 캐시된 값을 즉시 무효화
+}
+
+// 2026-11: 명단에 새 학생이 들어오면 "학생정보" 시트에 행(이름/학교/학년/report_id/재원)을 자동으로 만든다.
+// 수강료 탭·학생 관리 카드·학부모 리포트 링크가 모두 "학생정보" 시트를 기준으로 하기 때문이다.
+// - 이미 있는 학생은 새 행을 만들지 않고, 학교/학년이 비어 있을 때만 채운다 (기존 값은 덮어쓰지 않음).
+// - 명단 칸의 4번째 항목(예: "종료")이 붙은 칸은 새 학생으로 보지 않는다.
+// - 아무것도 지우지 않고 행을 추가만 한다.
+function ensureStudentInfoRows_(rawNames) {
+  const parsed = {};
+  (rawNames || []).forEach(function (raw) {
+    const parts = String(raw || '').split('/').map(function (s) { return s.trim(); });
+    const name = parts[0];
+    if (!name || parts[3]) return;
+    if (!parsed[name]) parsed[name] = { school: parts[1] || '', grade: parts[2] || '' };
+  });
+  const names = Object.keys(parsed);
+  if (!names.length) return 0;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  let added = 0;
+  try {
+    const sheet = getSheet('학생정보');
+    const data = sheet.getDataRange().getValues();
+    const rowOf = {};
+    for (let i = 1; i < data.length; i++) {
+      const n = String(data[i][0] || '').trim();
+      if (n) rowOf[n] = i + 1;
+    }
+    names.forEach(function (name) {
+      const p = parsed[name];
+      const r = rowOf[name];
+      if (r) {
+        if (p.school && !data[r - 1][1]) sheet.getRange(r, 2).setValue(p.school);
+        if (p.grade && !data[r - 1][2]) sheet.getRange(r, 3).setValue(p.grade);
+        return;
+      }
+      const id = Utilities.getUuid().replace(/-/g, '').substring(0, 10);
+      sheet.appendRow([name, p.school, p.grade, id, '재원']);
+      added++;
+    });
+  } finally {
+    lock.releaseLock();
+  }
+  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday']);
+  return added;
+}
+
+// 한 번만 실행하는 보정용: 지금 명단에 있는데 "학생정보"에 없는 학생을 모두 채운다.
+// (이미 종료/삭제된 슬롯의 옛 이름은 제외하고, 오늘 기준으로 유효한 이름만 대상으로 한다.)
+// Apps Script 편집기에서 함수 선택 → syncStudentInfoFromRoster → 실행. 결과는 실행 로그에 나온다.
+function syncStudentInfoFromRoster() {
+  const data = getSheet('명단').getDataRange().getValues();
+  const todayStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const best = {};
+  for (let i = 1; i < data.length; i++) {
+    const key = data[i][0] + '|' + normalizeBlock(data[i][1]) + '|' + data[i][2];
+    const name = String(data[i][3] || '').trim();
+    const eff = data[i][4] ? normalizeDate_(data[i][4]) : '';
+    const it = { name: name, eff: eff };
+    const cur = best[key];
+    if (!eff) {
+      if (!cur || (!cur.eff && !cur.name && name)) best[key] = it;
+    } else if (eff <= todayStr) {
+      if (!cur || !cur.eff || eff > cur.eff) best[key] = it;
+    }
+  }
+  const raws = Object.keys(best).map(function (k) { return best[k].name; }).filter(Boolean);
+  const added = ensureStudentInfoRows_(raws);
+  Logger.log('학생정보에 새로 추가한 학생: ' + added + '명');
+  return added;
 }
 
 // ---------- 기록 ----------
