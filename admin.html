@@ -1600,6 +1600,20 @@ function rosterNameAt(day, block, slot, dateStr){
   });
   return best ? (best.name || "") : "";
 }
+// 2026-11-05: 수강료 탭 — 학생의 "수업 첫 달"(명단 이력의 가장 이른 적용 시작일이 속한 달)을 돌려준다.
+// 명단 이력에서 이 학생의 행이 하나도 없거나, 시작일이 비어 있는 예전 행이 있으면 '' (= 모든 달에 표시, 기존 동작 유지).
+function studentFirstClassMonth(name){
+  let first = '';
+  let hasRow = false;
+  for(const it of rosterHistory){
+    if(!it.name || parseStudentEntry(it.name).name !== name) continue;
+    hasRow = true;
+    if(!it.effectiveFrom) return '';
+    const ym = String(it.effectiveFrom).slice(0,7);
+    if(!first || ym < first) first = ym;
+  }
+  return hasRow ? first : '';
+}
 function emptyRoster(){
   const r={};
   DAYS.forEach(d=>{ r[d]={}; BLOCKS.forEach(b=>{ r[d][b]=["","","",""]; }); });
@@ -4665,7 +4679,14 @@ async function renderTuitionList(){
     // 결제기준일/회차 기준 "오늘" 상태는 이번 달을 보고 있을 때만 의미가 있다(과거·미래 달은 기존처럼 완납/미납만 표시).
     const statusByName = {};
     (statusRows || []).forEach(r=>{ statusByName[r.name] = r; });
-    const active = studentInfoList.filter(s=>s.status==='재원').sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+    // 2026-11-05: 수업 첫 달 이전의 달에는 그 학생을 목록·집계에서 뺀다 (이미 저장된 기록이 있는 달은 그대로 보여줌).
+    const active = studentInfoList.filter(s=>s.status==='재원')
+      .filter(s=>{
+        if(rowByName[s.name]) return true;
+        const firstYm = studentFirstClassMonth(s.name);
+        return !firstYm || firstYm <= yearMonth;
+      })
+      .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
     if(!active.length){
       listEl.innerHTML = `<div class="tuition-list-empty">재원 중인 학생이 없어요.</div>`;
       if(summaryEl) summaryEl.textContent = '';
