@@ -1428,14 +1428,16 @@ function sessionProgress_(s, history, todayStr) {
   // 리셋된 것이므로 결제일을 기준으로 0회부터 다시 센다. 그렇지 않으면(완납 기록이 없거나, 완납 기록이
   // 더 예전이면) 관리자가 입력해둔 회차기준일 + 그 시점 진행 회차를 출발점으로 삼는다.
   // 이렇게 해야 "이 기능을 처음 켤 때 이미 회차 중간(예: 3회차)"인 경우에도 처음부터 다시 세는 오류가 없다.
-  let sinceDateStr, baseCount;
+  let sinceDateStr, baseCount, sinceType = 'payment';
   if (lastPaidDateStr && (!baselineDateStr || lastPaidDateStr > baselineDateStr)) {
     sinceDateStr = lastPaidDateStr;
     baseCount = 0;
   } else if (baselineDateStr) {
     sinceDateStr = baselineDateStr;
     baseCount = baselineCount;
+    sinceType = 'baseline';
   } else {
+    sinceType = 'none';
     // 완납 기록도, 회차기준일 설정도 없는 경우 — 정확한 계산이 불가능하므로 안전하게 0회부터 센다
     // (관리자가 회차 카드에서 회차기준일/기준 회차를 설정하는 것을 권장).
     sinceDateStr = todayStr;
@@ -1456,7 +1458,8 @@ function sessionProgress_(s, history, todayStr) {
     have[m.date] = true;
     attended.push({ date: m.date, status: m.status });
   });
-  return { n: n, count: baseCount + attended.length, attended: attended, baseCount: baseCount };
+  attended.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  return { n: n, count: baseCount + attended.length, attended: attended, baseCount: baseCount, since: sinceDateStr, sinceType: sinceType };
 }
 
 // 재원 중인 모든 학생의 "오늘" 기준 수강료 상태를 3단계(완납/결제예정/미납)로 계산한다.
@@ -1491,11 +1494,13 @@ function getTuitionStatusToday() {
     historyByName[name].push({ yearMonth: ym, status: status, paidDate: paidDate });
   }
 
+  const spByName = {};
   const result = students.map(function (s) {
     const history = historyByName[s.name] || [];
     const currentRow = history.find(function (h) { return h.yearMonth === currentYm; });
     // 2026-11: 회차제 학생은 "이번 회차 N/8회" 숫자를 출결 카드에 보여주므로, 어떤 상태(완납 포함)로 답하든 sessionCount/sessionTarget을 함께 내려준다.
     const sp = (s.billingType === '회차') ? sessionProgress_(s, history, todayStr) : null;
+    if (sp) spByName[s.name] = sp;
     if (currentRow && currentRow.status === '완납') {
       const paidRes = { name: s.name, status: 'paid', label: '완납' };
       if (sp && sp.n) { paidRes.sessionCount = sp.count; paidRes.sessionTarget = sp.n; }
@@ -1530,6 +1535,11 @@ function getTuitionStatusToday() {
       return { name: s.name, status: 'upcoming', label: '결제 예정 (D-' + (dueDay - todayDay) + ')', dueDay: dueDay };
     }
     return { name: s.name, status: 'overdue', label: '미납', dueDay: dueDay };
+  });
+  // 회차제 학생에게는 "이번 회차가 언제부터 시작됐는지"(마지막 결제일 또는 회차기준일)를 함께 내려준다 (수강료 탭 카드에서 표시)
+  result.forEach(function (r) {
+    const sp = spByName[r.name];
+    if (sp && sp.n) { r.sessionSince = sp.since; r.sessionSinceType = sp.sinceType; }
   });
   reportCacheSet_(cacheKey, result, 20);
   return result;

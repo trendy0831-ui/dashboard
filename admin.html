@@ -710,6 +710,23 @@
   /* 결제 기준일/회차가 아직 안 지난 "결제 예정" — 미납처럼 보이지 않도록 경고색 대신 틸 톤 유지 */
   .tuition-status-toggle.upcoming{border-color:var(--teal);color:var(--teal-dark);background:var(--card);
     border-style:dashed;}
+  /* 회차 결제 학생 카드 (2026-11) — 달이 아니라 "이번 회차 진행"으로 상태를 보여준다 */
+  .tr-sess .ts-chip{font-size:10.5px;font-weight:700;background:var(--soft);color:var(--teal-dark);border-radius:6px;padding:2px 8px;margin-left:6px;vertical-align:1px;}
+  .tr-sess .ts-prog{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--ink-soft);}
+  .tr-sess .ts-prog b{color:var(--teal-dark);font-size:14px;}
+  .tr-sess .ts-bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;}
+  .tr-sess .ts-bar i{display:block;height:100%;background:var(--teal);}
+  .tr-sess .ts-since{font-size:11.5px;color:var(--ink-soft);}
+  .tr-sess .ts-state{display:block;text-align:center;border-radius:8px;padding:9px 4px;font-size:13px;font-weight:700;
+    border:1px solid var(--teal);color:var(--teal-dark);background:var(--soft);}
+  .tr-sess .ts-state.w{background:var(--card);border-style:dashed;}
+  .tr-sess .ts-state.r{border-color:var(--red);color:var(--red);background:#FBEAE7;}
+  .tr-sess.ts-over .ts-bar i{background:var(--red);}
+  .tr-sess .ts-pay{width:100%;padding:8px 4px;font-size:12.5px;font-weight:700;border-radius:8px;border:1px solid var(--teal);
+    background:var(--card);color:var(--teal-dark);cursor:pointer;}
+  .tr-sess .ts-pay:disabled{opacity:.6;cursor:default;}
+  .tr-sess .ts-hist{font-size:12px;color:var(--ink-soft);display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .tr-sess .ts-undo{border:none;background:none;color:var(--ink-soft);text-decoration:underline;font-size:11.5px;cursor:pointer;padding:0;}
   .tr-fields{display:grid;grid-template-columns:44px 1fr;gap:6px 8px;align-items:center;}
   .tr-lbl{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
   .tr-field{display:flex;align-items:center;gap:6px;}
@@ -5128,7 +5145,7 @@ async function renderTuitionList(){
     const [, tuitionRows, statusRows] = await Promise.all([
       loadStudentInfoList(),
       apiGet({action:'tuition', yearMonth}),
-      isCurrentMonth ? loadTuitionStatusToday() : Promise.resolve([]),
+      loadTuitionStatusToday(), // 회차 결제 학생 카드는 어느 달을 보든 "이번 회차 진행"이 필요해서 항상 받는다
       loadTuitionFees() // 2026-11: 월 수강료 이력 (정규 수강료 자동 채움)
     ]);
     const noteEl = document.getElementById('tuitionNote');
@@ -5155,23 +5172,58 @@ async function renderTuitionList(){
       if(summaryEl) summaryEl.textContent = '';
       return;
     }
+    // 회차 결제 학생: 어느 달이든 이번 회차 상태(완납/결제 예정/미납)로 센다. 월정액 학생: 이번 달은 오늘 기준 상태, 다른 달은 그 달 기록.
+    const isSess = s => !!(s.billingType === '회차' && statusByName[s.name] && statusByName[s.name].sessionTarget);
+    const stateOf = s=>{
+      const c = statusByName[s.name];
+      if(isSess(s)) return c.status;
+      if(isCurrentMonth) return (c || {}).status || 'overdue';
+      return (rowByName[s.name] && rowByName[s.name].status === '완납') ? 'paid' : 'overdue';
+    };
     if(summaryEl){
       if(statusMissing){
         summaryEl.textContent = '수강료 현황을 불러오지 못해 집계를 표시하지 않았어요.';
-      } else if(isCurrentMonth){
-        const paidCount = active.filter(s => (statusByName[s.name]||{}).status === 'paid').length;
-        const upcomingCount = active.filter(s => (statusByName[s.name]||{}).status === 'upcoming').length;
+      } else {
+        const paidCount = active.filter(s => stateOf(s) === 'paid').length;
+        const upcomingCount = active.filter(s => stateOf(s) === 'upcoming').length;
         const overdueCount = active.length - paidCount - upcomingCount;
         summaryEl.innerHTML = `완납 ${paidCount}명`
           + (upcomingCount ? ` · <span class="upcoming-count">결제예정 ${upcomingCount}명</span>` : '')
           + ` · <span class="unpaid-count">미납 ${overdueCount}명</span>`;
-      } else {
-        const paidCount = active.filter(s => rowByName[s.name] && rowByName[s.name].status === '완납').length;
-        summaryEl.innerHTML = `완납 ${paidCount}명 · <span class="unpaid-count">미납 ${active.length - paidCount}명</span>`;
       }
     }
     listEl.innerHTML = active.map(s=>{
       const rec = rowByName[s.name] || {};
+      if(isSess(s)){
+        const c = statusByName[s.name];
+        const cnt = Number(c.sessionCount) || 0, tgt = Number(c.sessionTarget) || 0;
+        const pct = tgt ? Math.min(100, Math.round(cnt / tgt * 100)) : 0;
+        const stCls = c.status === 'paid' ? '' : c.status === 'upcoming' ? ' w' : ' r';
+        const stLabel = c.status === 'paid' ? '완납 · 이번 회차 안' : c.status === 'upcoming' ? '결제 예정' : '미납';
+        const sinceTxt = c.sessionSince ? `${fmtMDStr(c.sessionSince)} ${c.sessionSinceType === 'payment' ? '결제' : '기준'} 이후 출석` : '';
+        const meta2 = escapeHtml([s.school, s.grade].filter(Boolean).join(' · '));
+        const feeNow = tuitionFeeFor(s.name, toYearMonth(new Date())) || '';
+        const paidRec = rec.status === '완납' && rec.paidDate;
+        return `<div class="tuition-row tr-sess${c.status === 'overdue' ? ' ts-over' : ''}" data-name="${escapeHtml(s.name)}">
+          <div>
+            <div class="tr-name">${escapeHtml(s.name)}<span class="ts-chip">회차 결제</span></div>
+            ${meta2 ? `<div class="tr-meta">${meta2}</div>` : ''}
+          </div>
+          <div class="ts-prog"><span>이번 회차</span><span><b>${cnt}/${tgt}회</b></span></div>
+          <div class="ts-bar"><i style="width:${pct}%"></i></div>
+          ${sinceTxt ? `<div class="ts-since">${escapeHtml(sinceTxt)}</div>` : ''}
+          <span class="ts-state${stCls}">${stLabel}</span>
+          <div class="tr-fields">
+            <span class="tr-lbl">금액</span>
+            <div class="tr-field"><input type="number" class="ts-amount" min="0" placeholder="8회분 금액" value="${rec.amount || feeNow}"></div>
+            <span class="tr-lbl">납부일</span>
+            <div class="tr-field"><input type="date" class="ts-date" value="${toDateStr(new Date())}"></div>
+          </div>
+          <button type="button" class="ts-pay">${tgt}회분 결제 받음</button>
+          ${paidRec ? `<div class="ts-hist"><span>이 달 결제 ${escapeHtml(fmtMDStr(rec.paidDate))}${rec.amount ? ' · ' + fmtWon(Number(rec.amount)) + '원' : ''}</span><button type="button" class="ts-undo">결제 취소</button></div>` : ''}
+          <div class="tr-state"></div>
+        </div>`;
+      }
       const computed = statusByName[s.name]; // 이번 달일 때만 존재
       const rawStatus = rec.status === '완납' ? '완납' : '미납';
       // 버튼 표시: 이번 달이고 아직 결제 기준(날짜/회차)이 안 지났으면 "결제예정"으로 부드럽게 표시,
@@ -5280,7 +5332,43 @@ async function renderTuitionList(){
       setRowState(row, '저장 실패 · 다시 시도해 주세요', true);
     }
   }
-  listEl.querySelectorAll('.tuition-row').forEach(row=>{
+  // 회차 결제 학생 카드: "N회분 결제 받음" → 납부일과 함께 완납으로 저장하면 그 다음 출석부터 1회로 다시 센다. "결제 취소"는 그 달 기록을 미납으로 되돌린다.
+  listEl.querySelectorAll('.tuition-row.tr-sess').forEach(row=>{
+    const name = row.getAttribute('data-name');
+    const stateEl = row.querySelector('.tr-state');
+    async function saveSess(rec, okText){
+      stateEl.textContent = '저장 중...';
+      try{
+        await apiPost({ action:'saveTuition', record: rec });
+        stateEl.textContent = okText;
+        await new Promise(r=>setTimeout(r, 2500)); // 서버가 시트에 쓰는 시간을 기다린다
+        await refreshSessionCounts();
+        await renderTuitionList();
+      }catch(e){
+        showSaveFailToast('수강료 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+        stateEl.textContent = '저장 실패 · 다시 시도해 주세요';
+        stateEl.style.color = 'var(--red)';
+      }
+    }
+    const payBtn = row.querySelector('.ts-pay');
+    payBtn.onclick = async ()=>{
+      const date = row.querySelector('.ts-date').value;
+      const amount = Number(row.querySelector('.ts-amount').value.trim()) || 0;
+      if(!date){ stateEl.textContent = '납부일을 골라 주세요.'; return; }
+      if(!confirm(`${name} ${fmtMDStr(date)} 결제로 기록할까요?\n이 날 다음 출석부터 1회로 다시 세요.`)) return;
+      payBtn.disabled = true;
+      await saveSess({ name, yearMonth: date.slice(0, 7), amount: amount ? String(amount) : '', specialFee:'', status:'완납', paidDate: date, memo:'' }, '결제를 기록했어요 ✓');
+    };
+    const undo = row.querySelector('.ts-undo');
+    if(undo){
+      undo.onclick = async ()=>{
+        if(!confirm(`${name}의 ${yearMonth.slice(5)}월 결제 기록을 취소할까요? 이 달 기록이 미납으로 돌아가요.`)) return;
+        const rec = rows.find(r => r.name === name) || {};
+        await saveSess({ name, yearMonth, amount: rec.amount ? String(rec.amount) : '', specialFee: rec.specialFee ? String(rec.specialFee) : '', status:'미납', paidDate:'', memo: rec.memo || '' }, '결제를 취소했어요');
+      };
+    }
+  });
+  listEl.querySelectorAll('.tuition-row:not(.tr-sess)').forEach(row=>{
     row.querySelectorAll('.tuition-regular,.tuition-special').forEach(inp=>{
       inp.addEventListener('input', ()=> refreshRow(row));
       inp.addEventListener('change', ()=> queueSave(row));
