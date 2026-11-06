@@ -1322,11 +1322,12 @@ function sessionSeqAll_(s, history) {
   bounds.forEach(function (b, i) { b.i = i; });
   bounds.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i; });
 
-  const rows = getAttendedDatesForStudent_(s.name).filter(function (d) {
-    return d.status === 'present' || d.status === 'late';
-  }).map(function (d) { return d.date; });
+  // 하루에 여러 칸(같은 날 기록이 둘 이상)이 있어도 그날은 한 번만 센다
   const have = {};
-  rows.forEach(function (d) { have[d] = true; });
+  const rows = [];
+  getAttendedDatesForStudent_(s.name).forEach(function (d) {
+    if ((d.status === 'present' || d.status === 'late') && !have[d.date]) { have[d.date] = true; rows.push(d.date); }
+  });
   getManualAttendanceFor_(s.name).forEach(function (m) {
     if (m.cancelled || have[m.date]) return;
     have[m.date] = true;
@@ -1440,8 +1441,12 @@ function sessionProgress_(s, history, todayStr) {
     sinceDateStr = todayStr;
     baseCount = 0;
   }
+  const seenDay = {};
   const attended = getAttendedDatesForStudent_(s.name).filter(function (d) {
-    return d.date > sinceDateStr && (d.status === 'present' || d.status === 'late');
+    if (!(d.date > sinceDateStr && (d.status === 'present' || d.status === 'late'))) return false;
+    if (seenDay[d.date]) return false; // 같은 날 기록이 둘 이상이어도 하루는 한 번만 센다
+    seenDay[d.date] = true;
+    return true;
   });
   // 직접 추가한 출석(일요일 수업·보강 등)도 더한다. 같은 날짜가 출결 기록에 이미 있으면 한 번만 센다.
   const have = {};
