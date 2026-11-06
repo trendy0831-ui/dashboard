@@ -242,6 +242,31 @@
   .quad-btn.hw-missing{background:#F7D9CF;border:1.5px solid var(--red);color:var(--ink);}
   .quad-btn.hw-unchecked{background:var(--paper);border-style:dashed;color:var(--ink-soft);}
   .quad-btn.hw-off{background:var(--paper);color:var(--ink-soft);opacity:.45;cursor:default;}
+  /* ===================== 출결 카드 정리 (2026-11-06): 선택 막대 + 사유/보강 한 박스 ===================== */
+  .quad-grid.three{grid-template-columns:repeat(3,1fr);}
+  .att-seg{display:flex;border:1px solid var(--teal);border-radius:9px;overflow:hidden;margin:0 0 8px;background:var(--card);}
+  .att-seg.unchecked{border-style:dashed;}
+  .att-seg-btn{flex:1;height:36px;border:none;background:transparent;font-family:inherit;font-size:13.5px;
+    color:var(--ink-soft);cursor:pointer;}
+  .att-seg-btn + .att-seg-btn{border-left:1px solid var(--line);}
+  .att-seg-btn.on{background:var(--teal);color:#fff;font-weight:700;}
+  .att-seg-btn.on + .att-seg-btn,.att-seg-btn + .att-seg-btn.on{border-left-color:var(--teal);}
+  .info-box{background:var(--soft);border-radius:8px;padding:8px 10px;margin:0 0 8px;color:var(--teal-dark);font-size:13px;}
+  .info-row{display:flex;align-items:center;gap:8px;min-height:28px;}
+  .info-row + .info-row{border-top:1px solid rgba(var(--teal-rgb),.18);margin-top:6px;padding-top:6px;}
+  .info-k{flex:0 0 30px;font-size:12px;font-weight:700;color:var(--teal);}
+  .info-v{flex:1;min-width:0;overflow-wrap:anywhere;}
+  .info-empty{color:var(--ink-soft);}
+  .ed-btn{flex:0 0 auto;background:none;border:none;color:var(--teal-dark);font-size:15px;line-height:1;
+    padding:5px 7px;border-radius:6px;cursor:pointer;}
+  .ed-btn:hover{background:rgba(var(--teal-rgb),.14);}
+  .info-box .memo-edit{flex:1;min-width:0;margin:0;}
+  .info-box .memo-edit input{min-width:0;}
+  .info-box .makeup-add{width:auto;margin:0;padding:3px 0;text-align:left;font-size:12.5px;color:var(--teal-dark);}
+  .info-box .makeup-toggle{display:inline-block;width:auto;margin:0;padding:4px 11px;font-size:12.5px;text-align:left;
+    background:var(--card);border:1px dashed var(--teal);color:var(--teal-dark);}
+  .info-box .makeup-toggle.done{background:var(--teal);border:1px solid var(--teal);color:#fff;}
+  .info-box .makeup-toggle.waived{background:var(--card);border:1px solid var(--line);color:var(--ink-soft);}
   .quad-sub{font-size:12px;color:var(--teal-dark);background:var(--soft);border-radius:7px;
     padding:6px 10px;margin-top:2px;margin-bottom:8px;}
   .quad-sub.muted{color:var(--ink-soft);background:none;padding:2px 0;}
@@ -2532,23 +2557,65 @@ function renderDayContent(){
       else { hwCls="hw-unchecked"; hwLabel="숙제 미확인"; }
       const timesLine = (rec.checkIn || rec.checkOut)
         ? `<div class="slot-times">🛎️ 등원 ${rec.checkIn || '—'} · 하원 ${rec.checkOut || '—'}</div>` : '';
+      // 2026-11-06 출결 카드 정리: 출석/지각/결석을 하나의 선택 막대로, 사유·보강은 한 박스로 묶음
+      const needsReason = (rec.status==="late" || rec.status==="absent");
+      const attUnchecked = !(rec.status==="present" || needsReason);
+      const segBtn = (st, label)=>`<button type="button" class="att-seg-btn${rec.status===st?' on':''}" data-key="${mk}" data-role="att" data-status="${st}" aria-pressed="${rec.status===st}">${label}</button>`;
+      const statusOpenNow = openStatusKey===mk;
+      let infoHtml = '';
+      if(needsReason){
+        if(statusOpenNow){
+          infoHtml += `<div class="info-row"><span class="info-k">사유</span><div class="memo-edit">
+            <input type="text" class="statusInput" data-key="${mk}" value="${escapeHtml(rec.statusNote||"")}" placeholder="예: 병원 방문">
+            <button class="statusSave" data-key="${mk}">저장</button>
+          </div></div>`;
+        } else {
+          infoHtml += `<div class="info-row"><span class="info-k">사유</span>
+            <span class="info-v">${rec.statusNote ? escapeHtml(rec.statusNote) : '<span class="info-empty">사유 입력</span>'}</span>
+            <button type="button" class="ed-btn" data-key="${mk}" data-role="statusEdit" aria-label="사유 수정">✎</button></div>`;
+        }
+      }
+      if(rec.status === 'absent'){
+        const ms = rec.makeupStatus || 'none';
+        const makeupDateOpen = openMakeupDateKey === mk;
+        const mDate = rec.makeupDate ? escapeHtml(rec.makeupDate) : '';
+        if(ms === 'none'){
+          infoHtml += `<div class="info-row"><span class="info-k">보강</span><span class="info-v"><button class="makeup-add" data-key="${mk}">+ 보강 필요 표시</button></span></div>`;
+        } else {
+          const msCls = ms === 'done' ? 'done' : ms === 'waived' ? 'waived' : '';
+          const msLabel = ms === 'done' ? `${mDate ? mDate + ' ' : ''}보강 완료`
+                        : ms === 'waived' ? '보강 없음'
+                        : `${mDate ? mDate + ' · ' : '날짜 미정 · '}대기`;
+          const msTip = ms === 'waived' ? '탭하면 처음 상태로 돌아가요' : '탭하면 대기 → 완료 → 없음 순서로 바뀌어요';
+          infoHtml += `<div class="info-row"><span class="info-k">보강</span>
+            <span class="info-v"><button class="makeup-toggle ${msCls}" data-key="${mk}" title="${msTip}">${msLabel}</button></span>
+            ${(ms === 'wait' || ms === 'done') ? `<button type="button" class="ed-btn" data-key="${mk}" data-role="makeupDateEdit" aria-label="보강 예정일 수정">✎</button>` : ''}</div>`;
+          if((ms === 'wait' || ms === 'done') && makeupDateOpen){
+            infoHtml += `<div class="info-row"><span class="info-k"></span><div class="memo-edit">
+              <input type="text" class="makeupDateInput" data-key="${mk}" value="${escapeHtml(rec.makeupDate||"")}" placeholder="예: 8/25 화">
+              <button class="makeupDateSave" data-key="${mk}">저장</button>
+            </div></div>`;
+          }
+        }
+      }
       html += `<div class="slot-card">
         <div class="slot-top">
           <span><span class="slot-name">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
         </div>${timesLine}
-        <div class="quad-grid">
-          <button class="quad-btn ${attCls}" data-key="${mk}" data-role="att" aria-label="출결 상태 변경 (현재 ${attLabel})">
-            ${attIcon ? `<span class="qi">${attIcon}</span>` : ''}<span class="ql">${attLabel}</span>
-          </button>
-          <button class="quad-btn ${hwCls}" data-key="${hwMk}" data-role="hw" ${isAbsent?'disabled':''} aria-label="숙제 상태 변경 (현재 ${hwLabel})">
+        <div class="att-seg${attUnchecked?' unchecked':''}" role="group" aria-label="출결 상태">
+          ${segBtn('present','출석')}${segBtn('late','지각')}${segBtn('absent','결석')}
+        </div>
+        ${infoHtml ? `<div class="info-box">${infoHtml}</div>` : ''}
+        <div class="quad-grid three">
+          ${isAbsent ? '' : `<button class="quad-btn ${hwCls}" data-key="${hwMk}" data-role="hw" aria-label="숙제 상태 변경 (현재 ${hwLabel})">
             <span class="ql">${hwLabel}</span>
-          </button>
+          </button>`}
           <button class="quad-btn memo ${rec.attNote?'on':''}" data-key="${mk}" data-role="attMemo" aria-label="수업태도 메모">
             <span class="ql">메모</span>
           </button>
-          <button class="quad-btn memo ${hw.memo?'on':''}" data-key="${hwMk}" data-role="hwMemo" ${isAbsent?'disabled':''} aria-label="숙제 메모">
+          ${isAbsent ? '' : `<button class="quad-btn memo ${hw.memo?'on':''}" data-key="${hwMk}" data-role="hwMemo" aria-label="숙제 메모">
             <span class="ql">숙제메모</span>
-          </button>
+          </button>`}
         </div>`;
       if(rec.attNote && !attOpen){
         html += `<div class="memo-box att">
@@ -2565,48 +2632,6 @@ function renderDayContent(){
           <button class="attSave" data-key="${mk}">저장</button>
         </div>`;
       }
-      const needsReason = (rec.status==="late" || rec.status==="absent");
-      if(needsReason && rec.statusNote && !statusOpen){
-        html += `<div class="memo-box reason">
-          <span>사유: ${escapeHtml(rec.statusNote)}</span>
-          <span class="memo-actions">
-            <button class="statusEditBtn" data-key="${mk}" aria-label="수정">✎</button>
-            <button class="statusDeleteBtn" data-key="${mk}" aria-label="삭제">✕</button>
-          </span>
-        </div>`;
-      }
-      if(needsReason && statusOpen){
-        html += `<div class="memo-edit">
-          <input type="text" class="statusInput" data-key="${mk}" value="${escapeHtml(rec.statusNote||"")}" placeholder="예: 병원 방문">
-          <button class="statusSave" data-key="${mk}">저장</button>
-        </div>`;
-      }
-      if(needsReason && !rec.statusNote && !statusOpen) html += `<button class="reason-add" data-key="${mk}">+ 사유 입력</button>`;
-      if(rec.status === 'absent'){
-        const ms = rec.makeupStatus || 'none';
-        const makeupDateOpen = openMakeupDateKey === mk;
-        if(ms === 'none'){
-          html += `<button class="makeup-add" data-key="${mk}">+ 보강 필요 표시</button>`;
-        } else {
-          const msCls = ms === 'done' ? 'done' : ms === 'waived' ? 'waived' : '';
-          const msLabel = ms === 'done' ? `✓ 보강 완료${rec.makeupDate?` · ${escapeHtml(rec.makeupDate)}`:''}`
-                        : ms === 'waived' ? '보강 없음 — 탭하면 처음으로'
-                        : `보강 대기${rec.makeupDate?` · ${escapeHtml(rec.makeupDate)}`:''}`;
-          html += `<button class="makeup-toggle ${msCls}" data-key="${mk}">${msLabel}</button>`;
-          if(ms === 'wait' || ms === 'done'){
-            if(makeupDateOpen){
-              html += `<div class="memo-edit">
-                <input type="text" class="makeupDateInput" data-key="${mk}" value="${escapeHtml(rec.makeupDate||"")}" placeholder="예: 8/25 화">
-                <button class="makeupDateSave" data-key="${mk}">저장</button>
-              </div>`;
-            } else if(!rec.makeupDate){
-              html += `<button class="reason-add" data-key="${mk}" data-role="makeupDateAdd">+ 보강 예정일 입력</button>`;
-            } else {
-              html += `<button class="reason-add" data-key="${mk}" data-role="makeupDateAdd">✎ 예정일 수정</button>`;
-            }
-          }
-        }
-      }
       if(hw.memo && !hwMemoOpen){
         html += `<div class="quad-sub">${escapeHtml(hw.memo)}</div>`;
       }
@@ -2615,9 +2640,6 @@ function renderDayContent(){
           <input type="text" class="hwMemoInput" data-key="${hwMk}" value="${escapeHtml(hw.memo||"")}" placeholder="예: 워크북 32~35p">
           <button class="hwMemoSave" data-key="${hwMk}">저장</button>
         </div>`;
-      }
-      if(isAbsent && !hw.memo){
-        html += `<div class="quad-sub muted">결석으로 숙제 확인 불가</div>`;
       }
       html += `</div>`;
     return html;
@@ -2666,12 +2688,14 @@ function renderDayContent(){
 }
 const ATT_CYCLE = {present:"late", late:"absent", absent:"normal", normal:"present"};
 function attachCardHandlers(){
-  document.querySelectorAll('#dayPanel .quad-btn[data-role="att"]').forEach(el=>{
+  // 2026-11-06: 출석/지각/결석 선택 막대 — 누르면 그 상태로, 이미 선택된 칸을 다시 누르면 미체크로 돌아감
+  document.querySelectorAll('#dayPanel .att-seg-btn').forEach(el=>{
     el.onclick = async ()=>{
       const [dateStr, block, slotStr] = el.getAttribute('data-key').split("|");
       const slot = parseInt(slotStr);
       const rec = getRec(dateStr, block, slot);
-      rec.status = ATT_CYCLE[rec.status] || "present";
+      const target = el.getAttribute('data-status');
+      rec.status = (rec.status === target) ? "normal" : target;
       setRecLocal(dateStr, block, slot, rec);
       renderCardView();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
@@ -2738,6 +2762,16 @@ function attachCardHandlers(){
       openAttKey = null;
       renderCardView();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
+    };
+  });
+  // 사유·보강 예정일 연필(✎) 버튼
+  document.querySelectorAll('#dayPanel .ed-btn').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const key = el.getAttribute('data-key');
+      if(el.getAttribute('data-role') === 'makeupDateEdit') openMakeupDateKey = key;
+      else openStatusKey = key;
+      renderCardView();
     };
   });
   document.querySelectorAll('#dayPanel .reason-add').forEach(el=>{
