@@ -2061,10 +2061,13 @@ function bumpSessionCount(name, prevStatus, nextStatus, dateStr){
   if(info) info.count = Math.max(0, info.count + (counted(nextStatus) ? 1 : -1));
   const sq = sessionSeq[name];
   if(sq){
-    if(counted(nextStatus)) sq.dates.push([dateStr, 0]);
-    else { const i = sq.dates.findIndex(x=> x[0] === dateStr); if(i >= 0) sq.dates.splice(i, 1); }
+    if(counted(nextStatus)){
+      const prev = sessionCountOn(name, dateStr); // 그 날짜 직전까지의 회차 + 1 (뒤쪽 날짜는 곧 서버 값으로 바로잡힌다)
+      sq.dates.push([dateStr, (prev || 0) + 1]);
+    } else {
+      const i = sq.dates.findIndex(x=> x[0] === dateStr); if(i >= 0) sq.dates.splice(i, 1);
+    }
     sq.dates.sort((a, b)=> a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-    sq.dates.forEach((x, i)=>{ x[1] = sq.base + i + 1; });
   }
 }
 function sessionChipHtml(name, dateStr){

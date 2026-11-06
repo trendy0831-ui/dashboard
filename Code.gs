@@ -1304,15 +1304,49 @@ function cancelManualAttendance(name, date) {
   adminCacheClear_(['admin_tuitionStatusToday', 'admin_sessionSeq']);
 }
 
-// { 이름: { target, base, dates: [[날짜, 그날까지의 누적 회차], ...] (날짜 오름차순) } } — 회차제 재원생만. 20초 캐시.
-// 누적 회차 = 현재 회차 기준(회차기준일 또는 마지막 결제일) 이후 출석을 날짜순으로 센 값 + 기준 시점 회차.
-function getSessionSeqMap_() {
-  const cacheKey = 'admin_sessionSeq';
-  const cached = reportCacheGet_(cacheKey);
-  if (cached) return cached;
-  const students = getStudentInfoList().filter(function (s) { return s.status === '재원' && s.billingType === '회차'; });
-  const tz = Session.getScriptTimeZone();
-  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+// 회차제 학생의 "날짜별 그날의 회차"를 처음 기록부터 끝까지 계산한다 (2026-11).
+// 회차기준일과 각 결제일(완납 납부일)이 새 회차의 시작점이 된다. 시작점 이후 출석을 날짜순으로 세고, 시작점이 없는 맨 처음 구간은
+// 첫 출석부터 1,2,3…으로 세되 설정 회차(예: 8)를 넘으면 다시 1부터 센다(8회마다 결제했다고 보는 추정).
+// 반환: { target, dates: [[날짜, 회차], ...] (날짜 오름차순, 출석·지각만, 취소한 직접 기록 제외) } 또는 null(회차제 아님)
+function sessionSeqAll_(s, history) {
+  const n = parseInt(s.sessionCount, 10) || 0;
+  if (!n) return null;
+  const bounds = [];
+  history.filter(function (h) { return h.status === '완납'; }).forEach(function (h) {
+    bounds.push({ date: h.paidDate || (h.yearMonth + '-01'), base: 0 });
+  });
+  if (s.sessionBaselineDate) {
+    bounds.push({ date: s.sessionBaselineDate, base: parseInt(s.sessionBaselineCount, 10) || 0 });
+  }
+  // 날짜순 정렬(같은 날짜면 나중에 넣은 회차기준일이 뒤에 와서 우선한다)
+  bounds.forEach(function (b, i) { b.i = i; });
+  bounds.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i; });
+
+  const rows = getAttendedDatesForStudent_(s.name).filter(function (d) {
+    return d.status === 'present' || d.status === 'late';
+  }).map(function (d) { return d.date; });
+  const have = {};
+  rows.forEach(function (d) { have[d] = true; });
+  getManualAttendanceFor_(s.name).forEach(function (m) {
+    if (m.cancelled || have[m.date]) return;
+    have[m.date] = true;
+    rows.push(m.date);
+  });
+  rows.sort();
+
+  const segCount = {};
+  const out = [];
+  rows.forEach(function (date) {
+    let bi = -1;
+    for (let k = 0; k < bounds.length; k++) { if (bounds[k].date < date) bi = k; else break; }
+    segCount[bi] = (segCount[bi] || 0) + 1;
+    const seq = bi >= 0 ? bounds[bi].base + segCount[bi] : ((segCount[bi] - 1) % n) + 1;
+    out.push([date, seq]);
+  });
+  return { target: n, dates: out };
+}
+
+function getTuitionHistoryByName_() {
   const historyByName = {};
   getTuitionSheet_().getDataRange().getValues().forEach(function (row, i) {
     if (i === 0) return;
@@ -1325,16 +1359,21 @@ function getSessionSeqMap_() {
       paidDate: row[4] ? normalizeDate_(row[4]) : ''
     });
   });
+  return historyByName;
+}
+
+// { 이름: { target, base, dates: [[날짜, 그날까지의 누적 회차], ...] (날짜 오름차순) } } — 회차제 재원생만. 20초 캐시.
+// 누적 회차 = 현재 회차 기준(회차기준일 또는 마지막 결제일) 이후 출석을 날짜순으로 센 값 + 기준 시점 회차.
+function getSessionSeqMap_() {
+  const cacheKey = 'admin_sessionSeq';
+  const cached = reportCacheGet_(cacheKey);
+  if (cached) return cached;
+  const students = getStudentInfoList().filter(function (s) { return s.status === '재원' && s.billingType === '회차'; });
+  const historyByName = getTuitionHistoryByName_();
   const out = {};
   students.forEach(function (s) {
-    const sp = sessionProgress_(s, historyByName[s.name] || [], todayStr);
-    if (!sp.n) return;
-    const dates = sp.attended.map(function (d) { return d.date; }).sort();
-    out[s.name] = {
-      target: sp.n,
-      base: sp.baseCount,
-      dates: dates.map(function (d, idx) { return [d, sp.baseCount + idx + 1]; })
-    };
+    const r = sessionSeqAll_(s, historyByName[s.name] || []);
+    if (r) out[s.name] = { target: r.target, base: 0, dates: r.dates };
   });
   reportCacheSet_(cacheKey, out, 20);
   return out;
@@ -1358,27 +1397,15 @@ function getStudentAttendanceList_(name) {
     list.push({ date: m.date, status: m.status, source: 'manual', memo: m.memo, cancelled: m.cancelled });
   });
   list.sort(function (a, b) { return b.date.localeCompare(a.date); });
-  // 회차제 학생이면 날짜마다 "그날의 회차(예: 5/8회)"를 붙인다. 현재 회차 기준(기준일 또는 마지막 결제일) 이후 출석만 순서대로 센다.
+  // 회차제 학생이면 날짜마다 "그날의 회차(예: 5/8회)"를 붙인다 (처음 기록부터, 결제일·회차기준일마다 새 회차로 센다).
   const stu = getStudentInfoList().filter(function (x) { return x.name === nm && x.billingType === '회차'; })[0];
   if (stu) {
-    const tz = Session.getScriptTimeZone();
-    const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-    const history = [];
-    getTuitionSheet_().getDataRange().getValues().forEach(function (row, i) {
-      if (i === 0 || String(row[0] || '').trim() !== nm) return;
-      history.push({
-        yearMonth: normalizeYearMonth_(row[1]),
-        status: (row[3] || '').trim() === '완납' ? '완납' : '미납',
-        paidDate: row[4] ? normalizeDate_(row[4]) : ''
-      });
-    });
-    const sp = sessionProgress_(stu, history, todayStr);
-    if (sp.n) {
-      const dates = sp.attended.map(function (d) { return d.date; }).sort();
+    const r = sessionSeqAll_(stu, getTuitionHistoryByName_()[nm] || []);
+    if (r) {
       const seqByDate = {};
-      dates.forEach(function (d, idx) { seqByDate[d] = sp.baseCount + idx + 1; });
+      r.dates.forEach(function (x) { seqByDate[x[0]] = x[1]; });
       list.forEach(function (it) {
-        if (!it.cancelled && seqByDate[it.date]) { it.seq = seqByDate[it.date]; it.target = sp.n; }
+        if (!it.cancelled && seqByDate[it.date]) { it.seq = seqByDate[it.date]; it.target = r.target; }
       });
     }
   }
