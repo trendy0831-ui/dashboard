@@ -84,6 +84,10 @@ function doGet(e) {
   if (action === 'tuition') {
     return jsonResponse(getTuitionForMonth(e.parameter.yearMonth));
   }
+  if (action === 'tuitionFees') {
+    // 2026-11: 학생별 "월 수강료 + 적용 시작일" 이력 전체 (수강료 탭 자동 채움 / 학생 관리 카드에서 사용)
+    return jsonResponse(getTuitionFeeMap_());
+  }
   if (action === 'tuitionStatusToday') {
     // 2026-09: 학생별 결제기준일(월정액)/회차(회차제)를 반영한 "오늘 기준" 수강료 상태.
     // 수강료 탭(이번 달) 및 대시보드 미납 카드가 이 값으로 완납/결제예정/미납 3단계를 표시한다.
@@ -177,6 +181,16 @@ function doPost(e) {
   }
   if (action === 'saveTuition') {
     saveTuition(body.record);
+    return jsonResponse({ status: 'ok' });
+  }
+  if (action === 'addTuitionFee') {
+    // 2026-11: 월 수강료 이력 추가. effectiveFrom이 비면 오늘부터. 줄을 추가만 하고 과거 줄은 건드리지 않는다.
+    addTuitionFee(body.name, body.amount, body.effectiveFrom);
+    return jsonResponse({ status: 'ok' });
+  }
+  if (action === 'cancelTuitionFee') {
+    // 잘못 넣은 이력은 지우지 않고 '취소' 표시만 남긴다.
+    cancelTuitionFee(body.name, body.effectiveFrom);
     return jsonResponse({ status: 'ok' });
   }
   if (action === 'setTuitionSettings') {
@@ -873,16 +887,26 @@ function deleteElemTest(rowNum) {
 }
 
 // ---------- 수강료 ----------
-// "수강료" 시트가 없으면 자동 생성 (이름 / 연월(YYYY-MM) / 금액 / 납부상태(미납·완납) / 납부일 / 메모)
+// "수강료" 시트가 없으면 자동 생성 (이름 / 연월(YYYY-MM) / 금액 / 납부상태(미납·완납) / 납부일 / 메모 / 특강비)
 // 한 학생당 한 연월에 한 행만 존재한다 (saveTuition이 이름+연월 조합으로 upsert).
+// 2026-11: G열 "특강비" 추가. C열 "금액"은 정규 수강료 + 특강비의 합계이므로 학부모 리포트(report.html)는 그대로 동작한다.
 function getTuitionSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('수강료');
   if (!sheet) {
     sheet = ss.insertSheet('수강료');
-    sheet.appendRow(['이름', '연월', '금액', '납부상태', '납부일', '메모']);
+    sheet.appendRow(['이름', '연월', '금액', '납부상태', '납부일', '메모', '특강비']);
   }
   return sheet;
+}
+
+// 이미 6열로 만들어진 기존 "수강료" 시트에 G열(특강비)이 없으면 만들고 머리글을 넣는다. 저장할 때만 호출한다.
+function ensureTuitionSpecialColumn_(sheet) {
+  if (sheet.getMaxColumns() < 7) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), 7 - sheet.getMaxColumns());
+  }
+  const head = sheet.getRange(1, 7);
+  if (!String(head.getValue() || '').trim()) head.setValue('특강비');
 }
 
 // 연월(YYYY-MM) 셀 값을 정규화한다. 시트가 "2026-08" 같은 값을 날짜(Date)로 자동 변환해
@@ -920,7 +944,8 @@ function getTuitionForMonth(yearMonth) {
       amount: data[i][2] || '',
       status: (data[i][3] || '').trim() === '완납' ? '완납' : '미납',
       paidDate: data[i][4] ? normalizeDate_(data[i][4]) : '',
-      memo: data[i][5] || ''
+      memo: data[i][5] || '',
+      specialFee: data[i][6] || '' // 2026-11: 특강비 (G열, 없으면 빈 값). 금액(C열)은 정규+특강 합계.
     });
   }
   reportCacheSet_(cacheKey, rows, 20);
@@ -933,28 +958,127 @@ function getTuitionForMonth(yearMonth) {
 function saveTuition(rec) {
   if (!rec || !rec.name || !rec.yearMonth) return;
   const sheet = getTuitionSheet_();
+  ensureTuitionSpecialColumn_(sheet); // 2026-11: G열(특강비) 보장
   const status = rec.status === '완납' ? '완납' : '미납';
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    const name = String(data[i][0] || '').trim();
-    const ym = normalizeYearMonth_(data[i][1]);
-    if (name === rec.name && ym === rec.yearMonth) {
-      const rowNum = i + 1;
-      sheet.getRange(rowNum, 1).setValue(rec.name);
-      const ymCell = sheet.getRange(rowNum, 2);
-      ymCell.setNumberFormat('@');
-      ymCell.setValue(rec.yearMonth);
-      sheet.getRange(rowNum, 3, 1, 4).setValues([[rec.amount || '', status, rec.paidDate || '', rec.memo || '']]);
-      adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday']);
-      return;
+  // 자동저장이 짧은 간격으로 연달아 들어와도 같은 학생·연월 행이 두 줄로 생기지 않도록 잠금을 건다.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const name = String(data[i][0] || '').trim();
+      const ym = normalizeYearMonth_(data[i][1]);
+      if (name === rec.name && ym === rec.yearMonth) {
+        const rowNum = i + 1;
+        sheet.getRange(rowNum, 1).setValue(rec.name);
+        const ymCell = sheet.getRange(rowNum, 2);
+        ymCell.setNumberFormat('@');
+        ymCell.setValue(rec.yearMonth);
+        sheet.getRange(rowNum, 3, 1, 4).setValues([[rec.amount || '', status, rec.paidDate || '', rec.memo || '']]);
+        sheet.getRange(rowNum, 7).setValue(rec.specialFee || '');
+        adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday']);
+        return;
+      }
+    }
+    sheet.appendRow([rec.name, '', rec.amount || '', status, rec.paidDate || '', rec.memo || '', rec.specialFee || '']);
+    const newRowNum = sheet.getLastRow();
+    const ymCell = sheet.getRange(newRowNum, 2);
+    ymCell.setNumberFormat('@');
+    ymCell.setValue(rec.yearMonth);
+  } finally {
+    lock.releaseLock();
+  }
+  adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday']);
+}
+
+// ---------- 월 수강료 이력 (2026-11) ----------
+// "수강료이력" 시트: 이름 / 월수강료 / 적용시작일(YYYY-MM-DD) / 기록일시 / 취소(빈칸 또는 '취소') / 취소일시
+// 수강료가 바뀔 때마다 줄을 "추가"만 한다 (기존 줄은 지우거나 덮어쓰지 않음 — 취소도 표시만 남김).
+// 어떤 달의 수강료 = 그 달 말일 이하의 적용시작일 중 가장 늦은(같으면 나중에 기록된) 취소되지 않은 줄.
+// 이미 "수강료" 시트에 저장된 달의 금액은 이 이력과 무관하게 저장된 값 그대로 보인다.
+function getTuitionFeeSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('수강료이력');
+  if (!sheet) {
+    sheet = ss.insertSheet('수강료이력');
+    sheet.appendRow(['이름', '월수강료', '적용시작일', '기록일시', '취소', '취소일시']);
+    sheet.getRange('C:C').setNumberFormat('@'); // 날짜가 자동으로 Date로 바뀌지 않게 텍스트로 고정
+  }
+  return sheet;
+}
+
+// { 이름: [ {rowNum, amount, effectiveFrom, recordedAt, cancelled}, ... (시트 순서) ] } — 30초 캐시
+function getTuitionFeeMap_() {
+  const cacheKey = 'admin_tuitionFees';
+  const cached = reportCacheGet_(cacheKey);
+  if (cached) return cached;
+  const map = {};
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('수강료이력');
+  if (sheet) {
+    const tz = Session.getScriptTimeZone();
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const name = String(data[i][0] || '').trim();
+      if (!name) continue;
+      const rec = data[i][3];
+      if (!map[name]) map[name] = [];
+      map[name].push({
+        rowNum: i + 1,
+        amount: Number(data[i][1]) || 0,
+        effectiveFrom: data[i][2] ? normalizeDate_(data[i][2]) : '',
+        recordedAt: (Object.prototype.toString.call(rec) === '[object Date]') ? Utilities.formatDate(rec, tz, 'yyyy-MM-dd HH:mm') : String(rec || ''),
+        cancelled: String(data[i][4] || '').trim() === '취소'
+      });
     }
   }
-  sheet.appendRow([rec.name, '', rec.amount || '', status, rec.paidDate || '', rec.memo || '']);
-  const newRowNum = sheet.getLastRow();
-  const ymCell = sheet.getRange(newRowNum, 2);
-  ymCell.setNumberFormat('@');
-  ymCell.setValue(rec.yearMonth);
-  adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday']);
+  reportCacheSet_(cacheKey, map, 30);
+  return map;
+}
+
+// 월 수강료를 추가한다. effectiveFrom('YYYY-MM-DD')이 비면 오늘부터. 시트에 줄을 추가할 뿐 과거 줄은 건드리지 않는다.
+function addTuitionFee(name, amount, effectiveFrom) {
+  const nm = String(name || '').trim();
+  const amt = Math.round(Number(amount));
+  if (!nm || !(amt > 0)) return;
+  const tz = Session.getScriptTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(String(effectiveFrom || '').trim()) ? String(effectiveFrom).trim() : todayStr;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getTuitionFeeSheet_();
+    sheet.appendRow([nm, amt, '', new Date(), '', '']);
+    sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('@').setValue(from);
+  } finally {
+    lock.releaseLock();
+  }
+  adminCacheClear_(['admin_tuitionFees']);
+}
+
+// 잘못 넣은 월 수강료 이력을 취소한다. 줄을 지우지 않고 '취소'와 취소일시만 표시한다.
+// 같은 시작일 줄이 여럿이면 가장 나중에 기록된 줄 하나만 취소한다.
+function cancelTuitionFee(name, effectiveFrom) {
+  const nm = String(name || '').trim();
+  const from = String(effectiveFrom || '').trim();
+  if (!nm || !/^\d{4}-\d{2}-\d{2}$/.test(from)) return;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('수강료이력');
+  if (!sheet) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const data = sheet.getDataRange().getValues();
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][0] || '').trim() === nm
+          && normalizeDate_(data[i][2]) === from
+          && String(data[i][4] || '').trim() !== '취소') {
+        sheet.getRange(i + 1, 5, 1, 2).setValues([['취소', new Date()]]);
+        break;
+      }
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  adminCacheClear_(['admin_tuitionFees']);
 }
 
 // 특정 학생의 수강료 이력을 최신 연월순으로 최대 limit건 반환 (report.html 학부모 리포트에서 사용)

@@ -426,7 +426,7 @@
   .stu-select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 13px;
     font-size:14px;font-family:inherit;color:var(--ink);margin-bottom:16px;background:var(--paper);}
   /* ===================== 학생 관리: 학생 카드 그리드 ===================== */
-  .student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+  .student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;align-items:start;}
   .student-card{background:var(--paper);border:1px solid var(--line);border-radius:11px;
     padding:16px 18px;transition:border-color .15s;}
   .student-card:hover{border-color:var(--teal);}
@@ -468,7 +468,22 @@
   .status-dlg .btn{border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;
     border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);}
   .status-dlg .btn.primary{background:var(--teal);color:#fff;}
-  .sc-textbook{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
+  /* 학생 카드 접이식 섹션 (2026-11): 수강료 / 준비 교재는 기본으로 한 줄 요약만 보이고, 설정·관리를 누르면 펼쳐진다 */
+  .sc-sec{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  .sc-sec > summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .sc-sec > summary::-webkit-details-marker{display:none;}
+  .sc-sec-label{font-size:11.5px;font-weight:700;color:var(--ink-soft);flex-shrink:0;}
+  .sc-sec-sum{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--ink);overflow-wrap:anywhere;}
+  .sc-sec-sum b{font-weight:700;color:var(--teal-dark);}
+  .sc-sec-sum .none{color:var(--ink-soft);}
+  .sc-sec-btn{flex-shrink:0;font-size:11.5px;font-weight:700;color:var(--teal-dark);border:1px solid var(--teal);
+    background:var(--card);border-radius:7px;padding:3px 10px;}
+  .sc-sec-btn .c{display:none;}
+  .sc-sec[open] .sc-sec-btn{background:var(--soft);}
+  .sc-sec[open] .sc-sec-btn .o{display:none;}
+  .sc-sec[open] .sc-sec-btn .c{display:inline;}
+  .sc-sec-body{margin-top:10px;}
+  .sc-textbook{}
   .sc-textbook-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
   .sc-textbook-current{display:flex;align-items:center;justify-content:space-between;gap:8px;
     background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:8px;}
@@ -488,7 +503,29 @@
     border-radius:7px;padding:4px 9px;white-space:nowrap;}
   .student-grid-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
   /* 학생 카드 - 수강료 결제 방식 설정 (월정액 결제기준일 / 회차제 결제회차) */
-  .sc-tuition{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
+  .sc-tuition{}
+  /* 월 수강료 등록 + 이력 (2026-11) */
+  .sc-sublabel{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin:0 0 6px;}
+  .sc-fee{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--line);}
+  .sc-fee-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+  .sc-fee-row input{border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12.5px;
+    font-family:inherit;color:var(--ink);background:var(--card);min-width:0;}
+  .sc-fee-amount{width:130px;}
+  .sc-fee-from{flex:1;}
+  .sc-fee-hint{display:block;font-size:11.5px;color:var(--ink-soft);margin:2px 0 4px;}
+  .sc-fee-row span{font-size:11.5px;color:var(--ink-soft);}
+  .sc-fee-row .sc-fee-msg{color:var(--teal-dark);}
+  .sc-fee-add{flex-shrink:0;border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);
+    border-radius:7px;font-size:11.5px;font-weight:700;padding:5px 14px;cursor:pointer;}
+  .sc-fee-add:disabled{opacity:.5;cursor:default;}
+  .sc-fee-hist{list-style:none;margin:8px 0 0;padding:0;font-size:12px;}
+  .sc-fee-hist li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0;color:var(--ink);}
+  .sc-fee-hist li.cancelled{color:var(--ink-soft);text-decoration:line-through;}
+  .sc-fee-hist b{font-weight:700;}
+  .sc-fee-cur{display:inline-block;margin-left:6px;white-space:nowrap;font-size:10.5px;font-weight:700;color:var(--teal-dark);
+    background:var(--soft);border-radius:5px;padding:1px 6px;text-decoration:none;}
+  .sc-fee-cancel{flex-shrink:0;border:none;background:none;color:var(--ink-soft);text-decoration:underline;
+    font-size:11.5px;cursor:pointer;padding:0;}
   .sc-tuition-label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
   .sc-tuition-tabs{display:flex;gap:6px;margin-bottom:8px;}
   .sc-tuition-tab{flex:1;text-align:center;padding:6px 0;border-radius:7px;border:1px solid var(--line);
@@ -617,24 +654,39 @@
   .tuition-monthbar .lbl{font-size:16px;font-weight:800;color:var(--ink);min-width:110px;text-align:center;}
   .tuition-summary{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:18px;}
   .tuition-summary .unpaid-count{color:var(--red);font-weight:700;}
-  .tuition-list{display:flex;flex-direction:column;gap:10px;}
+  /* 2026-11: 출결·학생 관리와 같은 카드 구성 (카드 = --paper, 입력 칸 = --card, 기존 색상 그대로) */
+  .tuition-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-items:start;}
   .tuition-row{background:var(--paper);border:1px solid var(--line);border-radius:11px;
-    padding:14px 16px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1.4fr auto;gap:10px;align-items:center;}
-  @media (max-width: 900px){ .tuition-row{grid-template-columns:1fr 1fr;} }
+    padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
   .tuition-row .tr-name{font-size:14.5px;font-weight:700;color:var(--ink);}
   .tuition-row .tr-meta{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:2px;}
   .tuition-row input[type=number],.tuition-row input[type=date],.tuition-row input[type=text]{
     width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
     font-size:13px;font-family:inherit;color:var(--ink);background:var(--card);}
-  .tuition-status-toggle{padding:8px 4px;font-size:12.5px;font-weight:700;border-radius:8px;
+  .tuition-status-toggle{width:100%;padding:9px 4px;font-size:13px;font-weight:700;border-radius:8px;
     border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:center;white-space:nowrap;}
   .tuition-status-toggle.paid{border-color:var(--teal);color:var(--teal-dark);background:var(--soft);}
   .tuition-status-toggle.unpaid{border-color:var(--red);color:var(--red);background:#FBEAE7;}
   /* 결제 기준일/회차가 아직 안 지난 "결제 예정" — 미납처럼 보이지 않도록 경고색 대신 틸 톤 유지 */
   .tuition-status-toggle.upcoming{border-color:var(--teal);color:var(--teal-dark);background:var(--card);
     border-style:dashed;}
-  .tuition-row-save{flex-shrink:0;padding:8px 14px;font-size:12.5px;font-weight:700;
-    border-radius:8px;border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);cursor:pointer;}
+  .tr-fields{display:grid;grid-template-columns:44px 1fr;gap:6px 8px;align-items:center;}
+  .tr-lbl{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
+  .tr-field{display:flex;align-items:center;gap:6px;}
+  .tr-field input{flex:1;min-width:0;}
+  .tr-tag{flex-shrink:0;font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 6px;white-space:nowrap;
+    background:var(--teal);color:#fff;border:1px solid var(--teal);}
+  .tr-tag.edited{background:var(--card);color:var(--teal-dark);}
+  .tr-tag:empty{display:none;}
+  .tr-sum{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:700;color:var(--ink-soft);}
+  .tr-sum b{font-size:16px;color:var(--teal-dark);}
+  .tr-paid{display:flex;align-items:center;gap:8px;}
+  .tr-paid input{flex:1;min-width:0;}
+  .tr-memo-link{align-self:flex-start;border:none;background:none;padding:0;font-size:11.5px;color:var(--ink-soft);
+    text-decoration:underline;cursor:pointer;font-family:inherit;}
+  .tr-state{font-size:11px;color:var(--teal-dark);min-height:14px;}
+  .tuition-note{font-size:12px;color:var(--ink-soft);text-align:center;margin:-8px 0 14px;}
+  .tuition-note:empty{display:none;}
   .tuition-list-empty{color:var(--ink-soft);font-size:14.5px;text-align:center;padding:60px 0;}
   .tuition-summary .upcoming-count{color:var(--teal-dark);font-weight:700;}
   /* ===================== 모바일 상단바 + 오버레이 메뉴 (기본은 숨김) ===================== */
@@ -3759,6 +3811,49 @@ function fmtMDStr(dateStr){
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(dateStr||'');
   return m ? `${parseInt(m[1],10)}/${parseInt(m[2],10)}` : (dateStr||'');
 }
+// ============ 월 수강료 이력 (2026-11) ============
+// 학생별 "월 수강료 + 적용 시작일"을 "수강료이력" 시트에 추가만 하며 쌓는다(과거 줄은 지우지 않고, 취소도 표시만 남김).
+// 어떤 달의 수강료 = 그 달 말일 이하의 적용 시작일 중 가장 늦은(같으면 나중에 기록된) 취소되지 않은 줄.
+// 이미 "수강료" 시트에 저장된 달은 이 이력과 상관없이 저장된 금액 그대로 보여주고, 기록이 없는 달만 이 값으로 미리 채운다.
+let tuitionFeeMap = {};
+let tuitionFeeLoaded = false;
+async function loadTuitionFees(force){
+  if(tuitionFeeLoaded && !force) return tuitionFeeMap;
+  try{
+    const m = await apiGet({action:'tuitionFees'});
+    // 서버가 아직 새 버전으로 재배포되지 않았으면 {error:'unknown action'}이 오므로 "못 불러옴"으로 처리한다
+    if(m && typeof m === 'object' && !Array.isArray(m) && !m.error){
+      tuitionFeeMap = m;
+      tuitionFeeLoaded = true;
+    }else{
+      tuitionFeeLoaded = false;
+    }
+  }catch(e){
+    tuitionFeeLoaded = false;
+  }
+  return tuitionFeeMap;
+}
+function tuitionFeeEntryFor(name, yearMonth){
+  let best = null;
+  (tuitionFeeMap[name] || []).forEach(r=>{
+    if(r.cancelled || !r.effectiveFrom) return;
+    if(r.effectiveFrom.slice(0,7) > yearMonth) return; // 그 달 말일 이후에 시작하는 줄은 아직 해당 없음
+    if(!best || r.effectiveFrom > best.effectiveFrom
+        || (r.effectiveFrom === best.effectiveFrom && String(r.recordedAt) >= String(best.recordedAt))){
+      best = r;
+    }
+  });
+  return best;
+}
+function tuitionFeeFor(name, yearMonth){
+  const e = tuitionFeeEntryFor(name, yearMonth);
+  return e ? (Number(e.amount) || 0) : 0;
+}
+function fmtWon(n){ return (Number(n) || 0).toLocaleString('ko-KR'); }
+function nowStampStr(){
+  const d = new Date();
+  return localTodayStr()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
 // 보강 예정일 표시용 (2026-10-28): 시트가 날짜처럼 보이는 글자를 Date로 바꿔 '2026-10-27T15:00:00.000Z'로 내려와도
 // 한국시간 기준 '10/28 (수)'로 보여준다. 'YYYY-MM-DD'도 같은 형식으로, 그 외 직접 입력한 글자('8/25 화')는 그대로 둔다.
 function fmtMakeupDate(v){
@@ -3851,10 +3946,36 @@ function slotsByStudent(){
   });
   return map;
 }
+// 학생 카드의 수강료 한 줄 요약: "월 320,000원 · 매월 28일" (금액을 아직 등록하지 않았으면 "금액 미등록")
+function scTuitionSummaryHtml(name, info){
+  const feeNow = tuitionFeeFor(name, toYearMonth(new Date()));
+  const isSess = !!(info && info.billingType === '회차');
+  const bill = isSess
+    ? `${escapeHtml(String((info && info.sessionCount) || '?'))}회 결제`
+    : `매월 ${escapeHtml(String((info && info.dueDay) || 1))}일`;
+  return (feeNow ? `<b>월 ${fmtWon(feeNow)}원</b>` : `<span class="none">금액 미등록</span>`) + ' · ' + bill;
+}
+// 월 수강료 이력 목록 (최신 적용 시작일이 위). 취소한 줄은 지우지 않고 취소선으로 남긴다.
+function scFeeHistHtml(name){
+  const rows = (tuitionFeeMap[name] || []).filter(r=>r.effectiveFrom).slice().sort((a,b)=>
+    b.effectiveFrom.localeCompare(a.effectiveFrom)
+    || String(b.recordedAt).localeCompare(String(a.recordedAt))
+    || ((b.rowNum || 0) - (a.rowNum || 0)));
+  if(!rows.length) return '';
+  const nowYm = toYearMonth(new Date());
+  const cur = tuitionFeeEntryFor(name, nowYm);
+  return `<ul class="sc-fee-hist">${rows.map(r=>{
+    const d = escapeHtml(r.effectiveFrom);
+    const dl = r.effectiveFrom.slice(0,4) === nowYm.slice(0,4) ? escapeHtml(fmtMDStr(r.effectiveFrom)) : d; // 올해는 "11/6", 다른 해는 전체 날짜
+    const isCur = !r.cancelled && cur === r;
+    const future = !r.cancelled && r.effectiveFrom.slice(0,7) > nowYm;
+    return `<li class="${r.cancelled ? 'cancelled' : ''}"><span>${dl}부터 <b>${fmtWon(r.amount)}원</b>${isCur ? '<span class="sc-fee-cur">현재</span>' : ''}${future ? '<span class="sc-fee-cur">예정</span>' : ''}${r.cancelled ? ' (취소됨)' : ''}</span>${r.cancelled ? '' : `<button type="button" class="sc-fee-cancel" data-student-name="${escapeHtml(name)}" data-from="${d}" data-amount="${r.amount}">취소</button>`}</li>`;
+  }).join('')}</ul>`;
+}
 async function renderStudentGrid(){
   const el = document.getElementById('studentGrid');
   if(!el) return;
-  await loadStudentInfoList();
+  await Promise.all([loadStudentInfoList(), loadTuitionFees()]);
   const bySlot = slotsByStudent();
   const names = Object.keys(bySlot).sort((a,b)=>a.localeCompare(b,'ko'));
   if(!names.length){
@@ -3863,6 +3984,11 @@ async function renderStudentGrid(){
   }
   // 다른 학생 카드의 저장·삭제 등으로 화면이 다시 그려져도, 아직 저장하지 않고 적어 둔 값(수강료 설정·교재 메모)이 사라지지 않게 보존한다
   const scDrafts = [];
+  // 펼쳐 둔 수강료/교재 섹션도 화면이 다시 그려진 뒤 그대로 펼쳐 둔다
+  const openSecs = [];
+  el.querySelectorAll('.student-card').forEach(card=>{
+    card.querySelectorAll('details.sc-sec[open]').forEach(d=> openSecs.push({ card: card.getAttribute('data-name'), sec: d.getAttribute('data-sec') }));
+  });
   el.querySelectorAll('.student-card').forEach(card=>{
     const cname = card.getAttribute('data-name');
     card.querySelectorAll('input:not([type=file])').forEach(inp=>{
@@ -3907,8 +4033,31 @@ async function renderStudentGrid(){
       <div class="sc-slots">${badges}</div>
       ${pending ? `<div class="sc-status-pending"><span>${escapeHtml(fmtMDStr(pending.effectiveFrom))}부터 ${escapeHtml(pending.status)} 예정</span><button type="button" class="sc-status-cancel" data-student-name="${escapeHtml(stu.name)}" data-from="${escapeHtml(pending.effectiveFrom)}">예정 취소</button></div>` : ''}
       ${histHtml}
+      <details class="sc-sec" data-sec="tuition">
+       <summary>
+        <span class="sc-sec-label">💳 수강료</span>
+        <span class="sc-sec-sum">${scTuitionSummaryHtml(stu.name, tuitionInfo)}</span>
+        <span class="sc-sec-btn"><span class="o">설정</span><span class="c">닫기</span></span>
+       </summary>
+       <div class="sc-sec-body">
       <div class="sc-tuition" data-student-name="${escapeHtml(stu.name)}">
-        <label class="sc-tuition-label">💳 수강료 결제 방식</label>
+        <div class="sc-fee" data-student-name="${escapeHtml(stu.name)}">
+          <span class="sc-sublabel">월 수강료 (한 번만 등록)</span>
+          <div class="sc-fee-row">
+            <input type="number" class="sc-fee-amount" min="0" step="10000" placeholder="금액">
+            <span>원</span>
+          </div>
+          <span class="sc-fee-hint">적용 시작일 · 비우면 오늘부터</span>
+          <div class="sc-fee-row">
+            <input type="date" class="sc-fee-from">
+          </div>
+          <div class="sc-fee-row">
+            <button type="button" class="sc-fee-add" data-student-name="${escapeHtml(stu.name)}">추가</button>
+            <span class="sc-fee-msg"></span>
+          </div>
+          ${scFeeHistHtml(stu.name)}
+        </div>
+        <span class="sc-sublabel">결제 방식</span>
         <div class="sc-tuition-tabs">
           <div class="sc-tuition-tab sc-billing-monthly${isSessionBilling?'':' on'}" data-billing="월정액">월정액</div>
           <div class="sc-tuition-tab sc-billing-session${isSessionBilling?' on':''}" data-billing="회차">회차 결제</div>
@@ -3931,8 +4080,16 @@ async function renderStudentGrid(){
         </div>
         <div class="sc-tuition-status"></div>
       </div>
+       </div>
+      </details>
+      <details class="sc-sec" data-sec="textbook">
+       <summary>
+        <span class="sc-sec-label">📘 준비 교재</span>
+        <span class="sc-sec-sum">${hasImage ? escapeHtml(textbook.fileName) : ((textbook && textbook.memo) ? escapeHtml(textbook.memo) : '<span class="none">없음</span>')}</span>
+        <span class="sc-sec-btn"><span class="o">관리</span><span class="c">닫기</span></span>
+       </summary>
+       <div class="sc-sec-body">
       <div class="sc-textbook">
-        <label class="sc-textbook-label">📘 준비 교재</label>
         ${hasImage ? `
           <div class="sc-textbook-current">
             <span class="sc-textbook-filename">${escapeHtml(textbook.fileName)}</span>
@@ -3946,6 +4103,8 @@ async function renderStudentGrid(){
           <button class="sc-textbook-memo-save" data-student-name="${escapeHtml(stu.name)}">저장</button>
         </div>
       </div>
+       </div>
+      </details>
     </div>`;
   }).join('');
   el.querySelectorAll('.sc-status-toggle').forEach(btn=>{
@@ -4012,6 +4171,8 @@ async function renderStudentGrid(){
       try{
         await apiPost({ action:'setTuitionSettings', name, billingType, dueDay, sessionCount, sessionBaselineDate, sessionBaselineCount });
         patchStudentInfo(name, { billingType, dueDay, sessionCount, sessionBaselineDate, sessionBaselineCount });
+        const sumEl = btn.closest('.sc-sec').querySelector('.sc-sec-sum');
+        if(sumEl) sumEl.innerHTML = scTuitionSummaryHtml(name, studentTuitionSettingsOf(name)); // 접힌 한 줄 요약도 바로 갱신
         statusEl.textContent = '저장됨';
         btn.textContent = original;
         btn.disabled = false;
@@ -4019,6 +4180,60 @@ async function renderStudentGrid(){
       }catch(err){
         showSaveFailToast('수강료 설정 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
         btn.textContent = original;
+        btn.disabled = false;
+      }
+    };
+  });
+  // 월 수강료 추가: "시작일을 비우면 오늘부터, 날짜를 정하면 그 날짜부터" — 이력에 줄을 추가만 한다 (과거 줄은 그대로)
+  el.querySelectorAll('.sc-fee-add').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const name = btn.getAttribute('data-student-name');
+      const box = btn.closest('.sc-fee');
+      const amtInput = box.querySelector('.sc-fee-amount');
+      const fromInput = box.querySelector('.sc-fee-from');
+      const msgEl = box.querySelector('.sc-fee-msg');
+      const amount = Math.round(Number(amtInput.value));
+      if(!(amount > 0)){
+        msgEl.textContent = '금액을 입력해 주세요.';
+        amtInput.focus();
+        return;
+      }
+      const from = fromInput.value || localTodayStr();
+      btn.disabled = true;
+      msgEl.textContent = '';
+      try{
+        await apiPost({ action:'addTuitionFee', name, amount, effectiveFrom: from });
+        // 서버 응답을 기다리지 않고 화면용 캐시에 바로 반영 (저장 자체는 이미 서버로 전송됨)
+        if(!tuitionFeeMap[name]) tuitionFeeMap[name] = [];
+        tuitionFeeMap[name].push({ rowNum: 0, amount, effectiveFrom: from, recordedAt: nowStampStr(), cancelled: false });
+        amtInput.value = ''; // 다시 그릴 때 임시 입력값으로 되살아나지 않도록 비운다
+        fromInput.value = '';
+        await renderStudentGrid();
+      }catch(err){
+        showSaveFailToast('월 수강료 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+        btn.disabled = false;
+      }
+    };
+  });
+  // 월 수강료 이력 취소: 줄을 지우지 않고 '취소됨'으로 표시만 남긴다
+  el.querySelectorAll('.sc-fee-cancel').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const name = btn.getAttribute('data-student-name');
+      const from = btn.getAttribute('data-from');
+      const amount = btn.getAttribute('data-amount');
+      if(!confirm(`${name} 학생의 ${from}부터 ${fmtWon(amount)}원 이력을 취소할까요?\n기록은 지워지지 않고 '취소됨'으로 남아요.`)) return;
+      btn.disabled = true;
+      try{
+        await apiPost({ action:'cancelTuitionFee', name, effectiveFrom: from });
+        const list = tuitionFeeMap[name] || [];
+        for(let i = list.length - 1; i >= 0; i--){
+          if(list[i].effectiveFrom === from && !list[i].cancelled){ list[i].cancelled = true; break; }
+        }
+        await renderStudentGrid();
+      }catch(err){
+        showSaveFailToast('이력 취소에 실패했어요. 인터넷 연결을 확인해주세요.');
         btn.disabled = false;
       }
     };
@@ -4092,6 +4307,11 @@ async function renderStudentGrid(){
   // 보존해 둔 입력값 되살리기
   const cardByName = {};
   el.querySelectorAll('.student-card').forEach(c=>{ cardByName[c.getAttribute('data-name')] = c; });
+  openSecs.forEach(o=>{
+    const card = cardByName[o.card];
+    const d = card && card.querySelector(`details.sc-sec[data-sec="${o.sec}"]`);
+    if(d) d.open = true;
+  });
   scDrafts.forEach(dr=>{
     const card = cardByName[dr.card];
     if(!card) return;
@@ -4675,6 +4895,7 @@ async function renderTuitionPage(){
         <button id="tuitionNextMonth">›</button>
       </div>
       <div class="tuition-summary" id="tuitionSummaryLine"></div>
+      <div class="tuition-note" id="tuitionNote"></div>
       <div class="tuition-list" id="tuitionList"><div class="reason-feed-empty">불러오는 중...</div></div>
     `;
     document.getElementById('tuitionPrevMonth').onclick = ()=>{
@@ -4702,8 +4923,11 @@ async function renderTuitionList(){
     const [, tuitionRows, statusRows] = await Promise.all([
       loadStudentInfoList(),
       apiGet({action:'tuition', yearMonth}),
-      isCurrentMonth ? loadTuitionStatusToday() : Promise.resolve([])
+      isCurrentMonth ? loadTuitionStatusToday() : Promise.resolve([]),
+      loadTuitionFees() // 2026-11: 월 수강료 이력 (정규 수강료 자동 채움)
     ]);
+    const noteEl = document.getElementById('tuitionNote');
+    if(noteEl) noteEl.textContent = tuitionFeeLoaded ? '' : '월 수강료를 불러오지 못해 금액 자동 채움이 꺼져 있어요.';
     // 학생 정보를 못 받았으면 "재원 중인 학생이 없어요"로 보이지 않도록 아래 불러오기 실패 안내로 보낸다
     if(!studentInfoListLoaded) throw new Error('studentInfo');
     const statusMissing = isCurrentMonth && statusRows === null; // 이번 달 "오늘 기준" 상태를 못 받음
@@ -4755,17 +4979,41 @@ async function renderTuitionList(){
         else if(computed.status === 'overdue'){ dueNote = computed.label !== '미납' ? computed.label : ''; }
       }
       const meta = escapeHtml([s.school, s.grade].filter(Boolean).join(' · '));
-      return `<div class="tuition-row" data-name="${escapeHtml(s.name)}">
+      // 2026-11: 저장된 "금액"은 정규 수강료 + 특강비 합계. 저장된 달은 그 값 그대로, 기록이 없는 달만 등록된 월 수강료로 미리 채운다.
+      const fee = tuitionFeeFor(s.name, yearMonth);
+      const specialNum = Number(rec.specialFee) || 0;
+      const savedAmount = (rec.amount !== undefined && rec.amount !== '' && rec.amount !== null) ? Number(rec.amount) : NaN;
+      let regular = '';
+      if(!isNaN(savedAmount)) regular = Math.max(0, savedAmount - specialNum);
+      else if(fee) regular = fee;
+      const special = specialNum || '';
+      const total = (Number(regular) || 0) + (Number(special) || 0);
+      const regTag = (regular !== '' && fee > 0) ? (Number(regular) === fee ? '자동' : '수정됨') : '';
+      const hasMemo = !!(rec.memo && String(rec.memo).trim());
+      return `<div class="tuition-row" data-name="${escapeHtml(s.name)}" data-fee="${fee}">
         <div>
           <div class="tr-name">${escapeHtml(s.name)}</div>
           ${meta ? `<div class="tr-meta">${meta}</div>` : ''}
           ${dueNote ? `<div class="tr-meta">${escapeHtml(dueNote)}</div>` : ''}
         </div>
-        <input type="number" class="tuition-amount" placeholder="금액" value="${rec.amount || ''}">
+        <div class="tr-fields">
+          <span class="tr-lbl">정규</span>
+          <div class="tr-field">
+            <input type="number" class="tuition-regular" placeholder="금액" min="0" value="${regular}">
+            <span class="tr-tag tr-tag-reg${regTag === '수정됨' ? ' edited' : ''}">${regTag}</span>
+          </div>
+          <span class="tr-lbl">특강비</span>
+          <div class="tr-field">
+            <input type="number" class="tuition-special" placeholder="방학 때만" min="0" value="${special}">
+            <span class="tr-tag tr-tag-special edited">${special ? '특강' : ''}</span>
+          </div>
+        </div>
+        <div class="tr-sum"><span>합계</span><b class="tuition-total">${total ? fmtWon(total) + '원' : '-'}</b></div>
         <button type="button" class="tuition-status-toggle ${btnClass}" data-status="${rawStatus}">${btnLabel}</button>
-        <input type="date" class="tuition-paiddate" value="${rec.paidDate || ''}">
-        <input type="text" class="tuition-memo" placeholder="메모 (선택)" value="${escapeHtml(rec.memo||'')}">
-        <button type="button" class="tuition-row-save">저장</button>
+        <div class="tr-paid"><span class="tr-lbl">납부일</span><input type="date" class="tuition-paiddate" value="${rec.paidDate || ''}"></div>
+        <input type="text" class="tuition-memo" placeholder="메모 (선택)" value="${escapeHtml(rec.memo||'')}" style="${hasMemo ? '' : 'display:none;'}">
+        ${hasMemo ? '' : '<button type="button" class="tr-memo-link">+ 메모</button>'}
+        <div class="tr-state"></div>
       </div>`;
     }).join('');
   }catch(e){
@@ -4773,7 +5021,77 @@ async function renderTuitionList(){
     if(summaryEl) summaryEl.textContent = '';
     return;
   }
-  listEl.querySelectorAll('.tuition-status-toggle').forEach(btn=>{
+  // 2026-11: "저장" 버튼 없이 자동 저장 — 완납/미납을 누르거나(완납이면 납부일도 오늘로 같이), 금액·특강비·납부일·메모 칸을 벗어나면 그 학생 카드가 바로 저장된다.
+  function setRowState(row, text, isErr){
+    const el = row.querySelector('.tr-state');
+    if(!el) return;
+    el.textContent = text;
+    el.style.color = isErr ? 'var(--red)' : '';
+  }
+  // 합계와 "자동/수정됨/특강" 표시를 입력값에 맞춰 바로 갱신한다
+  function refreshRow(row){
+    const fee = Number(row.getAttribute('data-fee')) || 0;
+    const reg = row.querySelector('.tuition-regular').value.trim();
+    const spc = row.querySelector('.tuition-special').value.trim();
+    const total = (Number(reg) || 0) + (Number(spc) || 0);
+    row.querySelector('.tuition-total').textContent = total ? fmtWon(total) + '원' : '-';
+    const regTag = row.querySelector('.tr-tag-reg');
+    if(reg !== '' && fee > 0){
+      const same = Number(reg) === fee;
+      regTag.textContent = same ? '자동' : '수정됨';
+      regTag.classList.toggle('edited', !same);
+    }else{
+      regTag.textContent = '';
+    }
+    row.querySelector('.tr-tag-special').textContent = (spc !== '' && Number(spc) > 0) ? '특강' : '';
+  }
+  // 한 학생의 저장 요청은 순서대로 보낸다(연달아 눌러도 옛 값이 새 값을 덮어쓰지 않도록, 저장 시점의 화면 값을 읽고 사이에 잠깐 간격을 둔다)
+  function queueSave(row){
+    row._q = (row._q || Promise.resolve())
+      .then(()=> saveRow(row))
+      .then(()=> new Promise(r=>setTimeout(r, 600)));
+  }
+  async function saveRow(row){
+    const name = row.getAttribute('data-name');
+    const reg = Number(row.querySelector('.tuition-regular').value.trim()) || 0;
+    const spc = Number(row.querySelector('.tuition-special').value.trim()) || 0;
+    const total = reg + spc;
+    const status = row.querySelector('.tuition-status-toggle').getAttribute('data-status');
+    const paidDate = row.querySelector('.tuition-paiddate').value;
+    const memo = row.querySelector('.tuition-memo').value.trim();
+    setRowState(row, '저장 중...');
+    try{
+      await apiPost({ action:'saveTuition', record:{
+        name, yearMonth,
+        amount: total ? String(total) : '',      // 금액 = 정규 수강료 + 특강비 (학부모 리포트는 이 합계를 그대로 보여준다)
+        specialFee: spc ? String(spc) : '',
+        status, paidDate, memo
+      } });
+      setRowState(row, '저장됨 ✓');
+      clearTimeout(row._stateTimer);
+      row._stateTimer = setTimeout(()=> setRowState(row, ''), 2000);
+    }catch(e){
+      showSaveFailToast('수강료 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
+      setRowState(row, '저장 실패 · 다시 시도해 주세요', true);
+    }
+  }
+  listEl.querySelectorAll('.tuition-row').forEach(row=>{
+    row.querySelectorAll('.tuition-regular,.tuition-special').forEach(inp=>{
+      inp.addEventListener('input', ()=> refreshRow(row));
+      inp.addEventListener('change', ()=> queueSave(row));
+    });
+    row.querySelector('.tuition-paiddate').addEventListener('change', ()=> queueSave(row));
+    const memoInput = row.querySelector('.tuition-memo');
+    memoInput.addEventListener('change', ()=> queueSave(row));
+    const memoLink = row.querySelector('.tr-memo-link');
+    if(memoLink){
+      memoLink.onclick = ()=>{
+        memoInput.style.display = '';
+        memoLink.style.display = 'none';
+        memoInput.focus();
+      };
+    }
+    const btn = row.querySelector('.tuition-status-toggle');
     btn.onclick = ()=>{
       const next = btn.getAttribute('data-status') === '완납' ? '미납' : '완납';
       btn.setAttribute('data-status', next);
@@ -4781,32 +5099,14 @@ async function renderTuitionList(){
       btn.classList.remove('upcoming'); // 관리자가 직접 클릭해 바꾼 뒤부터는 결제예정 표시 대신 완납/미납만 보여준다.
       btn.classList.toggle('paid', next==='완납');
       btn.classList.toggle('unpaid', next==='미납');
-      const row = btn.closest('.tuition-row');
       const dateInput = row.querySelector('.tuition-paiddate');
-      if(next === '완납' && !dateInput.value) dateInput.value = toDateStr(new Date());
-    };
-  });
-  listEl.querySelectorAll('.tuition-row-save').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const row = btn.closest('.tuition-row');
-      const name = row.getAttribute('data-name');
-      const amount = row.querySelector('.tuition-amount').value.trim();
-      const status = row.querySelector('.tuition-status-toggle').getAttribute('data-status');
-      const paidDate = row.querySelector('.tuition-paiddate').value;
-      const memo = row.querySelector('.tuition-memo').value.trim();
-      btn.disabled = true;
-      const original = btn.textContent;
-      btn.textContent = '저장 중...';
-      try{
-        await apiPost({ action:'saveTuition', record:{ name, yearMonth, amount, status, paidDate, memo } });
-        await new Promise(r=>setTimeout(r, 800));
-        btn.textContent = '저장됨';
-        setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1200);
-      }catch(e){
-        showSaveFailToast('수강료 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
-        btn.textContent = original;
-        btn.disabled = false;
+      // 완납이면 납부일이 비어 있을 때 오늘 날짜를 넣고, 미납으로 되돌리면 납부일도 비운다
+      if(next === '완납'){
+        if(!dateInput.value) dateInput.value = toDateStr(new Date());
+      }else{
+        dateInput.value = '';
       }
+      queueSave(row);
     };
   });
 }
