@@ -92,6 +92,10 @@ function doGet(e) {
     // 2026-11: 학생 한 명의 "출석한 날" 목록 (출결 기록 + 직접 추가한 기록, 최근 날짜순)
     return jsonResponse(getStudentAttendanceList_(e.parameter.name));
   }
+  if (action === 'sessionSeq') {
+    // 2026-11: 회차제 학생별 "날짜별 누적 회차" — 출결 관리에서 보고 있는 날짜 기준의 N/8회를 보여주는 데 쓴다
+    return jsonResponse(getSessionSeqMap_());
+  }
   if (action === 'tuitionStatusToday') {
     // 2026-09: 학생별 결제기준일(월정액)/회차(회차제)를 반영한 "오늘 기준" 수강료 상태.
     // 수강료 탭(이번 달) 및 대시보드 미납 카드가 이 값으로 완납/결제예정/미납 3단계를 표시한다.
@@ -136,7 +140,7 @@ function doPost(e) {
   if (action === 'saveRecord') {
     saveRecord(body.record);
     // 2026-11: 출석을 바꾸면 회차제 학생의 "N/8회" 숫자가 달라지므로 수강료 상태 캐시를 바로 비운다
-    adminCacheClear_(['admin_tuitionStatusToday']);
+    adminCacheClear_(['admin_tuitionStatusToday', 'admin_sessionSeq']);
     return jsonResponse({ status: 'ok' });
   }
   if (action === 'saveHomework') {
@@ -496,7 +500,7 @@ function ensureStudentInfoRows_(rawNames) {
   } finally {
     lock.releaseLock();
   }
-  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday']);
+  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_sessionSeq']);
   return added;
 }
 
@@ -992,7 +996,7 @@ function saveTuition(rec) {
         ymCell.setValue(rec.yearMonth);
         sheet.getRange(rowNum, 3, 1, 4).setValues([[rec.amount || '', status, rec.paidDate || '', rec.memo || '']]);
         sheet.getRange(rowNum, 7).setValue(rec.specialFee || '');
-        adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday']);
+        adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday', 'admin_sessionSeq']);
         return;
       }
     }
@@ -1004,7 +1008,7 @@ function saveTuition(rec) {
   } finally {
     lock.releaseLock();
   }
-  adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday']);
+  adminCacheClear_(['admin_tuition_' + rec.yearMonth, 'admin_tuitionStatusToday', 'admin_sessionSeq']);
 }
 
 // ---------- 월 수강료 이력 (2026-11) ----------
@@ -1272,7 +1276,7 @@ function addManualAttendance(name, date, status, memo) {
   } finally {
     lock.releaseLock();
   }
-  adminCacheClear_(['admin_tuitionStatusToday']);
+  adminCacheClear_(['admin_tuitionStatusToday', 'admin_sessionSeq']);
 }
 
 // 같은 날짜 줄이 여럿이면 가장 나중 줄 하나만 취소한다.
@@ -1297,7 +1301,43 @@ function cancelManualAttendance(name, date) {
   } finally {
     lock.releaseLock();
   }
-  adminCacheClear_(['admin_tuitionStatusToday']);
+  adminCacheClear_(['admin_tuitionStatusToday', 'admin_sessionSeq']);
+}
+
+// { 이름: { target, base, dates: [[날짜, 그날까지의 누적 회차], ...] (날짜 오름차순) } } — 회차제 재원생만. 20초 캐시.
+// 누적 회차 = 현재 회차 기준(회차기준일 또는 마지막 결제일) 이후 출석을 날짜순으로 센 값 + 기준 시점 회차.
+function getSessionSeqMap_() {
+  const cacheKey = 'admin_sessionSeq';
+  const cached = reportCacheGet_(cacheKey);
+  if (cached) return cached;
+  const students = getStudentInfoList().filter(function (s) { return s.status === '재원' && s.billingType === '회차'; });
+  const tz = Session.getScriptTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const historyByName = {};
+  getTuitionSheet_().getDataRange().getValues().forEach(function (row, i) {
+    if (i === 0) return;
+    const nm = String(row[0] || '').trim();
+    if (!nm) return;
+    if (!historyByName[nm]) historyByName[nm] = [];
+    historyByName[nm].push({
+      yearMonth: normalizeYearMonth_(row[1]),
+      status: (row[3] || '').trim() === '완납' ? '완납' : '미납',
+      paidDate: row[4] ? normalizeDate_(row[4]) : ''
+    });
+  });
+  const out = {};
+  students.forEach(function (s) {
+    const sp = sessionProgress_(s, historyByName[s.name] || [], todayStr);
+    if (!sp.n) return;
+    const dates = sp.attended.map(function (d) { return d.date; }).sort();
+    out[s.name] = {
+      target: sp.n,
+      base: sp.baseCount,
+      dates: dates.map(function (d, idx) { return [d, sp.baseCount + idx + 1]; })
+    };
+  });
+  reportCacheSet_(cacheKey, out, 20);
+  return out;
 }
 
 // 출석한 날 목록: 출결 기록(출석·지각) + 직접 추가한 기록. 같은 날짜가 둘 다 있으면 출결 기록만 보여준다. 최근 날짜 먼저.
@@ -1318,6 +1358,30 @@ function getStudentAttendanceList_(name) {
     list.push({ date: m.date, status: m.status, source: 'manual', memo: m.memo, cancelled: m.cancelled });
   });
   list.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  // 회차제 학생이면 날짜마다 "그날의 회차(예: 5/8회)"를 붙인다. 현재 회차 기준(기준일 또는 마지막 결제일) 이후 출석만 순서대로 센다.
+  const stu = getStudentInfoList().filter(function (x) { return x.name === nm && x.billingType === '회차'; })[0];
+  if (stu) {
+    const tz = Session.getScriptTimeZone();
+    const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    const history = [];
+    getTuitionSheet_().getDataRange().getValues().forEach(function (row, i) {
+      if (i === 0 || String(row[0] || '').trim() !== nm) return;
+      history.push({
+        yearMonth: normalizeYearMonth_(row[1]),
+        status: (row[3] || '').trim() === '완납' ? '완납' : '미납',
+        paidDate: row[4] ? normalizeDate_(row[4]) : ''
+      });
+    });
+    const sp = sessionProgress_(stu, history, todayStr);
+    if (sp.n) {
+      const dates = sp.attended.map(function (d) { return d.date; }).sort();
+      const seqByDate = {};
+      dates.forEach(function (d, idx) { seqByDate[d] = sp.baseCount + idx + 1; });
+      list.forEach(function (it) {
+        if (!it.cancelled && seqByDate[it.date]) { it.seq = seqByDate[it.date]; it.target = sp.n; }
+      });
+    }
+  }
   return list;
 }
 
@@ -1650,7 +1714,7 @@ function setTuitionSettings(name, billingType, dueDay, sessionCount, sessionBase
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === name) {
       sheet.getRange(i + 1, 10, 1, 5).setValues([[normalizedType, dueDay || '', sessionCount || '', sessionBaselineDate || '', sessionBaselineCount || '']]);
-      adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday']);
+      adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_sessionSeq']);
       return;
     }
   }
@@ -1766,7 +1830,7 @@ function setStudentStatus(name, status, effectiveFrom) {
   } finally {
     lock.releaseLock();
   }
-  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_studentStatusHistory']);
+  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_sessionSeq', 'admin_studentStatusHistory']);
 }
 
 // 아직 적용 전인(오늘보다 뒤 날짜) 예정 변경을 취소한다. 줄을 지우지 않고 '취소'와 취소일시만 표시한다.
@@ -1791,7 +1855,7 @@ function cancelStudentStatusChange(name, effectiveFrom) {
   } finally {
     lock.releaseLock();
   }
-  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_studentStatusHistory']);
+  adminCacheClear_(['admin_studentInfoList', 'admin_tuitionStatusToday', 'admin_sessionSeq', 'admin_studentStatusHistory']);
 }
 
 // 학생별 준비 교재 이미지를 Drive에 저장하고, "학생정보" 시트의 F,G열(교재이미지ID/명)에

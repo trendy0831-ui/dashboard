@@ -196,6 +196,7 @@
   .al-li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
   .al-li:last-child{border-bottom:none;}
   .al-li .al-sub{color:var(--ink-soft);font-size:12px;}
+  .al-li .al-sub b{color:var(--teal-dark);font-weight:800;}
   .al-li.cancelled{color:var(--ink-soft);text-decoration:line-through;}
   .al-tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;background:var(--soft);color:var(--teal-dark);white-space:nowrap;}
   .al-tag.manual{background:var(--card);border:1px dashed var(--teal);padding:1px 7px;}
@@ -2027,33 +2028,56 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
 }
 // ============ 회차 결제 학생의 이번 회차 진행 숫자 (2026-11) ============
 // 수강료 상태(tuitionStatusToday)에 들어 있는 sessionCount/sessionTarget을 출결 카드에 "3/8회"로 보여준다. 회차 결제 학생에게만 값이 있다.
-let sessionInfo = {}; // { 이름: { count, target, status } }
+let sessionInfo = {}; // { 이름: { count, target, status } } — 가장 최근(오늘 기준) 값
+let sessionSeq = {};  // { 이름: { target, base, dates: [[날짜, 그날까지의 누적 회차], ...] } } — 날짜별 값
 async function refreshSessionCounts(){
-  const rows = await loadTuitionStatusToday();
-  if(!Array.isArray(rows)) return; // 못 불러오면 지금 보이는 숫자를 그대로 둔다
-  const next = {};
-  rows.forEach(r=>{
-    if(r.sessionTarget) next[r.name] = { count: Number(r.sessionCount) || 0, target: Number(r.sessionTarget), status: r.status };
-  });
-  if(JSON.stringify(next) !== JSON.stringify(sessionInfo)){
-    sessionInfo = next;
-    renderCardView();
+  const [rows, seq] = await Promise.all([loadTuitionStatusToday(), apiGet({ action:'sessionSeq' }).catch(()=>null)]);
+  let changed = false;
+  if(Array.isArray(rows)){
+    const next = {};
+    rows.forEach(r=>{
+      if(r.sessionTarget) next[r.name] = { count: Number(r.sessionCount) || 0, target: Number(r.sessionTarget), status: r.status };
+    });
+    if(JSON.stringify(next) !== JSON.stringify(sessionInfo)){ sessionInfo = next; changed = true; }
   }
+  if(seq && typeof seq === 'object' && !Array.isArray(seq) && !seq.error){
+    if(JSON.stringify(seq) !== JSON.stringify(sessionSeq)){ sessionSeq = seq; changed = true; }
+  }
+  if(changed) renderCardView();
+}
+// 보고 있는 날짜(dateStr)까지의 누적 회차: 그 날짜 이전(포함)의 마지막 출석 기록의 회차. 출석이 하나도 없으면 기준 시점 회차.
+function sessionCountOn(name, dateStr){
+  const sq = sessionSeq[name];
+  if(!sq) return null;
+  let c = sq.base;
+  for(const [d, n] of sq.dates){ if(d <= dateStr) c = n; else break; }
+  return c;
 }
 // 출석 상태를 바꾸는 즉시 화면 숫자를 먼저 맞춘다 (출석·지각만 회차로 센다). 이후 refreshSessionCounts가 서버 값으로 바로잡는다.
-function bumpSessionCount(name, prevStatus, nextStatus){
-  const info = sessionInfo[name];
-  if(!info) return;
+function bumpSessionCount(name, prevStatus, nextStatus, dateStr){
   const counted = s => (s === 'present' || s === 'late');
   if(counted(prevStatus) === counted(nextStatus)) return;
-  info.count = Math.max(0, info.count + (counted(nextStatus) ? 1 : -1));
+  const info = sessionInfo[name];
+  if(info) info.count = Math.max(0, info.count + (counted(nextStatus) ? 1 : -1));
+  const sq = sessionSeq[name];
+  if(sq){
+    if(counted(nextStatus)) sq.dates.push([dateStr, 0]);
+    else { const i = sq.dates.findIndex(x=> x[0] === dateStr); if(i >= 0) sq.dates.splice(i, 1); }
+    sq.dates.sort((a, b)=> a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+    sq.dates.forEach((x, i)=>{ x[1] = sq.base + i + 1; });
+  }
 }
-function sessionChipHtml(name){
+function sessionChipHtml(name, dateStr){
   const si = sessionInfo[name];
   if(!si || !si.target) return '';
-  const full = si.count >= si.target;
-  const tail = full ? (si.status === 'overdue' ? ' · 미납' : ' · 결제 예정') : '';
-  return `<span class="sess-chip${full ? ' full' : ''}" title="이번 회차 출석 횟수">${si.count}/${si.target}회${tail}</span>`;
+  const on = dateStr ? sessionCountOn(name, dateStr) : null;
+  const count = (on === null) ? si.count : on;
+  const sq = sessionSeq[name];
+  const lastDate = sq && sq.dates.length ? sq.dates[sq.dates.length - 1][0] : '';
+  const isLatest = on === null || !dateStr || dateStr >= lastDate; // 가장 최근 출석일 이후를 보는 중일 때만 "결제 예정/미납"을 붙인다
+  const full = count >= si.target;
+  const tail = (full && isLatest) ? (si.status === 'overdue' ? ' · 미납' : ' · 결제 예정') : '';
+  return `<span class="sess-chip${full ? ' full' : ''}" title="이 날짜까지의 이번 회차 출석 횟수">${count}/${si.target}회${tail}</span>`;
 }
 // ============ 학생 출결 기록 창 (2026-11) ============
 let attLogName = '', attLogStatus = 'present', attLogBusy = false;
@@ -2084,7 +2108,7 @@ async function loadAttLog(){
   if(!Array.isArray(rows)){ box.innerHTML = '<div class="al-empty">불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>'; return; }
   if(!rows.length){ box.innerHTML = '<div class="al-empty">아직 출석 기록이 없어요.</div>'; return; }
   box.innerHTML = rows.map(r=>{
-    const sub = (r.status === 'late' ? '지각' : '출석') + (r.memo ? ' · ' + escapeHtml(r.memo) : '');
+    const sub = (r.seq ? '<b>' + r.seq + '/' + r.target + '회</b> · ' : '') + (r.status === 'late' ? '지각' : '출석') + (r.memo ? ' · ' + escapeHtml(r.memo) : '');
     if(r.source === 'manual'){
       return '<div class="al-li' + (r.cancelled ? ' cancelled' : '') + '"><span>' + attLogFmt(r.date) + '<span class="al-sub"> · ' + (r.cancelled ? '취소됨 · ' : '') + sub + '</span></span>'
         + (r.cancelled ? '<span class="al-sub">기록은 남아요</span>' : '<span style="display:flex;gap:6px;align-items:center"><span class="al-tag manual">직접 추가</span><button type="button" class="al-cancel" data-date="' + r.date + '">취소</button></span>') + '</div>';
@@ -2822,7 +2846,7 @@ function renderDayContent(){
       }
       html += `<div class="slot-card">
         <div class="slot-top">
-          <span><span class="slot-name js-att-open" data-att-name="${escapeHtml(stu.name)}" title="출결 기록 보기">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>${sessionChipHtml(stu.name)}
+          <span><span class="slot-name js-att-open" data-att-name="${escapeHtml(stu.name)}" title="출결 기록 보기">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>${sessionChipHtml(stu.name, dateStr)}
         </div>${timesLine}
         <div class="att-seg${attUnchecked?' unchecked':''}" role="group" aria-label="출결 상태">
           ${segBtn('present','출석')}${segBtn('late','지각')}${segBtn('absent','결석')}
@@ -2920,7 +2944,7 @@ function attachCardHandlers(){
       const prevStatus = rec.status;
       rec.status = (rec.status === target) ? "normal" : target;
       setRecLocal(dateStr, block, slot, rec);
-      bumpSessionCount(parseStudentEntry(rosterNameAt(dayNameForDate(dateStr), block, slot, dateStr)).name, prevStatus, rec.status); // 회차 결제 학생이면 숫자도 바로 맞춘다
+      bumpSessionCount(parseStudentEntry(rosterNameAt(dayNameForDate(dateStr), block, slot, dateStr)).name, prevStatus, rec.status, dateStr); // 회차 결제 학생이면 숫자도 바로 맞춘다
       renderCardView();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
