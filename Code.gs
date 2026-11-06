@@ -131,6 +131,8 @@ function doPost(e) {
   }
   if (action === 'saveRecord') {
     saveRecord(body.record);
+    // 2026-11: 출석을 바꾸면 회차제 학생의 "N/8회" 숫자가 달라지므로 수강료 상태 캐시를 바로 비운다
+    adminCacheClear_(['admin_tuitionStatusToday']);
     return jsonResponse({ status: 'ok' });
   }
   if (action === 'saveHomework') {
@@ -1209,6 +1211,40 @@ function findNextClassDate_(studentName, afterDateStr) {
   return null;
 }
 
+// 회차제 학생 한 명의 "이번 회차 진행 상황"을 계산한다 (2026-11: 출결 카드의 "3/8회" 표시와 수강료 상태가 같은 값을 쓰도록 분리).
+// 반환: { n: 결제 회차수(0이면 미설정), count: 이번 회차에서 지금까지 센 출석(출석+지각) 수, attended: 기준 이후 출석 목록, baseCount: 기준 시점 진행 회차 }
+function sessionProgress_(s, history, todayStr) {
+  const n = parseInt(s.sessionCount, 10) || 0;
+  if (!n) return { n: 0, count: 0, attended: [], baseCount: 0 };
+  const paidHistory = history.filter(function (h) { return h.status === '완납'; })
+    .sort(function (a, b) { return b.yearMonth.localeCompare(a.yearMonth); });
+  const lastPaidDateStr = paidHistory.length ? (paidHistory[0].paidDate || (paidHistory[0].yearMonth + '-01')) : '';
+  const baselineDateStr = s.sessionBaselineDate || '';
+  const baselineCount = parseInt(s.sessionBaselineCount, 10) || 0;
+
+  // 기준점 결정: 회차기준일(수동 보정)보다 "나중" 시점에 실제 완납 기록이 있으면 그 결제로 회차가
+  // 리셋된 것이므로 결제일을 기준으로 0회부터 다시 센다. 그렇지 않으면(완납 기록이 없거나, 완납 기록이
+  // 더 예전이면) 관리자가 입력해둔 회차기준일 + 그 시점 진행 회차를 출발점으로 삼는다.
+  // 이렇게 해야 "이 기능을 처음 켤 때 이미 회차 중간(예: 3회차)"인 경우에도 처음부터 다시 세는 오류가 없다.
+  let sinceDateStr, baseCount;
+  if (lastPaidDateStr && (!baselineDateStr || lastPaidDateStr > baselineDateStr)) {
+    sinceDateStr = lastPaidDateStr;
+    baseCount = 0;
+  } else if (baselineDateStr) {
+    sinceDateStr = baselineDateStr;
+    baseCount = baselineCount;
+  } else {
+    // 완납 기록도, 회차기준일 설정도 없는 경우 — 정확한 계산이 불가능하므로 안전하게 0회부터 센다
+    // (관리자가 회차 카드에서 회차기준일/기준 회차를 설정하는 것을 권장).
+    sinceDateStr = todayStr;
+    baseCount = 0;
+  }
+  const attended = getAttendedDatesForStudent_(s.name).filter(function (d) {
+    return d.date > sinceDateStr && (d.status === 'present' || d.status === 'late');
+  });
+  return { n: n, count: baseCount + attended.length, attended: attended, baseCount: baseCount };
+}
+
 // 재원 중인 모든 학생의 "오늘" 기준 수강료 상태를 3단계(완납/결제예정/미납)로 계산한다.
 // - 월정액 학생: 학생정보의 결제기준일(없으면 1일)을 넘겼는데 이번 달 완납 기록이 없으면 "미납",
 //   아직 기준일 전이면 "결제예정(D-n)".
@@ -1244,44 +1280,24 @@ function getTuitionStatusToday() {
   const result = students.map(function (s) {
     const history = historyByName[s.name] || [];
     const currentRow = history.find(function (h) { return h.yearMonth === currentYm; });
+    // 2026-11: 회차제 학생은 "이번 회차 N/8회" 숫자를 출결 카드에 보여주므로, 어떤 상태(완납 포함)로 답하든 sessionCount/sessionTarget을 함께 내려준다.
+    const sp = (s.billingType === '회차') ? sessionProgress_(s, history, todayStr) : null;
     if (currentRow && currentRow.status === '완납') {
-      return { name: s.name, status: 'paid', label: '완납' };
+      const paidRes = { name: s.name, status: 'paid', label: '완납' };
+      if (sp && sp.n) { paidRes.sessionCount = sp.count; paidRes.sessionTarget = sp.n; }
+      return paidRes;
     }
 
-    if (s.billingType === '회차') {
-      const n = parseInt(s.sessionCount, 10) || 0;
+    if (sp) {
+      const n = sp.n;
       if (!n) {
         return { name: s.name, status: 'overdue', label: '미납 (회차 미설정)' };
       }
-      const paidHistory = history.filter(function (h) { return h.status === '완납'; })
-        .sort(function (a, b) { return b.yearMonth.localeCompare(a.yearMonth); });
-      const lastPaidDateStr = paidHistory.length ? (paidHistory[0].paidDate || (paidHistory[0].yearMonth + '-01')) : '';
-      const baselineDateStr = s.sessionBaselineDate || '';
-      const baselineCount = parseInt(s.sessionBaselineCount, 10) || 0;
-
-      // 기준점 결정: 회차기준일(수동 보정)보다 "나중" 시점에 실제 완납 기록이 있으면 그 결제로 회차가
-      // 리셋된 것이므로 결제일을 기준으로 0회부터 다시 센다. 그렇지 않으면(완납 기록이 없거나, 완납 기록이
-      // 더 예전이면) 관리자가 입력해둔 회차기준일 + 그 시점 진행 회차를 출발점으로 삼는다.
-      // 이렇게 해야 "이 기능을 처음 켤 때 이미 회차 중간(예: 3회차)"인 경우에도 처음부터 다시 세는 오류가 없다.
-      let sinceDateStr, baseCount;
-      if (lastPaidDateStr && (!baselineDateStr || lastPaidDateStr > baselineDateStr)) {
-        sinceDateStr = lastPaidDateStr;
-        baseCount = 0;
-      } else if (baselineDateStr) {
-        sinceDateStr = baselineDateStr;
-        baseCount = baselineCount;
-      } else {
-        // 완납 기록도, 회차기준일 설정도 없는 경우 — 정확한 계산이 불가능하므로 안전하게 0회부터 센다
-        // (관리자가 회차 카드에서 회차기준일/기준 회차를 설정하는 것을 권장).
-        sinceDateStr = todayStr;
-        baseCount = 0;
-      }
-      const attended = getAttendedDatesForStudent_(s.name).filter(function (d) {
-        return d.date > sinceDateStr && (d.status === 'present' || d.status === 'late');
-      });
-      const count = baseCount + attended.length;
+      const attended = sp.attended;
+      const baseCount = sp.baseCount;
+      const count = sp.count;
       if (count < n) {
-        return { name: s.name, status: 'paid', label: '완납' };
+        return { name: s.name, status: 'paid', label: '완납', sessionCount: count, sessionTarget: n };
       }
       // attended 배열은 baseCount 이후부터 새로 센 출석만 담고 있으므로, "전체 n회째"에 해당하는
       // 인덱스는 baseCount를 뺀 자리다.

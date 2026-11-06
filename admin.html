@@ -172,6 +172,10 @@
   .slot-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px;}
   .slot-name{font-size:15.5px;font-weight:700;}
   .slot-meta{font-size:12px;color:var(--ink-soft);font-weight:600;}
+  /* 회차 결제 학생의 이번 회차 진행 숫자 (예: 3/8회) — 8회를 채우면 점선 칩으로 바뀐다 */
+  .sess-chip{flex-shrink:0;font-size:12px;font-weight:700;color:var(--teal-dark);background:var(--soft);
+    border-radius:7px;padding:3px 9px;white-space:nowrap;}
+  .sess-chip.full{background:var(--card);border:1px dashed var(--teal);padding:2px 8px;}
   .icon-btn{background:none;border:none;padding:2px;cursor:pointer;color:var(--ink-soft);
     display:flex;align-items:center;justify-content:center;}
   .icon-btn svg{width:18px;height:18px;}
@@ -534,7 +538,13 @@
   .sc-tuition-row{display:flex;gap:6px;align-items:center;}
   .sc-tuition-row input{width:56px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;
     font-size:12.5px;text-align:center;font-family:inherit;color:var(--ink);}
-  .sc-tuition-row span{font-size:11.5px;color:var(--ink-soft);}
+  .sc-tuition-row span{font-size:11.5px;color:var(--ink-soft);white-space:nowrap;}
+  /* 회차 결제 설정: 날짜 칸이 잘리지 않게 남는 폭을 쓰고, 줄 사이 간격을 둔다 */
+  .sc-tuition-session-row .sc-tuition-row{margin-bottom:4px;}
+  .sc-tuition-session-row .sc-tuition-row{flex-wrap:wrap;}
+  .sc-tuition-row input.sc-tuition-baselinedate{width:auto;flex:1 1 140px;min-width:140px;}
+  .sc-tuition-row input.sc-tuition-baselinecount{width:48px;}
+  .sc-sess-sub{font-size:11.5px;font-weight:700;color:var(--teal-dark);margin:8px 0 4px;}
   .sc-tuition-row button{flex-shrink:0;border:1px solid var(--teal);background:var(--card);
     color:var(--teal-dark);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;}
   .sc-tuition-status{margin-top:6px;font-size:11px;color:var(--teal-dark);}
@@ -1958,6 +1968,37 @@ async function pushRecord(dateStr, dayName, block, slot, rec){
   }finally{
     pendingSaveCount--;
   }
+  refreshSessionCounts(); // 2026-11: 서버가 기록을 반영한 뒤 회차 숫자를 서버 값으로 맞춘다
+}
+// ============ 회차 결제 학생의 이번 회차 진행 숫자 (2026-11) ============
+// 수강료 상태(tuitionStatusToday)에 들어 있는 sessionCount/sessionTarget을 출결 카드에 "3/8회"로 보여준다. 회차 결제 학생에게만 값이 있다.
+let sessionInfo = {}; // { 이름: { count, target, status } }
+async function refreshSessionCounts(){
+  const rows = await loadTuitionStatusToday();
+  if(!Array.isArray(rows)) return; // 못 불러오면 지금 보이는 숫자를 그대로 둔다
+  const next = {};
+  rows.forEach(r=>{
+    if(r.sessionTarget) next[r.name] = { count: Number(r.sessionCount) || 0, target: Number(r.sessionTarget), status: r.status };
+  });
+  if(JSON.stringify(next) !== JSON.stringify(sessionInfo)){
+    sessionInfo = next;
+    renderCardView();
+  }
+}
+// 출석 상태를 바꾸는 즉시 화면 숫자를 먼저 맞춘다 (출석·지각만 회차로 센다). 이후 refreshSessionCounts가 서버 값으로 바로잡는다.
+function bumpSessionCount(name, prevStatus, nextStatus){
+  const info = sessionInfo[name];
+  if(!info) return;
+  const counted = s => (s === 'present' || s === 'late');
+  if(counted(prevStatus) === counted(nextStatus)) return;
+  info.count = Math.max(0, info.count + (counted(nextStatus) ? 1 : -1));
+}
+function sessionChipHtml(name){
+  const si = sessionInfo[name];
+  if(!si || !si.target) return '';
+  const full = si.count >= si.target;
+  const tail = full ? (si.status === 'overdue' ? ' · 미납' : ' · 결제 예정') : '';
+  return `<span class="sess-chip${full ? ' full' : ''}" title="이번 회차 출석 횟수">${si.count}/${si.target}회${tail}</span>`;
 }
 async function loadHomeworkForWeek(){
   try{
@@ -2652,7 +2693,7 @@ function renderDayContent(){
       }
       html += `<div class="slot-card">
         <div class="slot-top">
-          <span><span class="slot-name">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>
+          <span><span class="slot-name">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>${sessionChipHtml(stu.name)}
         </div>${timesLine}
         <div class="att-seg${attUnchecked?' unchecked':''}" role="group" aria-label="출결 상태">
           ${segBtn('present','출석')}${segBtn('late','지각')}${segBtn('absent','결석')}
@@ -2747,8 +2788,10 @@ function attachCardHandlers(){
       const slot = parseInt(slotStr);
       const rec = getRec(dateStr, block, slot);
       const target = el.getAttribute('data-status');
+      const prevStatus = rec.status;
       rec.status = (rec.status === target) ? "normal" : target;
       setRecLocal(dateStr, block, slot, rec);
+      bumpSessionCount(parseStudentEntry(rosterNameAt(dayNameForDate(dateStr), block, slot, dateStr)).name, prevStatus, rec.status); // 회차 결제 학생이면 숫자도 바로 맞춘다
       renderCardView();
       await pushRecord(dateStr, dayNameForDate(dateStr), block, slot, rec);
     };
@@ -4066,14 +4109,20 @@ async function renderStudentGrid(){
           <input type="number" class="sc-tuition-dueday" min="1" max="31" placeholder="1" value="${tuitionInfo.dueDay || ''}">
           <span>일마다 (빈칸=1일)</span>
         </div>
-        <div class="sc-tuition-row sc-tuition-session-row" style="${isSessionBilling?'':'display:none;'}">
-          <input type="number" class="sc-tuition-sessioncount" min="1" placeholder="예: 8" value="${tuitionInfo.sessionCount || ''}">
-          <span>회 결제 (선불 — 완료 후 다음 수업 전 결제)</span>
-        </div>
-        <div class="sc-tuition-row sc-tuition-session-row" style="${isSessionBilling?'':'display:none;'}">
-          <input type="date" class="sc-tuition-baselinedate" value="${tuitionInfo.sessionBaselineDate || ''}">
-          <input type="number" class="sc-tuition-baselinecount" min="0" placeholder="0" value="${tuitionInfo.sessionBaselineCount || ''}">
-          <span>기준일 시점 진행 회차 (처음 설정 시 1번만 맞춰주면 이후 자동 계산)</span>
+        <div class="sc-tuition-session-row" style="${isSessionBilling?'':'display:none;'}">
+          <div class="sc-tuition-row">
+            <input type="number" class="sc-tuition-sessioncount" min="1" placeholder="8" value="${tuitionInfo.sessionCount || ''}">
+            <span>회마다 결제</span>
+          </div>
+          <div class="sc-fee-hint">선불 · 이 횟수를 채우면 다음 수업 전에 결제해요.</div>
+          <div class="sc-sess-sub">현재 진행 회차 맞추기 (처음 1번만)</div>
+          <div class="sc-tuition-row">
+            <input type="date" class="sc-tuition-baselinedate" value="${tuitionInfo.sessionBaselineDate || ''}">
+            <span>까지</span>
+            <input type="number" class="sc-tuition-baselinecount" min="0" placeholder="0" value="${tuitionInfo.sessionBaselineCount || ''}">
+            <span>회</span>
+          </div>
+          <div class="sc-fee-hint">맞춰두면 이후는 출결로 자동 계산돼요.</div>
         </div>
         <div class="sc-tuition-row">
           <button type="button" class="sc-tuition-save" data-student-name="${escapeHtml(stu.name)}">저장</button>
@@ -6549,6 +6598,7 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   populateStudentSelect();
   renderAll();
   renderCalendar();
+  refreshSessionCounts(); // 2026-11: 회차 결제 학생의 "N/8회" 숫자 — 첫 화면을 막지 않도록 기다리지 않고 불러온다
   // 2026-09: 첫 화면을 출결 관리 대신 대시보드로 시작 (사용자 요청) — 단, 이 초기 로딩이
   // 끝나기 전에 사용자가 이미 다른 탭(학생관리/수강료 등)을 눌렀다면 그 클릭을 덮어쓰지 않는다.
   // (버그: 예전엔 무조건 대시보드로 되돌려서, 로딩 중 탭을 누르면 화면이 다시 대시보드로
