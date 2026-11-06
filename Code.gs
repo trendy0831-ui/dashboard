@@ -1304,6 +1304,48 @@ function cancelManualAttendance(name, date) {
   adminCacheClear_(['admin_tuitionStatusToday', 'admin_sessionSeq']);
 }
 
+// 회차제 학생의 "회차 시작점" 목록을 정한다 (2026-11).
+// 선불제 기준: 회차기준일(관리자가 정한 확실한 시작점, 그 이전 기록은 무시)에서 출발하고, 이후 결제 기록은
+// "그 시점에 현재 회차가 다 찼을 때(출석 ≥ 설정 회차)"만 새 회차의 시작점으로 인정한다.
+// 회차가 다 차기 전에 찍힌 완납 기록은 이미 선납한 현재 회차의 월별 장부 기록으로 보고 회차를 끊지 않는다.
+// 회차기준일이 없으면 가장 이른 결제 기록이 출발점이다.
+// dates: 출석한 날짜(YYYY-MM-DD) 목록(중복 없음). 반환: [{date, base, type}] 날짜 오름차순 (없으면 빈 배열)
+function sessionBounds_(s, history, dates) {
+  const n = parseInt(s.sessionCount, 10) || 0;
+  const pays = history.filter(function (h) { return h.status === '완납'; })
+    .map(function (h) { return h.paidDate || (h.yearMonth + '-01'); })
+    .sort();
+  const out = [];
+  let cur = null;
+  if (s.sessionBaselineDate) {
+    cur = { date: s.sessionBaselineDate, base: parseInt(s.sessionBaselineCount, 10) || 0, type: 'baseline' };
+    out.push(cur);
+  }
+  pays.forEach(function (pd) {
+    if (!cur) { cur = { date: pd, base: 0, type: 'payment' }; out.push(cur); return; }
+    if (pd <= cur.date) return;
+    const cnt = cur.base + dates.filter(function (d) { return d > cur.date && d <= pd; }).length;
+    if (n && cnt >= n) { cur = { date: pd, base: 0, type: 'payment' }; out.push(cur); }
+  });
+  return out;
+}
+
+// 출석한 날짜 목록(출석·지각, 직접 추가한 기록 포함, 취소 제외, 같은 날 하나) 오름차순
+function attendedDayList_(name) {
+  const have = {};
+  const rows = [];
+  getAttendedDatesForStudent_(name).forEach(function (d) {
+    if ((d.status === 'present' || d.status === 'late') && !have[d.date]) { have[d.date] = true; rows.push(d.date); }
+  });
+  getManualAttendanceFor_(name).forEach(function (m) {
+    if (m.cancelled || have[m.date]) return;
+    have[m.date] = true;
+    rows.push(m.date);
+  });
+  rows.sort();
+  return rows;
+}
+
 // 회차제 학생의 "날짜별 그날의 회차"를 처음 기록부터 끝까지 계산한다 (2026-11).
 // 회차기준일과 각 결제일(완납 납부일)이 새 회차의 시작점이 된다. 시작점 이후 출석을 날짜순으로 세고, 시작점이 없는 맨 처음 구간은
 // 첫 출석부터 1,2,3…으로 세되 설정 회차(예: 8)를 넘으면 다시 1부터 센다(8회마다 결제했다고 보는 추정).
@@ -1311,38 +1353,16 @@ function cancelManualAttendance(name, date) {
 function sessionSeqAll_(s, history) {
   const n = parseInt(s.sessionCount, 10) || 0;
   if (!n) return null;
-  const bounds = [];
-  history.filter(function (h) { return h.status === '완납'; }).forEach(function (h) {
-    bounds.push({ date: h.paidDate || (h.yearMonth + '-01'), base: 0 });
-  });
-  if (s.sessionBaselineDate) {
-    bounds.push({ date: s.sessionBaselineDate, base: parseInt(s.sessionBaselineCount, 10) || 0 });
-  }
-  // 날짜순 정렬(같은 날짜면 나중에 넣은 회차기준일이 뒤에 와서 우선한다)
-  bounds.forEach(function (b, i) { b.i = i; });
-  bounds.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i; });
-
-  // 하루에 여러 칸(같은 날 기록이 둘 이상)이 있어도 그날은 한 번만 센다
-  const have = {};
-  const rows = [];
-  getAttendedDatesForStudent_(s.name).forEach(function (d) {
-    if ((d.status === 'present' || d.status === 'late') && !have[d.date]) { have[d.date] = true; rows.push(d.date); }
-  });
-  getManualAttendanceFor_(s.name).forEach(function (m) {
-    if (m.cancelled || have[m.date]) return;
-    have[m.date] = true;
-    rows.push(m.date);
-  });
-  rows.sort();
-
+  const rows = attendedDayList_(s.name);
+  const bounds = sessionBounds_(s, history, rows);
   const segCount = {};
   const out = [];
   rows.forEach(function (date) {
     let bi = -1;
     for (let k = 0; k < bounds.length; k++) { if (bounds[k].date < date) bi = k; else break; }
+    if (bi < 0) return; // 첫 시작점(회차기준일) 이전 기록은 회차를 매기지 않는다
     segCount[bi] = (segCount[bi] || 0) + 1;
-    const seq = bi >= 0 ? bounds[bi].base + segCount[bi] : ((segCount[bi] - 1) % n) + 1;
-    out.push([date, seq]);
+    out.push([date, bounds[bi].base + segCount[bi]]);
   });
   return { target: n, dates: out };
 }
@@ -1418,28 +1438,16 @@ function getStudentAttendanceList_(name) {
 function sessionProgress_(s, history, todayStr) {
   const n = parseInt(s.sessionCount, 10) || 0;
   if (!n) return { n: 0, count: 0, attended: [], baseCount: 0 };
-  const paidHistory = history.filter(function (h) { return h.status === '완납'; })
-    .sort(function (a, b) { return b.yearMonth.localeCompare(a.yearMonth); });
-  const lastPaidDateStr = paidHistory.length ? (paidHistory[0].paidDate || (paidHistory[0].yearMonth + '-01')) : '';
-  const baselineDateStr = s.sessionBaselineDate || '';
-  const baselineCount = parseInt(s.sessionBaselineCount, 10) || 0;
-
-  // 기준점 결정: 회차기준일(수동 보정)보다 "나중" 시점에 실제 완납 기록이 있으면 그 결제로 회차가
-  // 리셋된 것이므로 결제일을 기준으로 0회부터 다시 센다. 그렇지 않으면(완납 기록이 없거나, 완납 기록이
-  // 더 예전이면) 관리자가 입력해둔 회차기준일 + 그 시점 진행 회차를 출발점으로 삼는다.
-  // 이렇게 해야 "이 기능을 처음 켤 때 이미 회차 중간(예: 3회차)"인 경우에도 처음부터 다시 세는 오류가 없다.
-  let sinceDateStr, baseCount, sinceType = 'payment';
-  if (lastPaidDateStr && (!baselineDateStr || lastPaidDateStr > baselineDateStr)) {
-    sinceDateStr = lastPaidDateStr;
-    baseCount = 0;
-  } else if (baselineDateStr) {
-    sinceDateStr = baselineDateStr;
-    baseCount = baselineCount;
-    sinceType = 'baseline';
+  const bounds = sessionBounds_(s, history, attendedDayList_(s.name));
+  let sinceDateStr, baseCount, sinceType;
+  if (bounds.length) {
+    const last = bounds[bounds.length - 1];
+    sinceDateStr = last.date;
+    baseCount = last.base;
+    sinceType = last.type;
   } else {
     sinceType = 'none';
     // 완납 기록도, 회차기준일 설정도 없는 경우 — 정확한 계산이 불가능하므로 안전하게 0회부터 센다
-    // (관리자가 회차 카드에서 회차기준일/기준 회차를 설정하는 것을 권장).
     sinceDateStr = todayStr;
     baseCount = 0;
   }

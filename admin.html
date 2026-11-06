@@ -5139,6 +5139,7 @@ async function renderTuitionList(){
   if(!listEl) return;
   const yearMonth = toYearMonth(tuitionMonth);
   const isCurrentMonth = (yearMonth === toYearMonth(new Date()));
+  const isPastMonth = (yearMonth < toYearMonth(new Date()));
   let rows;
   try{
     // 서로 의존관계 없는 요청들을 동시에 보낸다 (기존엔 순서대로 보내서 왕복시간이 최대 3배 걸렸음).
@@ -5176,7 +5177,7 @@ async function renderTuitionList(){
     const isSess = s => !!(s.billingType === '회차' && statusByName[s.name] && statusByName[s.name].sessionTarget);
     const stateOf = s=>{
       const c = statusByName[s.name];
-      if(isSess(s)) return c.status;
+      if(isSess(s)) return isPastMonth ? 'paid' : c.status; // 선불제: 지난달 화면에서는 결제 예정·미납을 띄우지 않는다
       if(isCurrentMonth) return (c || {}).status || 'overdue';
       return (rowByName[s.name] && rowByName[s.name].status === '완납') ? 'paid' : 'overdue';
     };
@@ -5198,13 +5199,14 @@ async function renderTuitionList(){
         const c = statusByName[s.name];
         const cnt = Number(c.sessionCount) || 0, tgt = Number(c.sessionTarget) || 0;
         const pct = tgt ? Math.min(100, Math.round(cnt / tgt * 100)) : 0;
-        const stCls = c.status === 'paid' ? '' : c.status === 'upcoming' ? ' w' : ' r';
-        const stLabel = c.status === 'paid' ? '완납 · 이번 회차 안' : c.status === 'upcoming' ? '결제 예정' : '미납';
+        const showSt = isPastMonth ? 'paid' : c.status;
+        const stCls = showSt === 'paid' ? '' : showSt === 'upcoming' ? ' w' : ' r';
+        const stLabel = isPastMonth ? '완납 · 선결제 회차에 포함' : showSt === 'paid' ? '완납 · 이번 회차 안' : showSt === 'upcoming' ? '결제 예정' : '미납';
         const sinceTxt = c.sessionSince ? `${fmtMDStr(c.sessionSince)} ${c.sessionSinceType === 'payment' ? '결제' : '기준'} 이후 출석` : '';
         const meta2 = escapeHtml([s.school, s.grade].filter(Boolean).join(' · '));
         const feeNow = tuitionFeeFor(s.name, toYearMonth(new Date())) || '';
         const paidRec = rec.status === '완납' && rec.paidDate;
-        return `<div class="tuition-row tr-sess${c.status === 'overdue' ? ' ts-over' : ''}" data-name="${escapeHtml(s.name)}">
+        return `<div class="tuition-row tr-sess${showSt === 'overdue' ? ' ts-over' : ''}" data-name="${escapeHtml(s.name)}">
           <div>
             <div class="tr-name">${escapeHtml(s.name)}<span class="ts-chip">회차 결제</span></div>
             ${meta2 ? `<div class="tr-meta">${meta2}</div>` : ''}
@@ -5213,13 +5215,13 @@ async function renderTuitionList(){
           <div class="ts-bar"><i style="width:${pct}%"></i></div>
           ${sinceTxt ? `<div class="ts-since">${escapeHtml(sinceTxt)}</div>` : ''}
           <span class="ts-state${stCls}">${stLabel}</span>
-          <div class="tr-fields">
+          ${isPastMonth ? `<div class="ts-since">지난 달 화면이에요. 새 회차 결제는 이번 달 화면에서 받아요.</div>` : `          <div class="tr-fields">
             <span class="tr-lbl">금액</span>
             <div class="tr-field"><input type="number" class="ts-amount" min="0" placeholder="8회분 금액" value="${rec.amount || feeNow}"></div>
             <span class="tr-lbl">납부일</span>
             <div class="tr-field"><input type="date" class="ts-date" value="${toDateStr(new Date())}"></div>
           </div>
-          <button type="button" class="ts-pay">${tgt}회분 결제 받음</button>
+          <button type="button" class="ts-pay">${tgt}회분 결제 받음</button>`}
           ${paidRec ? `<div class="ts-hist"><span>이 달 결제 ${escapeHtml(fmtMDStr(rec.paidDate))}${rec.amount ? ' · ' + fmtWon(Number(rec.amount)) + '원' : ''}</span><button type="button" class="ts-undo">결제 취소</button></div>` : ''}
           <div class="tr-state"></div>
         </div>`;
@@ -5351,7 +5353,7 @@ async function renderTuitionList(){
       }
     }
     const payBtn = row.querySelector('.ts-pay');
-    payBtn.onclick = async ()=>{
+    if(payBtn) payBtn.onclick = async ()=>{
       const date = row.querySelector('.ts-date').value;
       const amount = Number(row.querySelector('.ts-amount').value.trim()) || 0;
       if(!date){ stateEl.textContent = '납부일을 골라 주세요.'; return; }
