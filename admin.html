@@ -172,6 +172,35 @@
   .slot-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px;}
   .slot-name{font-size:15.5px;font-weight:700;}
   .slot-meta{font-size:12px;color:var(--ink-soft);font-weight:600;}
+  /* 학생 출결 기록 창 (이름을 누르면 열림) */
+  .slot-name.js-att-open,.student-card .sc-name.js-att-open{cursor:pointer;text-decoration:underline;text-decoration-color:var(--soft);text-underline-offset:3px;}
+  .slot-name.js-att-open:hover,.student-card .sc-name.js-att-open:hover{text-decoration-color:var(--teal);}
+  #attLogModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;background:rgba(20,30,26,.45);}
+  #attLogModal.open{display:flex;}
+  .al-box{background:var(--paper);width:480px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
+    overflow:hidden;max-height:calc(100vh - 32px);display:flex;flex-direction:column;}
+  .al-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:18px 20px 10px;}
+  .al-head h2{margin:0;font-size:18px;font-weight:800;}
+  .al-body{padding:0 20px 20px;overflow-y:auto;}
+  .al-panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;}
+  .al-title{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ink);}
+  .al-title small{font-weight:500;color:var(--ink-soft);margin-left:4px;}
+  .al-form{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .al-form input[type=date]{border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:var(--paper);color:var(--ink);}
+  .al-form input[type=text]{flex:1;min-width:90px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:var(--paper);color:var(--ink);}
+  .al-seg{display:flex;border:1px solid var(--teal);border-radius:7px;overflow:hidden;}
+  .al-seg button{border:none;background:var(--card);color:var(--teal-dark);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+  .al-seg button.on{background:var(--teal);color:#fff;}
+  .al-add{border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+  .al-hint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+  .al-li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .al-li:last-child{border-bottom:none;}
+  .al-li .al-sub{color:var(--ink-soft);font-size:12px;}
+  .al-li.cancelled{color:var(--ink-soft);text-decoration:line-through;}
+  .al-tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;background:var(--soft);color:var(--teal-dark);white-space:nowrap;}
+  .al-tag.manual{background:var(--card);border:1px dashed var(--teal);padding:1px 7px;}
+  .al-cancel{border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;}
+  .al-empty{color:var(--ink-soft);font-size:12.5px;padding:8px 0;}
   /* 회차 결제 학생의 이번 회차 진행 숫자 (예: 3/8회) — 8회를 채우면 점선 칩으로 바뀐다 */
   .sess-chip{flex-shrink:0;font-size:12px;font-weight:700;color:var(--teal-dark);background:var(--soft);
     border-radius:7px;padding:3px 9px;white-space:nowrap;}
@@ -1384,6 +1413,32 @@
     <button class="theme-open-btn logout-btn" type="button" data-admin-logout>🔓 로그아웃</button>
   </div>
 </div>
+<!-- ===================== 학생 출결 기록 창 ===================== -->
+<div id="attLogModal" role="dialog" aria-modal="true" aria-labelledby="attLogTitle">
+  <div class="al-box">
+    <div class="al-head">
+      <h2 id="attLogTitle"></h2>
+      <span class="sess-chip" id="attLogChip" style="display:none"></span>
+      <button class="tm-close" id="attLogClose" aria-label="닫기">×</button>
+    </div>
+    <div class="al-body">
+      <div class="al-panel">
+        <div class="al-title">출석 추가<small>보강·일요일 수업처럼 출결 칸에 없는 날</small></div>
+        <div class="al-form">
+          <input type="date" id="attLogDate">
+          <div class="al-seg"><button type="button" class="on" data-st="present">출석</button><button type="button" data-st="late">지각</button></div>
+          <input type="text" id="attLogMemo" placeholder="메모 (선택)" maxlength="40">
+          <button type="button" class="al-add" id="attLogAdd">추가</button>
+        </div>
+        <div class="al-hint" id="attLogMsg"></div>
+      </div>
+      <div class="al-panel">
+        <div class="al-title">출석한 날<small>최근 순</small></div>
+        <div id="attLogList"></div>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- ===================== 색상 테마 모달 ===================== -->
 <div id="themeModal" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
   <div class="tm-box">
@@ -2000,6 +2055,80 @@ function sessionChipHtml(name){
   const tail = full ? (si.status === 'overdue' ? ' · 미납' : ' · 결제 예정') : '';
   return `<span class="sess-chip${full ? ' full' : ''}" title="이번 회차 출석 횟수">${si.count}/${si.target}회${tail}</span>`;
 }
+// ============ 학생 출결 기록 창 (2026-11) ============
+let attLogName = '', attLogStatus = 'present', attLogBusy = false;
+const AL_DOW = ['일','월','화','수','목','금','토'];
+function attLogFmt(d){ const t = new Date(d + 'T00:00:00'); return (t.getMonth()+1) + '/' + t.getDate() + ' (' + AL_DOW[t.getDay()] + ')'; }
+async function openAttLog(name){
+  attLogName = name; attLogStatus = 'present';
+  document.getElementById('attLogTitle').textContent = name;
+  document.getElementById('attLogDate').value = localTodayStr();
+  document.getElementById('attLogMemo').value = '';
+  document.getElementById('attLogMsg').textContent = '';
+  document.querySelectorAll('#attLogModal .al-seg button').forEach(b=> b.classList.toggle('on', b.dataset.st === 'present'));
+  renderAttLogChip();
+  document.getElementById('attLogList').innerHTML = '<div class="al-empty">불러오는 중…</div>';
+  document.getElementById('attLogModal').classList.add('open');
+  await loadAttLog();
+}
+function closeAttLog(){ document.getElementById('attLogModal').classList.remove('open'); }
+function renderAttLogChip(){
+  const el = document.getElementById('attLogChip'); const si = sessionInfo[attLogName];
+  if(!si){ el.style.display = 'none'; return; }
+  el.style.display = ''; el.className = 'sess-chip' + (si.count >= si.target ? ' full' : '');
+  el.textContent = '이번 회차 ' + si.count + '/' + si.target;
+}
+async function loadAttLog(){
+  const rows = await apiGet({ action:'studentAttendance', name: attLogName });
+  const box = document.getElementById('attLogList');
+  if(!Array.isArray(rows)){ box.innerHTML = '<div class="al-empty">불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>'; return; }
+  if(!rows.length){ box.innerHTML = '<div class="al-empty">아직 출석 기록이 없어요.</div>'; return; }
+  box.innerHTML = rows.map(r=>{
+    const sub = (r.status === 'late' ? '지각' : '출석') + (r.memo ? ' · ' + escapeHtml(r.memo) : '');
+    if(r.source === 'manual'){
+      return '<div class="al-li' + (r.cancelled ? ' cancelled' : '') + '"><span>' + attLogFmt(r.date) + '<span class="al-sub"> · ' + (r.cancelled ? '취소됨 · ' : '') + sub + '</span></span>'
+        + (r.cancelled ? '<span class="al-sub">기록은 남아요</span>' : '<span style="display:flex;gap:6px;align-items:center"><span class="al-tag manual">직접 추가</span><button type="button" class="al-cancel" data-date="' + r.date + '">취소</button></span>') + '</div>';
+    }
+    return '<div class="al-li"><span>' + attLogFmt(r.date) + '<span class="al-sub"> · ' + sub + '</span></span><span class="al-tag">출결</span></div>';
+  }).join('');
+  box.querySelectorAll('.al-cancel').forEach(b=>{
+    b.onclick = async ()=>{
+      if(attLogBusy) return; attLogBusy = true;
+      try{ await apiPost({ action:'cancelManualAttendance', name: attLogName, date: b.dataset.date }); }
+      catch(e){ attLogBusy = false; return; }
+      await attLogAfterSave();
+    };
+  });
+}
+async function attLogAfterSave(){
+  await new Promise(r=>setTimeout(r, 2500)); // 서버가 시트에 쓰는 시간을 기다린다
+  await loadAttLog();
+  await refreshSessionCounts();
+  renderAttLogChip();
+  attLogBusy = false;
+}
+async function addAttLog(){
+  if(attLogBusy) return;
+  const date = document.getElementById('attLogDate').value;
+  const msg = document.getElementById('attLogMsg');
+  if(!date){ msg.textContent = '날짜를 골라 주세요.'; return; }
+  attLogBusy = true; msg.textContent = '저장하는 중…';
+  try{ await apiPost({ action:'addManualAttendance', name: attLogName, date: date, status: attLogStatus, memo: document.getElementById('attLogMemo').value.trim() }); }
+  catch(e){ attLogBusy = false; msg.textContent = '저장하지 못했어요. 다시 시도해 주세요.'; return; }
+  document.getElementById('attLogMemo').value = '';
+  await attLogAfterSave();
+  msg.textContent = attLogFmt(date) + ' 출석을 추가했어요.';
+}
+document.addEventListener('click', e=>{
+  const t = e.target.closest && e.target.closest('.js-att-open');
+  if(t){ openAttLog(t.getAttribute('data-att-name')); }
+});
+document.getElementById('attLogClose').onclick = closeAttLog;
+document.getElementById('attLogAdd').onclick = addAttLog;
+document.getElementById('attLogModal').addEventListener('click', e=>{ if(e.target.id === 'attLogModal') closeAttLog(); });
+document.querySelectorAll('#attLogModal .al-seg button').forEach(b=>{
+  b.onclick = ()=>{ attLogStatus = b.dataset.st; document.querySelectorAll('#attLogModal .al-seg button').forEach(x=> x.classList.toggle('on', x === b)); };
+});
 async function loadHomeworkForWeek(){
   try{
     const rows = await apiGet({action:"homework", weekStart: toDateStr(weekStart)});
@@ -2693,7 +2822,7 @@ function renderDayContent(){
       }
       html += `<div class="slot-card">
         <div class="slot-top">
-          <span><span class="slot-name">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>${sessionChipHtml(stu.name)}
+          <span><span class="slot-name js-att-open" data-att-name="${escapeHtml(stu.name)}" title="출결 기록 보기">${escapeHtml(stu.name)}</span>${meta?` <span class="slot-meta">${meta}</span>`:''}</span>${sessionChipHtml(stu.name)}
         </div>${timesLine}
         <div class="att-seg${attUnchecked?' unchecked':''}" role="group" aria-label="출결 상태">
           ${segBtn('present','출석')}${segBtn('late','지각')}${segBtn('absent','결석')}
@@ -4066,7 +4195,7 @@ async function renderStudentGrid(){
     return `<div class="student-card${isWithdrawn?' student-card-withdrawn':''}" data-name="${escapeHtml(raw)}">
       <div class="sc-top">
         <div>
-          <div class="sc-name">${escapeHtml(stu.name)}</div>
+          <div class="sc-name js-att-open" data-att-name="${escapeHtml(stu.name)}" title="출결 기록 보기">${escapeHtml(stu.name)}</div>
           ${(meta || sinceTxt) ? `<div class="sc-meta">${meta}${sinceTxt}</div>` : ''}
         </div>
         <button class="sc-status-toggle" data-student-name="${escapeHtml(stu.name)}" data-cur-status="${status}"${pending ? ' disabled title="예정된 변경을 먼저 취소해 주세요"' : ''}>
