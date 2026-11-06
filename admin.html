@@ -1659,6 +1659,7 @@ let monthRecords = {};  // 학생별 캘린더용 (월 단위)
 let activeDayIdx = (new Date().getDay()+6)%7;
 if(activeDayIdx>5) activeDayIdx = 0;
 let calMonth = new Date(); calMonth.setDate(1);
+const TUITION_FIRST_MONTH = '2026-06'; // 수강료 탭에서 보여주는 가장 이른 달
 let tuitionMonth = new Date(); tuitionMonth.setDate(1);
 function toYearMonth(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1); }
 function addMonths(d,n){ const r=new Date(d); r.setDate(1); r.setMonth(r.getMonth()+n); return r; }
@@ -5121,6 +5122,7 @@ async function renderTuitionPage(){
       <div class="tuition-list" id="tuitionList"><div class="reason-feed-empty">불러오는 중...</div></div>
     `;
     document.getElementById('tuitionPrevMonth').onclick = ()=>{
+      if(toYearMonth(tuitionMonth) <= TUITION_FIRST_MONTH) return; // 2026-06 이전 기록은 화면에서 숨긴다(시트에는 그대로 남아 있음)
       tuitionMonth = addMonths(tuitionMonth, -1);
       renderTuitionPage();
     };
@@ -5130,6 +5132,10 @@ async function renderTuitionPage(){
     };
     el.dataset.built = '1';
   }
+  if(toYearMonth(tuitionMonth) < TUITION_FIRST_MONTH){ tuitionMonth = new Date(2026, 5, 1); }
+  const prevBtn = document.getElementById('tuitionPrevMonth');
+  const atFirst = toYearMonth(tuitionMonth) <= TUITION_FIRST_MONTH;
+  prevBtn.disabled = atFirst; prevBtn.style.opacity = atFirst ? '.3' : ''; prevBtn.style.cursor = atFirst ? 'default' : '';
   document.getElementById('tuitionMonthLabel').textContent = tuitionMonth.getFullYear()+'년 '+(tuitionMonth.getMonth()+1)+'월';
   await renderTuitionList();
 }
