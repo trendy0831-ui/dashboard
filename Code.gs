@@ -596,7 +596,7 @@ function saveRecord(rec) {
   const targetDate = rec.date;
   const tz = Session.getScriptTimeZone();
   const targetSlot = String(parseInt(rec.slot, 10));
-  const targetBlock = String(rec.block).trim();
+  const targetBlock = normalizeBlock(rec.block); // 시간 칸이 시트에서 시간값(Date)으로 바뀌어 있어도 같은 칸으로 찾도록 맞춘다
   const makeupStatus = normalizeMakeupStatus_(rec.makeupStatus, rec.makeupDone);
 
   if (lastRow >= 2) {
@@ -606,7 +606,7 @@ function saveRecord(rec) {
       if (!cellVal) continue;
       const rowDate = Utilities.formatDate(new Date(cellVal), tz, 'yyyy-MM-dd');
       if (rowDate !== targetDate) continue;
-      const rowBlock = String(keyCols[i][2]).trim();
+      const rowBlock = normalizeBlock(keyCols[i][2]);
       if (rowBlock !== targetBlock) continue;
       const rowSlot = String(parseInt(keyCols[i][3], 10));
       if (rowSlot !== targetSlot) continue;
@@ -1187,7 +1187,8 @@ function getAttendedDatesForStudent_(studentName) {
 
   const recordSheet = getSheet('기록');
   const recordData = recordSheet.getDataRange().getValues();
-  const dates = [];
+  // 같은 칸(날짜·시간·슬롯)에 기록 줄이 여러 개 쌓여 있으면(상태를 바꿀 때마다 줄이 늘어난 옛 기록) 가장 아래 줄(최신)만 쓴다.
+  const latestByKey = {};
   for (let i = 1; i < recordData.length; i++) {
     const row = recordData[i];
     const rDay = row[1];
@@ -1195,9 +1196,10 @@ function getAttendedDatesForStudent_(studentName) {
     const rSlot = row[3];
     const rDateStr = normalizeDate_(row[0]);
     if (isMyPeriod(rDay, rBlock, rSlot, rDateStr)) {
-      dates.push({ date: rDateStr, status: row[4] });
+      latestByKey[rDateStr + '|' + rBlock + '|' + String(parseInt(rSlot, 10))] = { date: rDateStr, status: row[4] };
     }
   }
+  const dates = Object.keys(latestByKey).map(function (k) { return latestByKey[k]; });
   dates.sort(function (a, b) { return a.date.localeCompare(b.date); });
   return dates;
 }
