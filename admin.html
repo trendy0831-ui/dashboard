@@ -1593,8 +1593,34 @@ async function apiGetOnceShared(params){
   p.then(done, done);
   return p;
 }
+// 2026-11: 처음 열 때 필요한 데이터를 서버에 "묶음 요청(bootstrap)" 2개로 한꺼번에 받아 두고,
+// 각 화면이 예전처럼 apiGet 을 부르면 그 묶음에서 꺼내 준다(한 번만, 60초 안에). 묶음이 실패하거나 항목이 비면
+// 예전처럼 개별 요청으로 자동 복귀하므로 화면 동작은 달라지지 않는다.
+const primed = new Map();
+function apiParamKey(params){ return JSON.stringify(Object.keys(params).sort().map(k=>[k, params[k]])); }
+function apiPrime(bootParams, sections){
+  const p = apiGetOnce(bootParams);
+  p.catch(()=>{}); // 실패는 각 항목을 쓰는 쪽에서 개별 요청으로 복귀하며 처리
+  Object.keys(sections).forEach(sec=>{
+    primed.set(apiParamKey(sections[sec]), { t: Date.now(), p: p.then(d=>{
+      const v = d && d[sec];
+      if(v === undefined || v === null || (v && v.__err !== undefined)) throw new Error('bootstrap-miss');
+      return v;
+    }) });
+  });
+}
+async function apiGetPrimed(params){
+  const key = apiParamKey(params);
+  const hit = primed.get(key);
+  if(!hit) return undefined;
+  primed.delete(key); // 한 번만 쓴다 — 그 뒤 새로고침·저장 후 조회는 항상 서버에서 새로 받는다
+  if(Date.now() - hit.t > 60000) return undefined;
+  try{ return JSON.parse(JSON.stringify(await hit.p)); }catch(e){ return undefined; }
+}
 async function apiGet(params){
   let lastErr;
+  const pre = await apiGetPrimed(params);
+  if(pre !== undefined) return await closureFilter(params, pre);
   for(let attempt=0; attempt<3; attempt++){
     try{
       return await closureFilter(params, await apiGetOnceShared(params));
@@ -5559,6 +5585,27 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
 
 (async function init(){
   await adminAuthBootstrap(); // 로그인 보호가 켜져 있으면 여기서 로그인 창을 띄우고 통과할 때까지 기다린다
+  try{
+    // 2026-11: 첫 화면 데이터를 묶음 요청 2개로 미리 받아 둔다 (아래 loadXxx 들은 그대로 apiGet 을 부르면 여기서 꺼내 쓴다)
+    if(!adminAuthEnabled || authTokenValid(authGetToken())){
+      const ws = toDateStr(weekStart);
+      const yrs = [new Date().getFullYear(), new Date().getFullYear()+1].join(',');
+      apiPrime({action:'bootstrap', part:'core', weekStart: ws, years: yrs}, {
+        settings: {action:'settings'},
+        roster: {action:'roster'},
+        closures: {action:'closures'},
+        scheduleAdjust: {action:'scheduleAdjust'},
+        holidays: {action:'holidays', years: yrs},
+        records: {action:'records', weekStart: ws, keepExtra:1},
+        homework: {action:'homework', weekStart: ws}
+      });
+      apiPrime({action:'bootstrap', part:'extra'}, {
+        tuitionStatusToday: {action:'tuitionStatusToday'},
+        sessionSeq: {action:'sessionSeq'},
+        studentInfoList: {action:'studentInfoList'}
+      });
+    }
+  }catch(e){ /* 묶음 준비에 실패해도 예전 방식(개별 요청)으로 그대로 동작 */ }
   loadTheme(); //출결 데이터와 병렬로 — 테마는 기다리지 않아도 됨
   // 2026-09: loadRoster()와 loadWeekData()는 서로 의존하지 않아 병렬 호출로 초기 로딩 단축
   const rosterP = loadRoster();
