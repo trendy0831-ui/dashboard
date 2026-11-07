@@ -289,9 +289,23 @@ function getSheet(name) {
 // 비교/반환 전에 항상 'HH:mm' 문자열로 정규화한다.
 // SpreadsheetApp이 돌려주는 Date는 realm이 달라 instanceof Date가 false로 나올 수 있어
 // realm에 안전한 Object.prototype.toString으로 판별한다.
+// 2026-11 속도 개선: Utilities.formatDate / Session.getScriptTimeZone 은 호출마다 시간이 꽤 걸려서(시트 수천 줄 × 수 ms),
+// 시간대는 한 번만 구하고 같은 시각 값은 결과를 기억해 둔다. (결과는 이전과 완전히 같다)
+let TZ_CACHE_ = null;
+const FMT_CACHE_ = {};
+function scriptTz_() {
+  if (!TZ_CACHE_) TZ_CACHE_ = Session.getScriptTimeZone();
+  return TZ_CACHE_;
+}
+function formatDateCached_(val, fmt) {
+  const k = fmt + '|' + val.getTime();
+  let r = FMT_CACHE_[k];
+  if (r === undefined) { r = Utilities.formatDate(val, scriptTz_(), fmt); FMT_CACHE_[k] = r; }
+  return r;
+}
 function normalizeBlock(val) {
   if (Object.prototype.toString.call(val) === '[object Date]') {
-    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'HH:mm');
+    return formatDateCached_(val, 'HH:mm');
   }
   return String(val).trim();
 }
@@ -300,7 +314,7 @@ function normalizeBlock(val) {
 function normalizeDate_(val) {
   if (!val) return '';
   if (Object.prototype.toString.call(val) === '[object Date]') {
-    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return formatDateCached_(val, 'yyyy-MM-dd');
   }
   const s = String(val).trim();
   const m = s.match(/^\d{4}-\d{2}-\d{2}/);
@@ -1130,22 +1144,37 @@ function getTuitionHistoryForStudent_(studentName, limit) {
 // buildStudentRecords_와 같은 "적용시작일 기준 슬롯 이력 매칭" 원리를 그대로 사용 — 요일/시간이 바뀌어도
 // 각 날짜 시점에 실제로 그 학생 것이었던 슬롯만 정확히 집계된다.
 function getAttendedDatesForStudent_(studentName) {
-  const rosterSheet = getSheet('명단');
-  const rosterData = rosterSheet.getDataRange().getValues();
-  const slotHistoryMap = {};
-  for (let i = 1; i < rosterData.length; i++) {
-    const day = rosterData[i][0];
-    const block = normalizeBlock(rosterData[i][1]);
-    const slot = String(rosterData[i][2]);
-    const name = String(rosterData[i][3] || '');
-    const effectiveFrom = rosterData[i][4] ? normalizeDate_(rosterData[i][4]) : '';
-    const key = day + '|' + block + '|' + slot;
-    if (!slotHistoryMap[key]) slotHistoryMap[key] = [];
-    slotHistoryMap[key].push({ name: name, effectiveFrom: effectiveFrom });
+  if (SHEET_MEMO_ && SHEET_MEMO_['att|' + studentName]) return SHEET_MEMO_['att|' + studentName];
+  // 2026-11 속도 개선: 명단·기록 시트의 날짜/시간 정규화(느림)를 학생마다 반복하지 않고 한 번만 해 둔다.
+  let rosterMap = SHEET_MEMO_ && SHEET_MEMO_['rosterMap'];
+  if (!rosterMap) {
+    const rosterData = sheetValuesMemo_('명단');
+    rosterMap = {};
+    for (let i = 1; i < rosterData.length; i++) {
+      const day = rosterData[i][0];
+      const block = normalizeBlock(rosterData[i][1]);
+      const slot = String(rosterData[i][2]);
+      const name = String(rosterData[i][3] || '');
+      const effectiveFrom = rosterData[i][4] ? normalizeDate_(rosterData[i][4]) : '';
+      const key = day + '|' + block + '|' + slot;
+      if (!rosterMap[key]) rosterMap[key] = [];
+      rosterMap[key].push({ name: name, effectiveFrom: effectiveFrom });
+    }
+    if (SHEET_MEMO_) SHEET_MEMO_['rosterMap'] = rosterMap;
+  }
+  let recN = SHEET_MEMO_ && SHEET_MEMO_['recN'];
+  if (!recN) {
+    const recordData = sheetValuesMemo_('기록');
+    recN = [];
+    for (let i = 1; i < recordData.length; i++) {
+      const row = recordData[i];
+      recN.push({ day: row[1], block: normalizeBlock(row[2]), slot: row[3], date: normalizeDate_(row[0]), status: row[4] });
+    }
+    if (SHEET_MEMO_) SHEET_MEMO_['recN'] = recN;
   }
   function nameAt(day, block, slot, dateStr) {
     const key = day + '|' + block + '|' + String(slot);
-    const candidates = slotHistoryMap[key];
+    const candidates = rosterMap[key];
     if (!candidates || !candidates.length) return '';
     let best = null;
     candidates.forEach(function (it) {
@@ -1159,13 +1188,9 @@ function getAttendedDatesForStudent_(studentName) {
     });
     return best ? best.name : '';
   }
-  const candidateSlots = [];
-  Object.keys(slotHistoryMap).forEach(function (key) {
-    const hasMe = slotHistoryMap[key].some(function (it) { return it.name.indexOf(studentName) !== -1; });
-    if (hasMe) {
-      const parts = key.split('|');
-      candidateSlots.push({ day: parts[0], block: parts[1], slot: parts[2] });
-    }
+  const candidateSet = {};
+  Object.keys(rosterMap).forEach(function (key) {
+    if (rosterMap[key].some(function (it) { return it.name.indexOf(studentName) !== -1; })) candidateSet[key] = true;
   });
   // 2026-10-27 일정 조정: 이 학생의 보강(날짜|시간|슬롯)과 학생 개별 휴강일
   const adjAll = getScheduleAdjusts_().filter(function (a) { return a.status === 'active' && a.name === studentName; });
@@ -1178,29 +1203,21 @@ function getAttendedDatesForStudent_(studentName) {
 
   function isMyPeriod(day, block, slot, dateStr) {
     if (specialKeys[dateStr + '|' + block + '|' + String(slot)]) return true;
-    const isCandidate = candidateSlots.some(function (s) {
-      return s.day === day && s.block === block && s.slot === String(slot);
-    });
-    if (!isCandidate) return false;
+    if (!candidateSet[day + '|' + block + '|' + String(slot)]) return false;
     return nameAt(day, block, slot, dateStr).indexOf(studentName) !== -1;
   }
 
-  const recordSheet = getSheet('기록');
-  const recordData = recordSheet.getDataRange().getValues();
   // 같은 칸(날짜·시간·슬롯)에 기록 줄이 여러 개 쌓여 있으면(상태를 바꿀 때마다 줄이 늘어난 옛 기록) 가장 아래 줄(최신)만 쓴다.
   const latestByKey = {};
-  for (let i = 1; i < recordData.length; i++) {
-    const row = recordData[i];
-    const rDay = row[1];
-    const rBlock = normalizeBlock(row[2]);
-    const rSlot = row[3];
-    const rDateStr = normalizeDate_(row[0]);
-    if (isMyPeriod(rDay, rBlock, rSlot, rDateStr)) {
-      latestByKey[rDateStr + '|' + rBlock + '|' + String(parseInt(rSlot, 10))] = { date: rDateStr, status: row[4] };
+  for (let i = 0; i < recN.length; i++) {
+    const r = recN[i];
+    if (isMyPeriod(r.day, r.block, r.slot, r.date)) {
+      latestByKey[r.date + '|' + r.block + '|' + String(parseInt(r.slot, 10))] = { date: r.date, status: r.status };
     }
   }
   const dates = Object.keys(latestByKey).map(function (k) { return latestByKey[k]; });
   dates.sort(function (a, b) { return a.date.localeCompare(b.date); });
+  if (SHEET_MEMO_) SHEET_MEMO_['att|' + studentName] = dates;
   return dates;
 }
 
@@ -1209,8 +1226,7 @@ function getAttendedDatesForStudent_(studentName) {
 // 실제 날짜가 필요하다. 단순화를 위해 "그 날짜에 이름이 배정되어 있고 적용시작일 조건을 만족하는 슬롯이
 // 있는가"만 확인한다(같은 슬롯이 그 사이 다른 학생으로 재배정된 극히 드문 경우까지는 다루지 않음).
 function findNextClassDate_(studentName, afterDateStr) {
-  const rosterSheet = getSheet('명단');
-  const rosterData = rosterSheet.getDataRange().getValues();
+  const rosterData = sheetValuesMemo_('명단');
   const dowNames = ['일', '월', '화', '수', '목', '금', '토'];
   const tz = Session.getScriptTimeZone();
   const start = new Date(afterDateStr + 'T00:00:00');
@@ -1246,10 +1262,8 @@ function getManualAttendanceSheet_() {
 
 // [{ date, status, memo, cancelled }] — 이 학생의 수동 기록 전체 (시트 순서)
 function getManualAttendanceFor_(studentName) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('출결수동기록');
   const out = [];
-  if (!sheet) return out;
-  const data = sheet.getDataRange().getValues();
+  const data = sheetValuesMemo_('출결수동기록');
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0] || '').trim() !== studentName) continue;
     const date = normalizeDate_(data[i][1]);
@@ -1391,6 +1405,10 @@ function getSessionSeqMap_() {
   const cacheKey = 'admin_sessionSeq';
   const cached = reportCacheGet_(cacheKey);
   if (cached) return cached;
+  return withSheetMemo_(getSessionSeqMapCompute_);
+}
+function getSessionSeqMapCompute_() {
+  const cacheKey = 'admin_sessionSeq';
   const students = getStudentInfoList().filter(function (s) { return s.status === '재원' && s.billingType === '회차'; });
   const historyByName = getTuitionHistoryByName_();
   const out = {};
@@ -1486,6 +1504,10 @@ function getTuitionStatusToday() {
   const cacheKey = 'admin_tuitionStatusToday';
   const cached = reportCacheGet_(cacheKey);
   if (cached) return cached;
+  return withSheetMemo_(getTuitionStatusTodayCompute_);
+}
+function getTuitionStatusTodayCompute_() {
+  const cacheKey = 'admin_tuitionStatusToday';
   const students = getStudentInfoList().filter(function (s) { return s.status === '재원'; });
   const tz = Session.getScriptTimeZone();
   const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
@@ -1975,6 +1997,22 @@ function deleteTextbookImage(name) {
 // ---------- 학부모 리포트: 짧은 서버 캐시 헬퍼 (2026-09) ----------
 // 개인정보라 브라우저 장기 캐시는 쓰지 않되, 같은 링크로 짧은 시간 내 반복 요청(탭 전환,
 // 새로고침, 여러 기기)이 오면 시트를 다시 읽지 않도록 서버(Apps Script) 쪽에서만 잠깐 캐시한다.
+// 2026-11 속도 개선: 수강료 상태 계산처럼 "학생마다 같은 시트(명단·기록·일정조정·출결수동기록)를 통째로 다시 읽던" 곳에서,
+// 한 번의 계산 동안만 시트 내용을 메모리에 두고 재사용한다. (계산이 끝나면 비워서 저장 직후 stale 값이 남지 않는다)
+let SHEET_MEMO_ = null;
+function withSheetMemo_(fn) {
+  const prev = SHEET_MEMO_;
+  SHEET_MEMO_ = prev || {};
+  try { return fn(); } finally { SHEET_MEMO_ = prev; }
+}
+function sheetValuesMemo_(name) {
+  if (SHEET_MEMO_ && SHEET_MEMO_[name]) return SHEET_MEMO_[name];
+  const sh = getSheet(name);
+  const v = sh ? sh.getDataRange().getValues() : [];
+  if (SHEET_MEMO_) SHEET_MEMO_[name] = v;
+  return v;
+}
+
 function reportCacheGet_(key) {
   try {
     const raw = CacheService.getScriptCache().get(key);
@@ -2821,6 +2859,12 @@ function getScheduleAdjustSheet_() {
 
 // 반환: 모든 id의 최신 상태 목록(removed 포함 — 화면이 슬롯 번호를 겹치지 않게 새로 배정하는 데 쓴다)
 function getScheduleAdjusts_() {
+  if (SHEET_MEMO_ && SHEET_MEMO_['adj']) return SHEET_MEMO_['adj'].map(function (a) { return Object.assign({}, a); });
+  const out = getScheduleAdjustsRaw_();
+  if (SHEET_MEMO_) SHEET_MEMO_['adj'] = out.map(function (a) { return Object.assign({}, a); });
+  return out;
+}
+function getScheduleAdjustsRaw_() {
   const data = getScheduleAdjustSheet_().getDataRange().getValues();
   const byId = {};
   const order = [];
