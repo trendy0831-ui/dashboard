@@ -101,6 +101,12 @@ function doGet(e) {
     // 수강료 탭(이번 달) 및 대시보드 미납 카드가 이 값으로 완납/결제예정/미납 3단계를 표시한다.
     return jsonResponse(getTuitionStatusToday());
   }
+  if (action === 'bootstrap') {
+    // 2026-11 속도 개선: admin.html 첫 화면에 필요한 데이터를 요청 1~2개로 묶어서 내려준다(요청 11~12개 → 2개).
+    // part=core: 첫 화면용(설정·명단·휴강·일정조정·공휴일·이번 주 출결/숙제), part=extra: 수강료 상태·회차·학생정보.
+    // 각 항목은 개별 요청과 같은 값이고, 한 항목이 실패해도 나머지는 그대로 내려간다(실패 항목은 {__err}).
+    return jsonResponse(getBootstrap_(e.parameter));
+  }
   if (action === 'wrongNotes') {
     // 2026-10: 오답노트(note.html) 기록 목록 — "오답노트" 시트에서 삭제 표시되지 않은 행만 내려준다.
     return jsonResponse(getWrongNotes());
@@ -1992,6 +1998,30 @@ function deleteTextbookImage(name) {
       return;
     }
   }
+}
+
+// 2026-11: 첫 화면용 묶음 응답 (doGet 'bootstrap'). 개별 action 과 같은 함수를 그대로 부르고, 시트 읽기는 한 번의 실행 안에서 재사용한다.
+function getBootstrap_(p) {
+  const out = {};
+  function put(key, fn) {
+    try { out[key] = fn(); } catch (err) { out[key] = { __err: String(err && err.message || err) }; }
+  }
+  withSheetMemo_(function () {
+    if (p.part === 'extra') {
+      put('tuitionStatusToday', getTuitionStatusToday);
+      put('sessionSeq', getSessionSeqMap_);
+      put('studentInfoList', getStudentInfoList);
+    } else {
+      put('settings', getSettings_);
+      put('roster', getRoster);
+      put('closures', getClosures_);
+      put('scheduleAdjust', getScheduleAdjusts_);
+      put('holidays', function () { return getHolidays((p.years || '').split(',').filter(function (y) { return y; })); });
+      put('records', function () { return getRecordsForWeek(p.weekStart); });
+      put('homework', function () { return getHomeworkForWeek(p.weekStart); });
+    }
+  });
+  return out;
 }
 
 // ---------- 학부모 리포트: 짧은 서버 캐시 헬퍼 (2026-09) ----------
