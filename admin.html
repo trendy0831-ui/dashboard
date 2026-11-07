@@ -1470,11 +1470,27 @@ function authExpired(){
   authClearToken();
   return showAdminLogin('로그인이 만료되었어요. 다시 로그인해 주세요.');
 }
+const AUTH_ON_LS_KEY = 'adminAuthOn'; // 2026-11: 지난번에 "로그인 보호 켜짐"이었다는 기록 (첫 화면을 authStatus 응답 때문에 1초 넘게 멈추지 않으려고)
 async function adminAuthBootstrap(){
-  try{
+  let cachedOn = false;
+  try{ cachedOn = localStorage.getItem(AUTH_ON_LS_KEY) === '1'; }catch(e){}
+  const check = async ()=>{
     const res = await fetch(SCRIPT_URL + "?" + new URLSearchParams({action:'authStatus', _t: Date.now()}).toString(), {cache:'no-store'});
     const j = await res.json();
-    adminAuthEnabled = !!(j && j.enabled);
+    const on = !!(j && j.enabled);
+    try{ localStorage.setItem(AUTH_ON_LS_KEY, on ? '1' : '0'); }catch(e){}
+    return on;
+  };
+  // 로그인 보호가 켜져 있고 저장된 로그인이 아직 유효하면, 서버 확인을 기다리지 않고 바로 시작한다.
+  // (서버 확인은 뒤에서 하고, 보호가 꺼졌다고 하면 그때 맞춘다. 로그인이 만료된 경우는 아래 예전 방식 그대로 진행)
+  if(cachedOn && authTokenValid(authGetToken())){
+    adminAuthEnabled = true;
+    document.documentElement.classList.add('admin-authed');
+    check().then(on=>{ if(!on){ adminAuthEnabled = false; document.documentElement.classList.remove('admin-authed'); } }).catch(()=>{});
+    return;
+  }
+  try{
+    adminAuthEnabled = await check();
   }catch(e){ adminAuthEnabled = false; } // 확인 실패 시엔 일단 진행 — 서버가 막으면 첫 요청에서 로그인 창이 뜬다
   if(!adminAuthEnabled) return;
   document.documentElement.classList.add('admin-authed');
@@ -1560,11 +1576,28 @@ async function closureFilter(params, data){
   }
   return data;
 }
+// 2026-11: 같은 조회 요청이 거의 동시에(0.5초 안에) 두 번 나가면 서버에는 한 번만 보내고 결과를 나눠 쓴다
+// (예: 처음 열 때 수강료 상태가 두 번 요청되던 것). 저장 직후의 새 조회가 저장 전 요청의 옛 결과를 받지 않도록
+// 0.5초가 지난 요청은 공유하지 않는다.
+const apiInflight = new Map();
+async function apiGetOnceShared(params){
+  const key = JSON.stringify(Object.keys(params).sort().map(k=>[k, params[k]]));
+  const hit = apiInflight.get(key);
+  if(hit && Date.now() - hit.t < 500){
+    return JSON.parse(JSON.stringify(await hit.p));
+  }
+  const p = apiGetOnce(params);
+  const entry = { t: Date.now(), p };
+  apiInflight.set(key, entry);
+  const done = ()=>{ if(apiInflight.get(key) === entry) apiInflight.delete(key); };
+  p.then(done, done);
+  return p;
+}
 async function apiGet(params){
   let lastErr;
   for(let attempt=0; attempt<3; attempt++){
     try{
-      return await closureFilter(params, await apiGetOnce(params));
+      return await closureFilter(params, await apiGetOnceShared(params));
     }catch(e){
       lastErr = e;
       if(e && e.isAuth) throw e; // 인증 오류는 재시도해도 소용없음
@@ -4410,8 +4443,10 @@ async function renderNoticePage(){
 }
 let noticeDirty = {}; // 공지 입력칸 중 사용자가 직접 손댄 칸 (저장하면 비움)
 async function loadNoticeIntoForm(){
+  let noticeData = null; // 2026-11: 같은 공지를 미리보기에서 또 요청하지 않도록 한 번 받은 결과를 넘겨 쓴다
   try{
     const data = await apiGet({action:'notice'});
+    noticeData = data;
     const n = data.notice;
     if(n){
       // 적고 있던(저장 전) 칸은 덮어쓰지 않는다
@@ -4428,13 +4463,13 @@ async function loadNoticeIntoForm(){
       renderNoticeAttachUI();
     }
   }catch(e){}
-  await renderNoticePreview();
+  await renderNoticePreview(noticeData);
 }
-async function renderNoticePreview(){
+async function renderNoticePreview(prefetched){
   const el = document.getElementById('noticePreviewCard');
   if(!el) return;
   try{
-    const data = await apiGet({action:'notice'});
+    const data = prefetched || await apiGet({action:'notice'});
     const n = data.notice;
     if(!n){
       el.innerHTML = '현재 게시 기간에 해당하는 공지가 없어요.';
