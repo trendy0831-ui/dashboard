@@ -5223,7 +5223,7 @@ async function renderTuitionList(){
           <span class="ts-state${stCls}">${stLabel}</span>
           ${isPastMonth ? `<div class="ts-since">지난 달 화면이에요. 새 회차 결제는 이번 달 화면에서 받아요.</div>` : `          <div class="tr-fields">
             <span class="tr-lbl">금액</span>
-            <div class="tr-field"><input type="number" class="ts-amount" min="0" placeholder="8회분 금액" value="${rec.amount || feeNow}"></div>
+            <div class="tr-field"><input type="number" class="ts-amount" min="0" step="10000" placeholder="8회분 금액" value="${rec.amount || feeNow}"></div>
             <span class="tr-lbl">납부일</span>
             <div class="tr-field"><input type="date" class="ts-date" value="${toDateStr(new Date())}"></div>
           </div>
@@ -5264,12 +5264,12 @@ async function renderTuitionList(){
         <div class="tr-fields">
           <span class="tr-lbl">정규</span>
           <div class="tr-field">
-            <input type="number" class="tuition-regular" placeholder="금액" min="0" value="${regular}">
+            <input type="number" class="tuition-regular" placeholder="금액" min="0" step="10000" value="${regular}">
             <span class="tr-tag tr-tag-reg${regTag === '수정됨' ? ' edited' : ''}">${regTag}</span>
           </div>
           <span class="tr-lbl">특강비</span>
           <div class="tr-field">
-            <input type="number" class="tuition-special" placeholder="방학 때만" min="0" value="${special}">
+            <input type="number" class="tuition-special" placeholder="방학 때만" min="0" step="10000" value="${special}">
             <span class="tr-tag tr-tag-special edited">${special ? '특강' : ''}</span>
           </div>
         </div>
@@ -5311,10 +5311,20 @@ async function renderTuitionList(){
     row.querySelector('.tr-tag-special').textContent = (spc !== '' && Number(spc) > 0) ? '특강' : '';
   }
   // 한 학생의 저장 요청은 순서대로 보낸다(연달아 눌러도 옛 값이 새 값을 덮어쓰지 않도록, 저장 시점의 화면 값을 읽고 사이에 잠깐 간격을 둔다)
-  function queueSave(row){
-    row._q = (row._q || Promise.resolve())
-      .then(()=> saveRow(row))
-      .then(()=> new Promise(r=>setTimeout(r, 600)));
+  // delay를 주면(금액 칸) 마지막 변경 후 그 시간이 지났을 때 한 번만 저장한다 — ▲▼를 여러 번 눌러도 저장은 1번.
+  function queueSave(row, delay){
+    clearTimeout(row._debounce);
+    const run = ()=>{
+      row._q = (row._q || Promise.resolve())
+        .then(()=> saveRow(row))
+        .then(()=> new Promise(r=>setTimeout(r, 600)));
+    };
+    if(delay){
+      setRowState(row, '입력 중...');
+      row._debounce = setTimeout(run, delay);
+    }else{
+      run();
+    }
   }
   async function saveRow(row){
     const name = row.getAttribute('data-name');
@@ -5379,7 +5389,7 @@ async function renderTuitionList(){
   listEl.querySelectorAll('.tuition-row:not(.tr-sess)').forEach(row=>{
     row.querySelectorAll('.tuition-regular,.tuition-special').forEach(inp=>{
       inp.addEventListener('input', ()=> refreshRow(row));
-      inp.addEventListener('change', ()=> queueSave(row));
+      inp.addEventListener('change', ()=> queueSave(row, 1000));
     });
     row.querySelector('.tuition-paiddate').addEventListener('change', ()=> queueSave(row));
     const memoInput = row.querySelector('.tuition-memo');
