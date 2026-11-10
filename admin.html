@@ -423,6 +423,24 @@
     color:var(--teal);background:var(--card);border:1.5px solid var(--teal);border-radius:8px;cursor:pointer;}
   .cc-makeup-done:hover{background:var(--teal);color:#fff;}
   .cc-makeup-done:disabled{opacity:.6;cursor:default;}
+  /* 보강 대기 -- 한 줄 목록형 (2026-11-10: "이번 달 보강 대기"와 "보강 대기"를 하나로 합침) */
+  .mk-list{display:flex;flex-direction:column;}
+  .mk-row{display:grid;grid-template-columns:minmax(110px,1.1fr) minmax(130px,1.3fr) minmax(130px,1.2fr) auto;
+    gap:8px 14px;align-items:center;padding:12px 2px;border-top:1px solid var(--line);}
+  .mk-row:first-child{border-top:none;padding-top:2px;}
+  .mk-row .mk-name{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .mk-row .mk-meta{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+  .mk-row .mk-abs{font-size:12.5px;font-weight:600;color:var(--ink);}
+  .mk-row .mk-sub{font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
+  .mk-chip{display:block;text-align:center;font-size:12.5px;font-weight:700;border-radius:8px;padding:7px 10px;}
+  .mk-chip.set{background:var(--teal);color:#fff;border:1px solid var(--teal);}
+  .mk-chip.none{background:var(--card);color:var(--teal);border:1px dashed var(--teal);}
+  .mk-row .cc-makeup-done{width:auto;margin:0;padding:7px 14px;white-space:nowrap;}
+  @media (max-width:640px){
+    .mk-row{grid-template-columns:1fr 1fr;}
+    .mk-row .mk-who{grid-column:1 / -1;}
+    .mk-row .cc-makeup-done{grid-column:1 / -1;width:100%;}
+  }
   #dashToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
     background:var(--teal);color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:700;
     box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:999;opacity:0;pointer-events:none;
@@ -3182,7 +3200,6 @@ const dashPanelLoaders = {
   tuition: () => renderTuitionSummary(),
   weekly: (cache) => renderWeeklyAttendance(cache),
   exam: () => renderUpcomingExams(),
-  makeup: (cache) => renderMakeupFeed(cache),
   hwrank: (cache) => renderHomeworkRank(cache),
   makeupold: (cache) => renderMakeupOldest(cache),
   reason: (cache) => renderReasonFeed(cache)
@@ -3320,28 +3337,23 @@ function showDashToast(text, undoItem){
   dashToastTimer = setTimeout(()=>{ el.classList.remove('show'); dashUndoItem = null; }, undoItem ? 7000 : 2500);
 }
 function removeMakeupCards(mk){
-  [['makeupFeed','이번 달 보강 대기 건이 없어요.'],['makeupOldestFeed','보강 대기 중인 건이 없어요.']].forEach(([id, emptyMsg])=>{
-    const feed = document.getElementById(id);
-    if(!feed) return;
-    let removed = 0;
-    feed.querySelectorAll('[data-mk]').forEach(c=>{ if(c.getAttribute('data-mk') === mk){ c.remove(); removed++; } });
-    if(!removed) return;
-    const left = feed.querySelectorAll('[data-mk]').length;
-    if(id === 'makeupFeed'){
-      const lab = document.getElementById('makeupCountLabel');
-      if(lab) lab.innerHTML = left ? `<span class="badge-count">${left}건</span>` : '';
-    }
-    if(!left){
-      feed.className = 'reason-feed';
-      feed.innerHTML = `<div class="reason-feed-empty">${emptyMsg}</div>`;
-    }
-  });
+  const feed = document.getElementById('makeupOldestFeed');
+  if(!feed) return;
+  let removed = 0;
+  feed.querySelectorAll('[data-mk]').forEach(c=>{ if(c.getAttribute('data-mk') === mk){ c.remove(); removed++; } });
+  if(!removed) return;
+  const left = feed.querySelectorAll('[data-mk]').length;
+  const lab = document.getElementById('makeupCountLabel');
+  if(lab) lab.innerHTML = left ? `<span class="badge-count">${left}건</span>` : '';
+  if(!left){
+    feed.className = 'reason-feed';
+    feed.innerHTML = `<div class="reason-feed-empty">보강 대기 중인 건이 없어요.</div>`;
+  }
 }
 async function refreshMakeupPanels(){
   if(pendingSaveCount > 0) return; // 다른 저장이 아직 진행 중이면, 마지막으로 끝나는 저장이 새로 불러온다
   const cache = new Map();
   const jobs = [];
-  if(dashPanelLoaded['makeup']) jobs.push(renderMakeupFeed(cache));
   if(dashPanelLoaded['makeupold']) jobs.push(renderMakeupOldest(cache));
   await Promise.all(jobs);
 }
@@ -3370,65 +3382,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     await refreshMakeupPanels();
   };
 });
-async function renderMakeupFeed(cache){
-  cache = cache || new Map();
-  const el = document.getElementById('makeupFeed');
-  const labelEl = document.getElementById('makeupCountLabel');
-  if(!el) return;
-  const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  let cursor = mondayOf(monthStart);
-  const weeks = [];
-  while(cursor <= today){
-    weeks.push(new Date(cursor));
-    cursor = addDays(cursor, 7);
-  }
-  const items = [];
-  const weekRows = await Promise.all(weeks.map(ws => getRecordsCached(toDateStr(ws), cache)));
-  if(weekRows.some(r=>r===null)){
-    el.className = 'reason-feed';
-    el.innerHTML = dashFailHtml('makeup', '보강 대기 현황을 불러오지 못했어요.');
-    if(labelEl) labelEl.innerHTML = '';
-    return;
-  }
-  weekRows.forEach(rows=>{
-    (rows||[]).forEach(rec=>{
-      if(rec.status !== 'absent') return;
-      if(rec.makeupStatus !== 'wait') return;
-      if(rec.date < toDateStr(monthStart) || rec.date > toDateStr(today)) return;
-      const dayName = dayNameForDate(rec.date);
-      const slotIdx = (parseInt(rec.slot)||1)-1;
-      const rawName = rosterNameAt(dayName, rec.block, slotIdx, rec.date);
-      if(!rawName) return;
-      items.push({ date: rec.date, block: rec.block, note: rec.statusNote||"", name: rawName,
-        slotIdx: slotIdx, attNote: rec.attNote||"", makeupDate: fmtMakeupDate(rec.makeupDate) });
-    });
-  });
-  items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
-  if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
-  if(!items.length){
-    el.className = 'reason-feed';
-    el.innerHTML = `<div class="reason-feed-empty">이번 달 보강 대기 건이 없어요.</div>`;
-    return;
-  }
-  const days=["일","월","화","수","목","금","토"];
-  el.className = 'compact-grid2';
-  el.innerHTML = items.map(it=>{
-    const stu = parseStudentEntry(it.name);
-    const meta = escapeHtml([stu.school, stu.grade].filter(Boolean).join(' · '));
-    const d = new Date(it.date+"T00:00:00");
-    const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days[d.getDay()]})`;
-    return `<div class="cc-note" data-mk="${makeupItemKey(it)}">
-      <span class="cc-badge">결석</span>
-      <div class="cc-name">${escapeHtml(stu.name)}</div>
-      ${meta?`<div class="cc-meta">${meta}</div>`:''}
-      <div class="cc-date">${dateLabel} · ${it.block}</div>
-      ${it.note ? `<div class="cc-reason">사유: ${escapeHtml(it.note)}</div>` : ''}
-      ${makeupDoneBtnHtml(it, stu.name)}
-    </div>`;
-  }).join("");
-  bindMakeupDoneButtons(el);
-}
 async function renderWeeklyAttendance(cache){
   cache = cache || new Map();
   const el = document.getElementById('weeklyAttendanceGrid');
@@ -3575,22 +3528,37 @@ async function renderMakeupOldest(cache){
     });
   });
   items.sort((a,b)=> a.date.localeCompare(b.date) || a.block.localeCompare(b.block));
+  const labelEl = document.getElementById('makeupCountLabel');
+  if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
   if(!items.length){
     el.className = 'reason-feed';
     el.innerHTML = `<div class="reason-feed-empty">보강 대기 중인 건이 없어요.</div>`;
     return;
   }
   const days2=["일","월","화","수","목","금","토"];
-  el.className = 'compact-grid3';
+  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  el.className = 'mk-list';
   el.innerHTML = items.map(it=>{
     const stu = parseStudentEntry(it.name);
     const meta = escapeHtml([stu.school, stu.grade].filter(Boolean).join(' · '));
     const d = new Date(it.date+"T00:00:00");
     const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${days2[d.getDay()]})`;
-    return `<div class="cc-simple" data-mk="${makeupItemKey(it)}">
-      <div class="cc-name">${escapeHtml(stu.name)}</div>
-      ${meta?`<div class="cc-meta">${meta}</div>`:''}
-      <div class="cc-sub">${dateLabel} 결석 · ${it.block}</div>
+    const gap = Math.max(0, Math.round((todayMid - d) / 86400000));
+    const waitLabel = gap === 0 ? '오늘 결석' : `${gap}일째 대기`;
+    const subParts = [it.note ? escapeHtml(it.note) : '', waitLabel].filter(Boolean).join(' · ');
+    const chip = it.makeupDate
+      ? `<div class="mk-chip set">보강 ${escapeHtml(it.makeupDate)}</div>`
+      : `<div class="mk-chip none">보강 일정 미정</div>`;
+    return `<div class="mk-row" data-mk="${makeupItemKey(it)}">
+      <div class="mk-who">
+        <div class="mk-name">${escapeHtml(stu.name)}</div>
+        ${meta?`<div class="mk-meta">${meta}</div>`:''}
+      </div>
+      <div>
+        <div class="mk-abs">${dateLabel} ${it.block} 결석</div>
+        <div class="mk-sub">${subParts}</div>
+      </div>
+      ${chip}
       ${makeupDoneBtnHtml(it, stu.name)}
     </div>`;
   }).join("");
@@ -5230,9 +5198,8 @@ function switchPage(page){
         ${dashPanelHtml('tuition', '이번 달 미납 학생', '<span class="sub" id="tuitionUnpaidCountLabel"></span>', '<div class="reason-feed" id="tuitionUnpaidFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', false)}
         ${dashPanelHtml('weekly', '최근 7일 출석률', '', '<div id="weeklyAttendanceGrid"><div class="reason-feed-empty">불러오는 중...</div></div>', false)}
         ${dashPanelHtml('exam', '다가오는 시험', '<span class="sub" id="examCountLabel"></span>', '<div class="reason-feed" id="examFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
-        ${dashPanelHtml('makeup', '이번 달 보강 대기', '<span class="sub" id="makeupCountLabel"></span>', '<div class="reason-feed" id="makeupFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
         ${dashPanelHtml('hwrank', '숙제 미흡·미제출 누적', '<span class="sub">(최근 4주)</span>', '<div class="reason-feed" id="homeworkRankFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
-        ${dashPanelHtml('makeupold', '보강 대기', '<span class="sub">(결석일 오래된 순)</span>', '<div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
+        ${dashPanelHtml('makeupold', '보강 대기', '<span class="sub" id="makeupCountLabel"></span><span class="sub">(결석일 오래된 순)</span>', '<div class="reason-feed" id="makeupOldestFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}
         ${dashPanelHtml('reason', '최근 지각·결석 사유', '<span class="sub">(최근 2주)</span>', '<div class="reason-feed" id="reasonFeed"><div class="reason-feed-empty">불러오는 중...</div></div>', true)}`;
       dashPage.dataset.built = '1';
       initDashCollapsibles();
