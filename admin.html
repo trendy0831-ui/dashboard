@@ -425,8 +425,8 @@
   .cc-makeup-done:disabled{opacity:.6;cursor:default;}
   /* 보강 대기 -- 한 줄 목록형 (2026-11-10: "이번 달 보강 대기"와 "보강 대기"를 하나로 합침) */
   .mk-list{display:flex;flex-direction:column;}
-  .mk-row{display:grid;grid-template-columns:minmax(110px,1.1fr) minmax(130px,1.3fr) minmax(130px,1.2fr) auto;
-    gap:8px 14px;align-items:center;padding:12px 2px;border-top:1px solid var(--line);}
+  .mk-row{display:grid;grid-template-columns:120px 200px 170px auto;justify-content:start;
+    gap:8px 20px;align-items:center;padding:12px 2px;border-top:1px solid var(--line);}
   .mk-row:first-child{border-top:none;padding-top:2px;}
   .mk-row .mk-name{font-size:14.5px;font-weight:700;color:var(--ink);}
   .mk-row .mk-meta{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
@@ -436,10 +436,13 @@
   .mk-chip.set{background:var(--teal);color:#fff;border:1px solid var(--teal);}
   .mk-chip.none{background:var(--card);color:var(--teal);border:1px dashed var(--teal);}
   .mk-row .cc-makeup-done{width:auto;margin:0;padding:7px 14px;white-space:nowrap;}
+  #makeupCountLabel .badge-count{background:var(--teal);}
   @media (max-width:640px){
-    .mk-row{grid-template-columns:1fr 1fr;}
-    .mk-row .mk-who{grid-column:1 / -1;}
-    .mk-row .cc-makeup-done{grid-column:1 / -1;width:100%;}
+    .mk-row{grid-template-columns:1fr auto;justify-content:stretch;gap:6px 8px;}
+    .mk-row .mk-who,.mk-row .mk-info{grid-column:1 / -1;}
+    .mk-row .mk-info{margin-bottom:4px;}
+    .mk-row .mk-chip{padding:8px 10px;}
+    .mk-row .cc-makeup-done{padding:8px 14px;}
   }
   #dashToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
     background:var(--teal);color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:700;
@@ -3554,7 +3557,7 @@ async function renderMakeupOldest(cache){
         <div class="mk-name">${escapeHtml(stu.name)}</div>
         ${meta?`<div class="mk-meta">${meta}</div>`:''}
       </div>
-      <div>
+      <div class="mk-info">
         <div class="mk-abs">${dateLabel} ${it.block} 결석</div>
         <div class="mk-sub">${subParts}</div>
       </div>
