@@ -1160,18 +1160,33 @@
     const elemTests = data.elemTests || [];
     if(!isElementary){
       const examCard = document.getElementById('exam-card');
-      if(exam && exam.mathExamDate){
-        const mathDate = parseDate(exam.mathExamDate);
+      // 2026-11-12: 수학시험일이 비어 있어도 시험 기간(시작일~종료일)만으로 카드를 보여준다.
+      //  - 수학시험일이 있으면: 예전처럼 수학 시험일 기준 D-day + 시험 기간 한 줄
+      //  - 없으면: 시험 시작일 기준 D-day, 시험 기간 중에는 "시험 중", 끝나면 "시험 종료"
+      const mathDate = exam ? parseDate(exam.mathExamDate) : null;
+      const startDate = exam ? parseDate(exam.examStart) : null;
+      const endDate = exam ? (parseDate(exam.examEnd) || startDate) : null;
+      if(exam && (mathDate || startDate)){
+        const day0 = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const today0 = day0(new Date());
+        const fmtDay = d => String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0')+'('+['일','월','화','수','목','금','토'][d.getDay()]+')';
+        const periodText = startDate ? (endDate && day0(endDate) !== day0(startDate) ? fmtDay(startDate)+' ~ '+fmtDay(endDate) : fmtDay(startDate)) : '';
         let ddayText = '';
+        let dateHtml = '';
         if(mathDate){
-          const diff = Math.ceil((mathDate.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+          const diff = Math.round((day0(mathDate) - today0) / 86400000);
           ddayText = diff === 0 ? 'D-DAY' : (diff > 0 ? `D-${diff}` : '시험 종료');
+          dateHtml = `수학 시험일<br><b>${fmtDay(mathDate)}</b>${periodText ? '<br>시험 기간 '+periodText : ''}`;
+        } else {
+          const diff = Math.round((day0(startDate) - today0) / 86400000);
+          ddayText = diff > 0 ? `D-${diff}` : (today0 <= day0(endDate) ? '시험 중' : '시험 종료');
+          dateHtml = `시험 기간<br><b>${periodText}</b>`;
         }
         examCard.innerHTML = `
           <div class="exam-school">${escapeHtml(exam.school || '')} ${exam.memo ? '· '+escapeHtml(exam.memo) : ''}</div>
           <div class="exam-row">
             <div class="exam-dday">${ddayText}</div>
-            <div class="exam-date">수학 시험일<br><b>${mathDate ? mathDate.getFullYear()+'.'+String(mathDate.getMonth()+1).padStart(2,'0')+'.'+String(mathDate.getDate()).padStart(2,'0') : '-'}</b></div>
+            <div class="exam-date">${dateHtml}</div>
           </div>
         `;
       } else {
