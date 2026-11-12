@@ -2203,8 +2203,26 @@ let pendingSaveCount = 0;
 function isUserEditing(){
   return editMode || !!openAttKey || !!openStatusKey || !!openHwMemoKey || !!openMakeupDateKey || pendingSaveCount > 0;
 }
+// 2026-11-12 서버 요청 줄이기(Apps Script 동시 실행 한도 대응):
+//  - 자동 새로고침은 화면이 숨겨져 있을 때(다른 탭·최소화)는 건너뛴다. 다시 볼 때 visibilitychange 가 바로 새로 받는다.
+//  - 앞선 새로고침이 아직 끝나지 않았으면 자동 새로고침을 겹쳐 보내지 않는다.
+//  - 명단·이번 주 출결·숙제는 묶음 요청(bootstrap) 1개로 받는다(요청 3개 → 1개). 묶음이 실패하면 예전처럼 개별 요청으로 받는다.
+let refreshInFlight = false;
 async function refreshData(auto){
   if(auto && isUserEditing()) return;
+  if(auto && (document.visibilityState !== 'visible' || refreshInFlight)) return;
+  refreshInFlight = true;
+  try{ await refreshDataRun(auto); } finally { refreshInFlight = false; }
+}
+function refreshBundleSections(){
+  const ws = toDateStr(weekStart);
+  return {
+    roster: {action:'roster'},
+    records: {action:'records', weekStart: ws, keepExtra:1},
+    homework: {action:'homework', weekStart: ws}
+  };
+}
+async function refreshDataRun(auto){
   let waited = 0;
   while(pendingSaveCount > 0 && waited < 3000){
     await new Promise(r=>setTimeout(r, 150));
@@ -2214,7 +2232,16 @@ async function refreshData(auto){
   weekRowsCache.clear();
   invalidateTodayData(); // 오늘 기준 데이터(보고 있는 주가 이번 주가 아닐 때 쓰는 캐시)도 새로 받는다
   try{
+    const bundle = refreshBundleSections();
+    try{
+      if(!adminAuthEnabled || authTokenValid(authGetToken())){
+        const yrs = [new Date().getFullYear(), new Date().getFullYear()+1].join(',');
+        apiPrime({action:'bootstrap', part:'core', weekStart: bundle.records.weekStart, years: yrs}, bundle);
+      }
+    }catch(e){ /* 묶음 준비에 실패하면 아래 loadXxx 가 개별 요청으로 받는다 */ }
     await loadRoster();
+    // 묶음을 기다리는 사이에 출결·숙제를 저장했다면, 저장 전에 받아 둔 묶음 값은 버리고 서버에서 새로 받는다
+    if(pendingSaveCount > 0){ primed.delete(apiParamKey(bundle.records)); primed.delete(apiParamKey(bundle.homework)); }
     await loadWeekData();
     // 데이터를 받는 동안 사용자가 사유·메모 입력을 열었다면 화면을 다시 그리지 않는다 (적던 글 보호)
     if(auto && isUserEditing()){ setSyncStatus('ok'); return; }
@@ -2234,7 +2261,8 @@ function startAutoRefresh(){
   autoRefreshTimer = setInterval(()=> refreshData(true), AUTO_REFRESH_INTERVAL);
 }
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState === 'visible') refreshData(true);
+  // 2026-11-12: 방금(30초 안에) 새로 받았으면 탭을 잠깐 오갈 때마다 다시 받지 않는다
+  if(document.visibilityState === 'visible' && (!lastSyncAt || Date.now() - lastSyncAt.getTime() > 30000)) refreshData(true);
 });
 // 편집 전 명단(prevSnapshot)과 편집 후 명단(nextRoster)을 비교해, 실제로 바뀐 슬롯만 서버로 보낼 행으로 만든다.
 function diffRosterRows(prevSnapshot, nextRoster, effOverrides){
