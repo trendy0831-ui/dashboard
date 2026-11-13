@@ -858,7 +858,9 @@ async function loadNoticeBanner(){
     if(dismissedSig === signature) return; // 이미 닫은 동일 공지는 다시 안 띄움
 
     document.getElementById('noticeBannerTitle').textContent = title;
-    document.getElementById('noticeBannerBody').textContent = body ? (' ' + body) : '';
+    // **글자** 는 굵게(먼저 escape 한 뒤 바꾸므로 안전)
+    const esc = s=> s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    document.getElementById('noticeBannerBody').innerHTML = body ? (' ' + esc(body).replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')) : '';
     document.getElementById('noticeBanner').style.display = 'flex';
 
     document.getElementById('noticeBannerClose').addEventListener('click', ()=>{

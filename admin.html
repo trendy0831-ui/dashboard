@@ -643,6 +643,11 @@
     padding:14px 16px;}
   .notice-preview-card .np-title{font-size:14.5px;font-weight:700;margin-bottom:4px;}
   .notice-preview-card .np-body{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.5;}
+  .notice-preview-card .np-body strong{color:var(--ink);font-weight:800;}
+  .notice-tb{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .notice-bold-btn{border:1.5px solid var(--teal);background:#fff;color:var(--teal);border-radius:8px;padding:4px 12px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;}
+  .notice-bold-btn:hover{background:var(--teal);color:#fff;}
+  .notice-tb-hint{font-size:12px;color:var(--ink-soft);}
   .notice-preview-card .np-attachment{font-size:12.5px;color:var(--teal-dark);margin-top:8px;}
   .notice-preview-card .np-period{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
   /* ===================== 성적 관리(초등 테스트 기록) ===================== */
@@ -4880,6 +4885,7 @@ async function renderNoticePage(){
         </div>
         <div class="notice-field">
           <label>내용</label>
+          <div class="notice-tb"><button type="button" class="notice-bold-btn" id="noticeBoldBtn" title="선택한 글자를 굵게 (Ctrl+B)">B 굵게</button><span class="notice-tb-hint">글자를 드래그해 선택 → 버튼 (또는 Ctrl+B)</span></div>
           <textarea id="noticeContent" placeholder="공지 내용을 입력하세요"></textarea>
         </div>
         <div class="notice-daterow">
@@ -4908,6 +4914,27 @@ async function renderNoticePage(){
     // 사용자가 직접 적은 칸은 서버에서 늦게 도착한 값이 덮어쓰지 못하게 표시해 둔다
     ['noticeTitle','noticeContent','noticeStart','noticeEnd'].forEach(fid=>{
       document.getElementById(fid).addEventListener('input', ()=>{ noticeDirty[fid] = true; });
+    });
+    // 굵게: 선택한 글자를 **로 감싼다(이미 감싼 글자면 풀어 준다). 저장은 그대로 글자로 되고, 학부모 화면에서 굵게 보인다.
+    const noticeTa = document.getElementById('noticeContent');
+    function noticeToggleBold(){
+      const v = noticeTa.value; let a = noticeTa.selectionStart, b = noticeTa.selectionEnd;
+      if(a === b){
+        noticeTa.value = v.slice(0,a) + '****' + v.slice(b);
+        noticeTa.setSelectionRange(a+2, a+2);
+      } else if(v.slice(a-2,a) === '**' && v.slice(b,b+2) === '**'){
+        noticeTa.value = v.slice(0,a-2) + v.slice(a,b) + v.slice(b+2);
+        noticeTa.setSelectionRange(a-2, b-2);
+      } else {
+        noticeTa.value = v.slice(0,a) + '**' + v.slice(a,b) + '**' + v.slice(b);
+        noticeTa.setSelectionRange(a+2, b+2);
+      }
+      noticeTa.focus();
+      noticeTa.dispatchEvent(new Event('input', {bubbles:true}));
+    }
+    document.getElementById('noticeBoldBtn').addEventListener('click', noticeToggleBold);
+    noticeTa.addEventListener('keydown', e=>{
+      if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'b'){ e.preventDefault(); noticeToggleBold(); }
     });
     // 파일을 고르면 바로 올리지 않고 메모리에만 담아 둔다. 실제 업로드는 [저장]을 누를 때 한다.
     document.getElementById('noticeAttachInput').onchange = async (e)=>{
@@ -5044,7 +5071,7 @@ async function renderNoticePreview(prefetched){
     }
     el.innerHTML = `
       <div class="np-title">${escapeHtml(n.title)}</div>
-      ${n.content ? `<div class="np-body">${escapeHtml(n.content)}</div>` : ''}
+      ${n.content ? `<div class="np-body">${escapeHtml(n.content).replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')}</div>` : ''}
       ${n.attachmentName ? `<div class="np-attachment">📎 ${escapeHtml(n.attachmentName)}</div>` : ''}
       <div class="np-period">게시 기간: ${n.startDate} ~ ${n.endDate}</div>
     `;

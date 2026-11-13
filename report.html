@@ -546,6 +546,7 @@
     color:var(--teal-dark);
     margin-bottom:8px;
   }
+  .notice-body strong{ color:var(--teal-dark); font-weight:800; }
   .notice-body{
     font-size:13px;
     color:var(--ink-soft);
@@ -879,6 +880,8 @@
 
   // notice/memo/학생 이름처럼 서버·시트에서 온 문자열은 innerHTML에 넣기 전 반드시 이 함수를 거친다 (XSS 방지).
   // 이름/학교처럼 textContent로 넣는 값은 애초에 이스케이프가 필요 없어 그대로 둔다.
+  // 공지 본문: **글자** 는 굵게(먼저 escape 한 뒤 바꾸므로 안전)
+  const boldMd = (str)=> escapeHtml(str).replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
   function escapeHtml(str){
     if(str == null) return '';
     return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -1368,7 +1371,7 @@
 
     card.innerHTML = `
       <div class="notice-title">${escapeHtml(notice.title)}</div>
-      ${notice.content ? `<div class="notice-body">${escapeHtml(notice.content)}</div>` : ''}
+      ${notice.content ? `<div class="notice-body">${boldMd(notice.content)}</div>` : ''}
       ${notice.attachmentThumbUrl ? `
         <button type="button" class="notice-attach-thumb-btn" id="noticeAttachThumbBtn">
           <img class="notice-attach-thumb" src="${notice.attachmentThumbUrl}" alt="${escapeHtml(notice.attachmentName || '첨부파일')}" loading="lazy">
