@@ -988,6 +988,52 @@
   #closureModal .cm-add .memo{flex:1;min-width:120px;}
   #closureModal .cm-err{display:none;font-size:13px;font-weight:700;color:var(--teal-dark);background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:8px;}
   #closureModal .cm-err.show{display:block;}
+  /* ===== 카톡 문구 만들기 (2026-11) ===== */
+  #kakaoModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;background:rgba(20,30,26,.45);}
+  #kakaoModal.open{display:flex;}
+  #kakaoModal .km-box{background:var(--card);width:780px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
+  #kakaoModal .km-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 8px;}
+  #kakaoModal .km-head h2{margin:0;font-size:19px;font-weight:800;}
+  #kakaoModal .km-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 24px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink);}
+  #kakaoModal .km-date{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:3px 6px;background:#fff;}
+  #kakaoModal .km-date b{min-width:96px;text-align:center;font-size:14px;font-weight:800;color:var(--teal);}
+  #kakaoModal .km-date button{border:none;background:none;font-size:20px;line-height:1;color:var(--teal);cursor:pointer;padding:2px 8px;}
+  #kakaoModal .km-bar label{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--ink-soft);}
+  #kakaoModal .km-bar select{height:34px;border:1.5px solid var(--line);border-radius:8px;background:#fff;padding:0 8px;font-size:13.5px;color:var(--ink);}
+  #kakaoModal .km-bar input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);}
+  #kakaoModal .km-count{margin-left:auto;color:var(--ink-soft);font-size:13px;}
+  #kakaoModal .km-body{overflow-y:auto;padding:0 24px;}
+  #kakaoModal .km-row{display:grid;grid-template-columns:128px 1fr 98px;gap:14px;padding:16px 0;border-bottom:1px solid var(--line);align-items:start;}
+  #kakaoModal .km-nm{font-size:15px;font-weight:800;color:var(--ink);}
+  #kakaoModal .km-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;font-weight:600;}
+  #kakaoModal .km-chip{display:inline-block;margin-top:6px;font-size:11.5px;font-weight:700;color:var(--teal);background:var(--soft);border-radius:6px;padding:2px 7px;}
+  #kakaoModal .km-att{width:100%;box-sizing:border-box;height:38px;border:1.5px solid #CFC8B4;border-radius:8px;background:#fff;padding:0 10px;font-size:14px;color:var(--ink);margin-bottom:8px;}
+  #kakaoModal .km-att:focus{outline:none;border-color:var(--teal);}
+  #kakaoModal .km-attrow{display:flex;gap:8px;margin-bottom:8px;}
+  #kakaoModal .km-attrow .km-att{flex:1;min-width:0;margin-bottom:0;}
+  #kakaoModal .km-pick{height:38px;border:1.5px solid var(--teal);background:#fff;color:var(--teal);border-radius:8px;padding:0 12px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+  #kakaoModal .km-pick.on{background:var(--teal);color:#fff;}
+  #kakaoModal .km-pop{margin:0 0 8px;background:#fff;border:1.5px solid var(--teal);border-radius:12px;padding:12px;box-shadow:0 8px 20px rgba(0,0,0,.12);}
+  #kakaoModal .km-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  #kakaoModal .km-cat{font-size:12.5px;font-weight:700;border:1.5px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--ink-soft);background:#fff;cursor:pointer;}
+  #kakaoModal .km-cat.sug{border-color:var(--teal);color:var(--teal);}
+  #kakaoModal .km-cat.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  #kakaoModal .km-ph{display:block;width:100%;text-align:left;font-size:13px;line-height:1.5;padding:9px 10px;border-radius:8px;border:1px solid var(--line);margin-bottom:6px;background:#FBFDFC;color:var(--ink);cursor:pointer;font-family:inherit;}
+  #kakaoModal .km-ph:hover{background:var(--soft);border-color:var(--teal);}
+  #kakaoModal .km-ph.hot{background:var(--soft);border-color:var(--teal);}
+  #kakaoModal .km-popnote{font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
+  #kakaoModal .km-txt{white-space:pre-wrap;word-break:break-all;font-size:13.5px;line-height:1.6;background:var(--soft);color:var(--ink);border-radius:10px;padding:10px 12px;}
+  #kakaoModal .km-txt.empty{color:var(--ink-soft);}
+  #kakaoModal .km-copy{border:none;background:var(--teal);color:#fff;font-size:13.5px;font-weight:700;border-radius:9px;padding:10px 0;cursor:pointer;width:100%;}
+  #kakaoModal .km-copy.done{background:#fff;color:var(--teal);box-shadow:inset 0 0 0 1.5px var(--teal);}
+  #kakaoModal .km-copy:disabled{opacity:.45;cursor:default;}
+  #kakaoModal .km-empty{padding:28px 0;text-align:center;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  #kakaoModal .km-foot{padding:11px 24px;font-size:12.5px;line-height:1.55;color:var(--ink-soft);background:var(--paper);border-top:1px solid var(--line);}
+  @media (max-width:640px){
+    #kakaoModal .km-row{grid-template-columns:1fr;gap:8px;}
+    #kakaoModal .km-count{margin-left:0;}
+  }
   .weekly-attend-rate.weekly-attend-closed{font-size:13px;color:var(--teal);}
   .weekbar .range{text-align:center;line-height:1.3;}
   .weekbar .range b{display:block;font-size:17px;font-weight:800;}
@@ -1179,6 +1225,20 @@
     </div>
   </div>
 </div>
+<div id="kakaoModal" role="dialog" aria-modal="true" aria-labelledby="kakaoTitle">
+  <div class="km-box">
+    <div class="km-head"><h2 id="kakaoTitle">📨 카톡 문구 만들기</h2><button class="cm-x" id="kakaoClose" aria-label="닫기">×</button></div>
+    <div class="km-bar">
+      <div class="km-date"><button type="button" id="kakaoPrev" aria-label="전날">‹</button><b id="kakaoDate"></b><button type="button" id="kakaoNext" aria-label="다음날">›</button></div>
+      <label>양식 <select id="kakaoTpl"></select></label>
+      <label><input type="checkbox" id="kakaoLink" checked> 링크 포함</label>
+      <span class="km-count" id="kakaoCount"></span>
+    </div>
+    <div class="km-body" id="kakaoBody"></div>
+    <div class="km-foot" id="kakaoFoot"></div>
+  </div>
+</div>
+<datalist id="kakaoAttList"></datalist>
 <div id="shell">
   <div id="sidebarBackdrop"></div>
   <div id="sidebar">
@@ -1236,6 +1296,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A6F5A" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
           <input type="date" id="datePick">
         </div>
+        <button class="edit-toggle" id="kakaoOpen">📨 카톡 문구</button>
         <button class="edit-toggle" id="closureOpen">수업 일정 조정</button>
         <button class="edit-toggle" id="toggleEdit">명단 편집</button>
       </div>
@@ -2078,6 +2139,436 @@ function openAdjustModal(dateStr){
 function closeAdjustModal(){ document.getElementById('closureModal').classList.remove('open'); }
 function adjError(msg){ const e = document.getElementById('closureErr'); e.textContent = msg; e.classList.add('show'); }
 document.getElementById('closureOpen').addEventListener('click', ()=> openAdjustModal(toDateStr(selectedDate)));
+
+/* ============ 카톡 문구 만들기 (2026-11) ============
+   그날 출결·숙제·등하원·다음 수업으로 학생별 카톡 문구를 만들어 복사한다(플립에듀 카카오톡 전송 칸에 붙여 넣기).
+   - 양식은 시트의 "카톡문구" 탭(이름/내용)에서 읽는다. 읽지 못하면 아래 기본 양식을 쓴다.
+   - 양식 안의 {출결} {등하원} {숙제} {태도} {다음수업} {링크} {이름} {날짜} 가 학생별로 채워지고,
+     값이 없는 항목이 들어 있는 줄은 통째로 빠진다.
+   - 코멘트(예전 이름: 수업 태도)는 메모를 쓰지 않고 이 창에서 직접 적거나, 시트의 「코멘트문구」 탭 문구를 골라 넣는다(이 브라우저에 날짜·학생별로 저장). 서버에는 아무것도 쓰지 않는다. */
+const KAKAO_DEFAULT_TEMPLATES = [
+  { name:'기본', body:'오늘 수업 안내드립니다.\n· 출결: {출결}\n· {등하원}\n· 숙제: {숙제}\n· 코멘트: {코멘트}\n· 다음 수업: {다음수업}\n자세한 내용은 리포트에서 확인하세요 → {링크}' },
+  { name:'간단', body:'오늘 수업 안내드립니다.\n· 출결: {출결}\n· 숙제: {숙제}\n· 다음 수업: {다음수업}' }
+];
+const KAKAO_DEFAULT_PHRASES = [
+  {
+   code: "잘함",
+   text: "숙제를 꼼꼼히 잘 해왔습니다. 현재 학습 흐름을 유지해 봅시다."
+  },
+  {
+   code: "잘함",
+   text: "과제를 빠뜨리지 않고 성실하게 마무리했습니다. 다음 단계의 문제에도 도전해 봅시다."
+  },
+  {
+   code: "잘함",
+   text: "배운 내용을 잘 적용해 과제를 해결했습니다. 풀이 과정을 계속 정리하는 습관을 이어가면 좋겠습니다."
+  },
+  {
+   code: "계산 실수",
+   text: "개념은 이해했지만 계산 과정의 실수가 있었습니다. 오답을 다시 풀어보며 확인해 봅시다."
+  },
+  {
+   code: "계산 실수",
+   text: "문제 접근은 좋았습니다. 계산 중 실수가 있었으니 풀이 마지막에 한 번 더 검산해 봅시다."
+  },
+  {
+   code: "계산 실수",
+   text: "계산 실수로 아쉬운 문제가 있었습니다. 식을 한 줄씩 정리하며 천천히 풀어보면 더 정확해집니다."
+  },
+  {
+   code: "미제출",
+   text: "숙제 확인이 되지 않았습니다. 다음 수업 전까지 꼭 제출해 주세요."
+  },
+  {
+   code: "미제출",
+   text: "과제가 제출되지 않아 학습 내용을 확인하기 어려웠습니다. 미완료 분량부터 마무리해 봅시다."
+  },
+  {
+   code: "미제출",
+   text: "숙제를 하지 못한 부분은 다음 수업 전까지 풀어오도록 합시다. 어려웠던 문제는 표시해 두세요."
+  },
+  {
+   code: "부분 완료",
+   text: "숙제를 일부만 완료했습니다. 남은 문제를 풀며 오늘 배운 내용을 다시 정리해 봅시다."
+  },
+  {
+   code: "부분 완료",
+   text: "완료한 문제는 잘 풀었지만 미완료 분량이 있습니다. 남은 과제를 마친 뒤 오답도 함께 확인해 주세요."
+  },
+  {
+   code: "부분 완료",
+   text: "과제 진행은 좋았으나 일부 문제가 남았습니다. 어려운 문제부터 표시해 다음 수업에서 함께 확인하겠습니다."
+  },
+  {
+   code: "개념 복습",
+   text: "문제를 풀기 전 핵심 개념을 한 번 더 정리해 볼 필요가 있습니다. 기본 문제부터 차근차근 복습해 봅시다."
+  },
+  {
+   code: "개념 복습",
+   text: "유형별 풀이 방법이 아직 익숙하지 않습니다. 교과서 예제와 기본 문제를 다시 풀어보면 도움이 됩니다."
+  },
+  {
+   code: "개념 복습",
+   text: "개념 이해가 조금 더 필요합니다. 틀린 문제의 풀이를 읽고 같은 유형을 다시 풀어보세요."
+  },
+  {
+   code: "시험 보완",
+   text: "시험에서 부족했던 단원은 다음 수업에서 다시 보완하겠습니다."
+  },
+  {
+   code: "시험 보완",
+   text: "시험 결과를 바탕으로 취약한 유형을 정리해 보겠습니다. 오답 문제를 다시 푸는 것이 우선입니다."
+  },
+  {
+   code: "시험 보완",
+   text: "기본 문제는 잘 해결했지만 응용 문제에서 보완할 점이 있었습니다. 관련 유형을 추가로 연습해 봅시다."
+  },
+  {
+   code: "학습 태도",
+   text: "어려운 문제도 끝까지 해결하려는 태도가 좋았습니다."
+  },
+  {
+   code: "학습 태도",
+   text: "수업에 집중하며 질문에도 적극적으로 참여했습니다. 이 학습 태도를 계속 유지해 주세요."
+  },
+  {
+   code: "학습 태도",
+   text: "풀이 과정을 스스로 설명하려는 모습이 좋았습니다. 생각한 방법을 말로 정리하는 연습을 이어가 봅시다."
+  },
+  {
+   code: "도전 격려",
+   text: "새로운 유형이었지만 끝까지 시도한 점이 좋았습니다. 틀린 문제를 다시 풀며 자신감을 쌓아 봅시다."
+  },
+  {
+   code: "도전 격려",
+   text: "어려운 문제에서 바로 포기하지 않고 여러 방법을 생각해 보았습니다. 다음에도 풀이 과정을 차분히 적어 봅시다."
+  },
+  {
+   code: "도전 격려",
+   text: "처음에는 어려워했지만 설명 후 스스로 해결했습니다. 비슷한 유형을 한두 문제 더 풀어보면 실력이 굳어집니다."
+  }
+];
+let kakaoTemplates = KAKAO_DEFAULT_TEMPLATES.slice();
+let kakaoFromSheet = false;
+let kakaoRows = [];
+let kakaoDs = '';
+let kakaoCopied = {};   // "날짜|이름" -> 복사한 문구 (문구가 바뀌면 복사됨 표시가 풀린다)
+let kakaoSeq = 0;
+const KAKAO_DOW = ['일','월','화','수','목','금','토'];
+function kakaoLs(k, v){
+  try{
+    if(v === undefined) return localStorage.getItem(k);
+    if(v === null || v === '') localStorage.removeItem(k); else localStorage.setItem(k, v);
+  }catch(e){}
+  return null;
+}
+function kakaoDayLabel(ds){
+  const d = new Date(ds+'T00:00:00');
+  return (d.getMonth()+1)+'/'+d.getDate()+'('+KAKAO_DOW[d.getDay()]+')';
+}
+async function kakaoLoadTemplates(){
+  try{
+    const d = await apiGet({action:'msgTemplates'});
+    const list = Array.isArray(d) ? d.filter(t=> t && String(t.name||'').trim() && String(t.body||'').trim()) : [];
+    if(list.length){ kakaoTemplates = list.map(t=>({name:String(t.name).trim(), body:String(t.body)})); kakaoFromSheet = true; return; }
+  }catch(e){}
+  kakaoTemplates = KAKAO_DEFAULT_TEMPLATES.slice(); kakaoFromSheet = false;
+}
+
+let kakaoPhrases = KAKAO_DEFAULT_PHRASES.slice();
+let kakaoPhrasesFromSheet = false;
+async function kakaoLoadPhrases(){
+  try{
+    const d = await apiGet({action:'msgPhrases'});
+    const list = Array.isArray(d) ? d.filter(x=> x && String(x.code||'').trim() && String(x.text||'').trim()) : [];
+    if(list.length){ kakaoPhrases = list.map(x=>({code:String(x.code).trim(), text:String(x.text).trim()})); kakaoPhrasesFromSheet = true; return; }
+  }catch(e){}
+  kakaoPhrases = KAKAO_DEFAULT_PHRASES.slice(); kakaoPhrasesFromSheet = false;
+}
+function kakaoPhraseCats(){
+  const cats = [];
+  kakaoPhrases.forEach(p=>{ if(cats.indexOf(p.code) < 0) cats.push(p.code); });
+  return cats;
+}
+// 숙제 상태에 맞춰 먼저 보여 줄 분류(★). 숙제 줄과 같은 말이 두 번 나가지 않도록 "부분 완료"·"미제출"은 추천하지 않는다.
+function kakaoSuggestCats(row){
+  const m = { '완료':['잘함','학습 태도'], '미흡':['개념 복습','계산 실수'], '안함':['개념 복습','계산 실수'] };
+  const want = m[row.hwState] || ['학습 태도'];
+  const cats = kakaoPhraseCats();
+  return want.filter(c=> cats.indexOf(c) >= 0);
+}
+function kakaoPopHtml(row, cat){
+  const cats = kakaoPhraseCats();
+  const sug = kakaoSuggestCats(row);
+  const ordered = sug.concat(cats.filter(c=> sug.indexOf(c) < 0));
+  if(!cat || ordered.indexOf(cat) < 0) cat = ordered[0];
+  const cur = row.att.trim();
+  const chips = ordered.map(c=>`<button type="button" class="km-cat${c===cat?' on':''}${sug.indexOf(c)>=0?' sug':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}${sug.indexOf(c)>=0?' ★':''}</button>`).join('');
+  const list = kakaoPhrases.map((p,idx)=>({p,idx})).filter(x=> x.p.code === cat)
+    .map(x=>`<button type="button" class="km-ph${x.p.text===cur?' hot':''}" data-pi="${x.idx}">${escapeHtml(x.p.text)}</button>`).join('');
+  return `<div class="km-pop" data-cat="${escapeHtml(cat)}"><div class="km-cats">${chips}</div>${list}<div class="km-popnote">문장을 누르면 위 입력칸에 들어가고, 그 자리에서 고쳐 쓸 수 있어요. ★은 숙제 상태에 맞춘 추천 분류예요.</div></div>`;
+}
+function kakaoClosePops(){
+  document.querySelectorAll('#kakaoBody .km-popslot').forEach(el=>{ el.innerHTML = ''; });
+  document.querySelectorAll('#kakaoBody .km-pick').forEach(b=>{ b.classList.remove('on'); b.setAttribute('aria-expanded','false'); b.textContent = '📚 문구 선택'; });
+}
+function kakaoOpenPop(el, row, cat){
+  const slot = el.querySelector('.km-popslot');
+  slot.innerHTML = kakaoPopHtml(row, cat);
+  const b = el.querySelector('.km-pick');
+  b.classList.add('on'); b.setAttribute('aria-expanded','true'); b.textContent = '📚 문구 선택 ▴';
+}
+// 오늘부터 4주 동안 날짜별로 "누가 몇 시에 수업이 있는지"를 한 번만 계산해 둔다(학생마다 다시 계산하지 않도록)
+function kakaoBuildUpcoming(ds){
+  const out = [];
+  for(let i=1;i<=28;i++){
+    const d = addDays(new Date(ds+'T00:00:00'), i);
+    const dStr = toDateStr(d);
+    const map = {};
+    classEntriesOn(dStr).forEach(e=>{
+      const nm = parseStudentEntry(e.name).name;
+      if(nm && (!map[nm] || e.block < map[nm])) map[nm] = e.block;
+    });
+    out.push({ ds: dStr, map });
+  }
+  return out;
+}
+function kakaoAttendLabel(row, ds){
+  const labs = [];
+  row.entries.slice().sort((a,b)=> String(a.block).localeCompare(String(b.block)) || a.s - b.s).forEach(e=>{
+    const rec = getRec(ds, e.block, e.s);
+    if(!rec.status || rec.status === 'normal') return;
+    const extra = e.s >= 10;
+    let l;
+    if(rec.status === 'present') l = extra ? '출석 (보강)' : '출석';
+    else if(rec.status === 'late') l = extra ? '지각 (보강)' : '지각';
+    else{
+      const ms = rec.makeupStatus || 'none';
+      if(extra) l = '결석 (보강)';
+      else if(ms === 'wait') l = '결석 (보강 ' + (rec.makeupDate ? rec.makeupDate + ' 예정' : '대기') + ')';
+      else if(ms === 'done') l = '결석 (보강 완료)';
+      else l = '결석';
+    }
+    if(labs.indexOf(l) < 0) labs.push(l);
+  });
+  return labs.join(', ');
+}
+function kakaoBuildRows(ds){
+  const byName = {};
+  classEntriesOn(ds).forEach(e=>{
+    const st = parseStudentEntry(e.name);
+    if(!st.name || st.status === '종료') return;
+    const info = studentStatusInfoOf(st.name);
+    if(info && (info.status === '퇴원' || info.status === '휴원')) return;
+    const r = byName[st.name] = byName[st.name] || { name: st.name, school: st.school || (info && info.school) || '', grade: st.grade || (info && info.grade) || '', reportId: (info && info.reportId) || '', entries: [] };
+    r.entries.push(e);
+  });
+  const upcoming = kakaoBuildUpcoming(ds);
+  const rows = Object.values(byName).map(r=>{
+    r.firstBlock = r.entries.map(e=>String(e.block)).sort()[0];
+    r.attend = kakaoAttendLabel(r, ds);
+    const live = r.entries.filter(e=> getRec(ds, e.block, e.s).status !== 'absent');
+    let tin = '', tout = '';
+    live.forEach(e=>{
+      const rec = getRec(ds, e.block, e.s);
+      if(rec.checkIn && (!tin || rec.checkIn < tin)) tin = rec.checkIn;
+      if(rec.checkOut && (!tout || rec.checkOut > tout)) tout = rec.checkOut;
+    });
+    r.times = (tin && tout) ? '등원 '+tin+' / 하원 '+tout : tin ? '등원 '+tin : tout ? '하원 '+tout : '';
+    let hw = ''; r.hwState = '';
+    for(const e of live){
+      const st = hwStatusLabel(getHwRec(ds, e.block, e.name).completed);
+      if(st === '완료'){ hw = '완료'; r.hwState = st; break; }
+      if(st === '미흡'){ hw = '일부 미완료 → 다음 숙제에 이어서 진행'; r.hwState = st; break; }
+      if(st === '안함'){ hw = '미완료 → 다음 숙제에 이어서 진행'; r.hwState = st; break; }
+    }
+    r.homework = hw;
+    r.att = kakaoLs('kakaoAtt|'+ds+'|'+r.name) || '';
+    const nx = upcoming.find(u=> u.map[r.name]);
+    r.next = nx ? kakaoDayLabel(nx.ds)+' '+nx.map[r.name] : '';
+    return r;
+  });
+  rows.sort((a,b)=> String(a.firstBlock).localeCompare(String(b.firstBlock)) || a.name.localeCompare(b.name,'ko'));
+  return rows;
+}
+function kakaoLinkFor(row){
+  if(!document.getElementById('kakaoLink').checked || !row.reportId) return '';
+  try{ return new URL('report.html?id='+encodeURIComponent(row.reportId), location.href).href; }catch(e){ return ''; }
+}
+function kakaoCompose(tpl, row, ds){
+  const vals = { '출결': row.attend, '등하원': row.times, '숙제': row.homework, '태도': row.att.trim(), '코멘트': row.att.trim(),
+    '다음수업': row.next, '링크': kakaoLinkFor(row), '이름': row.name, '날짜': kakaoDayLabel(ds),
+    '학교': row.school, '학년': row.grade };
+  const lines = String(tpl).replace(/\r\n?/g,'\n').split('\n').map(line=>{
+    let drop = false;
+    const out = line.replace(/\{([^{}]+)\}/g, (m,k)=>{
+      k = k.trim();
+      if(!(k in vals)) return m;           // 모르는 이름은 그대로 두어 오타가 눈에 띄게 한다
+      if(!vals[k]){ drop = true; return ''; }
+      return vals[k];
+    });
+    return drop ? null : out;
+  }).filter(l=> l !== null);
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+function kakaoCurrentTpl(){
+  const sel = document.getElementById('kakaoTpl');
+  const t = kakaoTemplates.find(x=> x.name === sel.value) || kakaoTemplates[0];
+  return t ? t.body : '';
+}
+function kakaoRefreshTexts(){
+  const tpl = kakaoCurrentTpl();
+  document.querySelectorAll('#kakaoBody .km-row').forEach(el=>{
+    const row = kakaoRows[parseInt(el.getAttribute('data-i'))];
+    if(!row) return;
+    // 출결을 체크하기 전에는 "오늘 수업 안내"를 만들지 않는다(학부모께 엉뚱한 안내가 가지 않도록)
+    const text = row.attend ? kakaoCompose(tpl, row, kakaoDs) : '';
+    row.text = text;
+    const tx = el.querySelector('.km-txt');
+    tx.textContent = text || (row.attend ? '(보낼 내용이 없어요)' : '출결을 먼저 체크하면 문구가 만들어져요.');
+    tx.classList.toggle('empty', !text);
+    const btn = el.querySelector('.km-copy');
+    const done = kakaoCopied[kakaoDs+'|'+row.name] === text && !!text;
+    btn.textContent = done ? '✓ 복사됨' : '📋 복사';
+    btn.classList.toggle('done', done);
+    btn.disabled = !text;
+  });
+  const cp = kakaoRows.filter(r=> kakaoCopied[kakaoDs+'|'+r.name] === r.text && r.text).length;
+  document.getElementById('kakaoCount').textContent = kakaoRows.length ? `수업 ${kakaoRows.length}명 · 복사 ${cp}명` : '';
+}
+async function kakaoCopyText(text){
+  try{
+    if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return true; }
+  }catch(e){}
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+function kakaoRecentAtt(){
+  try{ return JSON.parse(kakaoLs('kakaoAttRecent') || '[]'); }catch(e){ return []; }
+}
+function kakaoRememberAtt(v){
+  v = String(v||'').trim();
+  if(!v) return;
+  const list = kakaoRecentAtt().filter(x=> x !== v);
+  list.unshift(v);
+  kakaoLs('kakaoAttRecent', JSON.stringify(list.slice(0, 12)));
+}
+function kakaoRender(){
+  const ds = toDateStr(selectedDate);
+  kakaoDs = ds;
+  document.getElementById('kakaoDate').textContent = kakaoDayLabel(ds);
+  const body = document.getElementById('kakaoBody');
+  const foot = document.getElementById('kakaoFoot');
+  foot.textContent = (kakaoFromSheet ? '양식은 구글 시트의 「카톡문구」 탭에서 불러왔어요. ' : '아직 시트 양식이 없어 기본 양식을 쓰고 있어요. ')
+    + '값이 없는 항목(출결 미체크, 숙제 미확인, 입력 안 한 코멘트 등)은 그 줄이 빠져요. 복사한 뒤 플립에듀 「내용」 칸에 붙여 넣으세요.';
+  if(isClosedDate(ds)){
+    kakaoRows = [];
+    body.innerHTML = `<div class="km-empty">${escapeHtml(closureLabel(ds))} — 이 날은 휴강일이에요.</div>`;
+    document.getElementById('kakaoCount').textContent = '';
+    return;
+  }
+  kakaoRows = kakaoBuildRows(ds);
+  if(!kakaoRows.length){
+    body.innerHTML = '<div class="km-empty">이 날은 수업이 있는 학생이 없어요.</div>';
+    document.getElementById('kakaoCount').textContent = '';
+    return;
+  }
+  document.getElementById('kakaoAttList').innerHTML = kakaoRecentAtt().map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+  body.innerHTML = kakaoRows.map((r,i)=>{
+    const meta = escapeHtml([r.school, r.grade].filter(Boolean).join(' · '));
+    const notes = [];
+    if(!r.attend) notes.push('출결 미체크');
+    if(!r.reportId) notes.push('리포트 ID 미발급');
+    return `<div class="km-row" data-i="${i}">
+      <div><div class="km-nm">${escapeHtml(r.name)}</div>${meta?`<div class="km-sub">${meta}</div>`:''}${notes.map(n=>`<span class="km-chip">${n}</span>`).join(' ')}</div>
+      <div>
+        <div class="km-attrow"><input type="text" class="km-att" list="kakaoAttList" maxlength="120" value="${escapeHtml(r.att)}" placeholder="코멘트 한 줄 (직접 쓰거나 오른쪽에서 고르기)" aria-label="${escapeHtml(r.name)} 코멘트"><button type="button" class="km-pick" aria-expanded="false">📚 문구 선택</button></div>
+        <div class="km-popslot"></div>
+        <div class="km-txt"></div>
+      </div>
+      <div><button type="button" class="km-copy">📋 복사</button></div>
+    </div>`;
+  }).join('');
+  kakaoRefreshTexts();
+}
+async function openKakaoModal(){
+  const my = ++kakaoSeq;
+  const modal = document.getElementById('kakaoModal');
+  modal.classList.add('open');
+  document.getElementById('kakaoBody').innerHTML = '<div class="km-empty">불러오는 중…</div>';
+  await Promise.all([loadStudentInfoList(), kakaoLoadTemplates(), kakaoLoadPhrases()]);
+  if(my !== kakaoSeq) return;
+  const sel = document.getElementById('kakaoTpl');
+  const want = kakaoLs('kakaoTplName');
+  sel.innerHTML = kakaoTemplates.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  if(want && kakaoTemplates.some(t=>t.name === want)) sel.value = want;
+  kakaoRender();
+}
+function closeKakaoModal(){ kakaoSeq++; document.getElementById('kakaoModal').classList.remove('open'); }
+document.getElementById('kakaoOpen').addEventListener('click', openKakaoModal);
+document.getElementById('kakaoClose').addEventListener('click', closeKakaoModal);
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && document.getElementById('kakaoModal').classList.contains('open')) closeKakaoModal(); });
+document.getElementById('kakaoTpl').addEventListener('change', e=>{ kakaoLs('kakaoTplName', e.target.value); kakaoRefreshTexts(); });
+document.getElementById('kakaoLink').addEventListener('change', kakaoRefreshTexts);
+async function kakaoStep(dir){
+  const my = ++kakaoSeq;
+  document.getElementById('kakaoBody').innerHTML = '<div class="km-empty">불러오는 중…</div>';
+  await stepDay(dir);
+  if(my !== kakaoSeq) return;
+  kakaoRender();
+}
+document.getElementById('kakaoPrev').addEventListener('click', ()=> kakaoStep(-1));
+document.getElementById('kakaoNext').addEventListener('click', ()=> kakaoStep(1));
+document.getElementById('kakaoBody').addEventListener('input', e=>{
+  const inp = e.target.closest('.km-att'); if(!inp) return;
+  const el = inp.closest('.km-row'); const row = kakaoRows[parseInt(el.getAttribute('data-i'))];
+  if(!row) return;
+  row.att = inp.value;
+  kakaoLs('kakaoAtt|'+kakaoDs+'|'+row.name, inp.value.trim() ? inp.value : null);
+  kakaoRefreshTexts();
+});
+document.getElementById('kakaoBody').addEventListener('change', e=>{
+  const inp = e.target.closest('.km-att'); if(inp) kakaoRememberAtt(inp.value);
+});
+document.getElementById('kakaoBody').addEventListener('click', async e=>{
+  const btn = e.target.closest('.km-copy'); if(!btn) return;
+  const el = btn.closest('.km-row'); const row = kakaoRows[parseInt(el.getAttribute('data-i'))];
+  if(!row || !row.text) return;
+  const ok = await kakaoCopyText(row.text);
+  if(!ok){ btn.textContent = '복사 실패 — 직접 선택해 주세요'; return; }
+  kakaoRememberAtt(row.att);
+  kakaoCopied[kakaoDs+'|'+row.name] = row.text;
+  kakaoRefreshTexts();
+});
+document.getElementById('kakaoBody').addEventListener('click', e=>{
+  const el = e.target.closest('.km-row'); if(!el) return;
+  const row = kakaoRows[parseInt(el.getAttribute('data-i'))]; if(!row) return;
+  const pick = e.target.closest('.km-pick');
+  if(pick){
+    const wasOpen = pick.classList.contains('on');
+    kakaoClosePops();
+    if(!wasOpen) kakaoOpenPop(el, row, '');
+    return;
+  }
+  const cat = e.target.closest('.km-cat');
+  if(cat){ kakaoOpenPop(el, row, cat.getAttribute('data-cat')); return; }
+  const ph = e.target.closest('.km-ph');
+  if(ph){
+    const p = kakaoPhrases[parseInt(ph.getAttribute('data-pi'))]; if(!p) return;
+    const inp = el.querySelector('.km-att');
+    inp.value = p.text;
+    row.att = p.text;
+    kakaoLs('kakaoAtt|'+kakaoDs+'|'+row.name, p.text);
+    kakaoRefreshTexts();
+    kakaoClosePops();
+  }
+});
 document.getElementById('closureClose').addEventListener('click', closeAdjustModal);
 document.getElementById('closureModal').addEventListener('click', async e=>{
   if(e.target.id === 'closureModal'){ closeAdjustModal(); return; }
