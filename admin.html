@@ -1009,7 +1009,9 @@
   #kakaoModal .km-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;font-weight:600;}
   #kakaoModal .km-chip{display:inline-block;margin-top:6px;font-size:11.5px;font-weight:700;color:var(--teal);background:var(--soft);border-radius:6px;padding:2px 7px;}
   #kakaoModal .km-att{width:100%;box-sizing:border-box;height:38px;border:1.5px solid #CFC8B4;border-radius:8px;background:#fff;padding:0 10px;font-size:14px;color:var(--ink);margin-bottom:8px;}
-  #kakaoModal .km-att:focus{outline:none;border-color:var(--teal);}
+  #kakaoModal .km-hw{width:100%;box-sizing:border-box;height:38px;border:1.5px solid #CFC8B4;border-radius:8px;background:#fff;padding:0 10px;font-size:14px;color:var(--ink);margin-bottom:8px;}
+  #kakaoModal .km-att:focus,#kakaoModal .km-hw:focus{outline:none;border-color:var(--teal);}
+  #kakaoModal .km-fl{font-size:11.5px;font-weight:700;color:var(--teal);margin:0 0 4px;}
   #kakaoModal .km-attrow{display:flex;gap:8px;margin-bottom:8px;}
   #kakaoModal .km-attrow .km-att{flex:1;min-width:0;margin-bottom:0;}
   #kakaoModal .km-pick{height:38px;border:1.5px solid var(--teal);background:#fff;color:var(--teal);border-radius:8px;padding:0 12px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
@@ -1239,6 +1241,7 @@
   </div>
 </div>
 <datalist id="kakaoAttList"></datalist>
+<datalist id="kakaoHwList"></datalist>
 <div id="shell">
   <div id="sidebarBackdrop"></div>
   <div id="sidebar">
@@ -2143,13 +2146,18 @@ document.getElementById('closureOpen').addEventListener('click', ()=> openAdjust
 /* ============ 카톡 문구 만들기 (2026-11) ============
    그날 출결·숙제·등하원·다음 수업으로 학생별 카톡 문구를 만들어 복사한다(플립에듀 카카오톡 전송 칸에 붙여 넣기).
    - 양식은 시트의 "카톡문구" 탭(이름/내용)에서 읽는다. 읽지 못하면 아래 기본 양식을 쓴다.
-   - 양식 안의 {출결} {등하원} {숙제} {태도} {다음수업} {링크} {이름} {날짜} 가 학생별로 채워지고,
+   - 양식 안의 {출결} {등하원} {숙제} {태도} {다음수업} {다음숙제} {수업일} {링크} {이름} {날짜} 가 학생별로 채워지고,
      값이 없는 항목이 들어 있는 줄은 통째로 빠진다.
    - 코멘트(예전 이름: 수업 태도)는 메모를 쓰지 않고 이 창에서 직접 적거나, 시트의 「코멘트문구」 탭 문구를 골라 넣는다(이 브라우저에 날짜·학생별로 저장). 서버에는 아무것도 쓰지 않는다. */
 const KAKAO_DEFAULT_TEMPLATES = [
-  { name:'기본', body:'오늘 수업 안내드립니다.\n· 출결: {출결}\n· {등하원}\n· 숙제: {숙제}\n· 코멘트: {코멘트}\n· 다음 수업: {다음수업}\n자세한 내용은 리포트에서 확인하세요 → {링크}' },
-  { name:'간단', body:'오늘 수업 안내드립니다.\n· 출결: {출결}\n· 숙제: {숙제}\n· 다음 수업: {다음수업}' }
+  { name:'기본', body:'{이름} 학생의 수업현황 알림 입니다.\n\n▶ 수업일 : {수업일}\n▶ 숙제\n - 숙제 결과 : {숙제}\n - 코멘트 : {코멘트}\n\n▶ 다음숙제\n - {다음숙제}\n\n성실히 지도하겠습니다.' },
+  { name:'간단', body:'{이름} 학생의 수업현황 알림 입니다.\n\n▶ 수업일 : {수업일}\n▶ 숙제\n - 숙제 결과 : {숙제}\n\n▶ 다음숙제\n - {다음숙제}\n\n성실히 지도하겠습니다.' }
 ];
+// 예전 기본 양식(시트에 자동으로 만들어진 그대로인 것)은 새 양식으로 바꿔 준다. 직접 고친 양식은 건드리지 않는다.
+const KAKAO_OLD_DEFAULT_BODIES = {
+  '기본':'오늘 수업 안내드립니다.\n· 출결: {출결}\n· {등하원}\n· 숙제: {숙제}\n· 코멘트: {코멘트}\n· 다음 수업: {다음수업}\n자세한 내용은 리포트에서 확인하세요 → {링크}',
+  '간단':'오늘 수업 안내드립니다.\n· 출결: {출결}\n· 숙제: {숙제}\n· 다음 수업: {다음수업}'
+};
 const KAKAO_DEFAULT_PHRASES = [
   {
    code: "잘함",
@@ -2270,7 +2278,18 @@ async function kakaoLoadTemplates(){
   try{
     const d = await apiGet({action:'msgTemplates'});
     const list = Array.isArray(d) ? d.filter(t=> t && String(t.name||'').trim() && String(t.body||'').trim()) : [];
-    if(list.length){ kakaoTemplates = list.map(t=>({name:String(t.name).trim(), body:String(t.body)})); kakaoFromSheet = true; return; }
+    if(list.length){
+      kakaoTemplates = list.map(t=>{
+        const name = String(t.name).trim(), body = String(t.body);
+        const oldB = KAKAO_OLD_DEFAULT_BODIES[name];
+        if(oldB && body.replace(/\r\n?/g,'\n').trim() === oldB){
+          const nu = KAKAO_DEFAULT_TEMPLATES.find(x=> x.name === name);
+          if(nu) return { name, body: nu.body };
+        }
+        return { name, body };
+      });
+      kakaoFromSheet = true; return;
+    }
   }catch(e){}
   kakaoTemplates = KAKAO_DEFAULT_TEMPLATES.slice(); kakaoFromSheet = false;
 }
@@ -2384,6 +2403,7 @@ function kakaoBuildRows(ds){
     }
     r.homework = hw;
     r.att = kakaoLs('kakaoAtt|'+ds+'|'+r.name) || '';
+    r.nextHw = kakaoLs('kakaoNextHw|'+ds+'|'+r.name) || '';
     const nx = upcoming.find(u=> u.map[r.name]);
     r.next = nx ? kakaoDayLabel(nx.ds)+' '+nx.map[r.name] : '';
     return r;
@@ -2397,7 +2417,7 @@ function kakaoLinkFor(row){
 }
 function kakaoCompose(tpl, row, ds){
   const vals = { '출결': row.attend, '등하원': row.times, '숙제': row.homework, '태도': row.att.trim(), '코멘트': row.att.trim(),
-    '다음수업': row.next, '링크': kakaoLinkFor(row), '이름': row.name, '날짜': kakaoDayLabel(ds),
+    '다음수업': row.next, '다음숙제': (row.nextHw||'').trim(), '수업일': ds, '링크': kakaoLinkFor(row), '이름': row.name, '날짜': kakaoDayLabel(ds),
     '학교': row.school, '학년': row.grade };
   const lines = String(tpl).replace(/\r\n?/g,'\n').split('\n').map(line=>{
     let drop = false;
@@ -2409,7 +2429,13 @@ function kakaoCompose(tpl, row, ds){
     });
     return drop ? null : out;
   }).filter(l=> l !== null);
-  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  // 아래에 내용 줄(" - ")이 하나도 없는 "▶ 제목" 줄은 함께 뺀다(예: 다음 숙제를 안 적으면 「▶ 다음숙제」도 빠짐)
+  const kept = lines.filter((l,i)=>{
+    if(!/^▶ [^:：]+$/.test(l.trim())) return true;
+    const nx = lines[i+1];
+    return nx !== undefined && /^\s*[-·]\s/.test(nx);
+  });
+  return kept.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 function kakaoCurrentTpl(){
   const sel = document.getElementById('kakaoTpl');
@@ -2452,6 +2478,16 @@ async function kakaoCopyText(text){
 function kakaoRecentAtt(){
   try{ return JSON.parse(kakaoLs('kakaoAttRecent') || '[]'); }catch(e){ return []; }
 }
+function kakaoRecentHw(){
+  try{ return JSON.parse(kakaoLs('kakaoHwRecent') || '[]'); }catch(e){ return []; }
+}
+function kakaoRememberHw(v){
+  v = String(v||'').trim();
+  if(!v) return;
+  const list = kakaoRecentHw().filter(x=> x !== v);
+  list.unshift(v);
+  kakaoLs('kakaoHwRecent', JSON.stringify(list.slice(0, 12)));
+}
 function kakaoRememberAtt(v){
   v = String(v||'').trim();
   if(!v) return;
@@ -2479,6 +2515,7 @@ function kakaoRender(){
     document.getElementById('kakaoCount').textContent = '';
     return;
   }
+  document.getElementById('kakaoHwList').innerHTML = kakaoRecentHw().map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
   document.getElementById('kakaoAttList').innerHTML = kakaoRecentAtt().map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
   body.innerHTML = kakaoRows.map((r,i)=>{
     const meta = escapeHtml([r.school, r.grade].filter(Boolean).join(' · '));
@@ -2488,8 +2525,11 @@ function kakaoRender(){
     return `<div class="km-row" data-i="${i}">
       <div><div class="km-nm">${escapeHtml(r.name)}</div>${meta?`<div class="km-sub">${meta}</div>`:''}${notes.map(n=>`<span class="km-chip">${n}</span>`).join(' ')}</div>
       <div>
+        <div class="km-fl km-fl0">코멘트</div>
         <div class="km-attrow"><input type="text" class="km-att" list="kakaoAttList" maxlength="120" value="${escapeHtml(r.att)}" placeholder="코멘트 한 줄 (직접 쓰거나 오른쪽에서 고르기)" aria-label="${escapeHtml(r.name)} 코멘트"><button type="button" class="km-pick" aria-expanded="false">📚 문구 선택</button></div>
         <div class="km-popslot"></div>
+        <div class="km-fl">다음 숙제</div>
+        <input type="text" class="km-hw" list="kakaoHwList" maxlength="120" value="${escapeHtml(r.nextHw)}" placeholder="예: 중1-1 고쟁이 오답프린트 (비우면 「다음숙제」 블록이 빠져요)" aria-label="${escapeHtml(r.name)} 다음 숙제">
         <div class="km-txt"></div>
       </div>
       <div><button type="button" class="km-copy">📋 복사</button></div>
@@ -2526,6 +2566,15 @@ async function kakaoStep(dir){
 document.getElementById('kakaoPrev').addEventListener('click', ()=> kakaoStep(-1));
 document.getElementById('kakaoNext').addEventListener('click', ()=> kakaoStep(1));
 document.getElementById('kakaoBody').addEventListener('input', e=>{
+  const hw = e.target.closest('.km-hw');
+  if(hw){
+    const r2 = kakaoRows[parseInt(hw.closest('.km-row').getAttribute('data-i'))];
+    if(!r2) return;
+    r2.nextHw = hw.value;
+    kakaoLs('kakaoNextHw|'+kakaoDs+'|'+r2.name, hw.value.trim() ? hw.value : null);
+    kakaoRefreshTexts();
+    return;
+  }
   const inp = e.target.closest('.km-att'); if(!inp) return;
   const el = inp.closest('.km-row'); const row = kakaoRows[parseInt(el.getAttribute('data-i'))];
   if(!row) return;
@@ -2535,6 +2584,7 @@ document.getElementById('kakaoBody').addEventListener('input', e=>{
 });
 document.getElementById('kakaoBody').addEventListener('change', e=>{
   const inp = e.target.closest('.km-att'); if(inp) kakaoRememberAtt(inp.value);
+  const hw = e.target.closest('.km-hw'); if(hw) kakaoRememberHw(hw.value);
 });
 document.getElementById('kakaoBody').addEventListener('click', async e=>{
   const btn = e.target.closest('.km-copy'); if(!btn) return;
@@ -2543,6 +2593,7 @@ document.getElementById('kakaoBody').addEventListener('click', async e=>{
   const ok = await kakaoCopyText(row.text);
   if(!ok){ btn.textContent = '복사 실패 — 직접 선택해 주세요'; return; }
   kakaoRememberAtt(row.att);
+  kakaoRememberHw(row.nextHw);
   kakaoCopied[kakaoDs+'|'+row.name] = row.text;
   kakaoRefreshTexts();
 });
