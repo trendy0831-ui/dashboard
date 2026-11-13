@@ -1332,6 +1332,10 @@
     }
   }
 
+  function fmtMD(ds){
+    const m = String(ds||'').match(/^\d{4}-(\d{2})-(\d{2})$/);
+    return m ? (parseInt(m[1],10) + '/' + parseInt(m[2],10)) : String(ds||'');
+  }
   function tuitionMonthLabel(ym){
     const parts = String(ym || '').split('-');
     if(parts.length !== 2) return ym || '';
@@ -1347,14 +1351,20 @@
       return;
     }
     card.innerHTML = tuition.map(t=>{
-      const badgeCls = t.status === '완납' ? 'badge-done' : 'badge-unpaid';
+      // 결제기준일 전(또는 선불 회차제의 다음 수업 전)은 미납이 아니라 "결제 예정"(서버가 '결제예정'으로 내려줌)
+      const upcoming = t.status === '결제예정';
+      const badgeCls = t.status === '완납' ? 'badge-done' : upcoming ? 'badge-wait' : 'badge-unpaid';
+      const badgeTxt = t.status === '완납' ? '완납' : upcoming ? '결제 예정' : '미납';
+      const dueTxt = (upcoming && t.dueDate)
+        ? (t.dueKind === 'class' ? `${fmtMD(t.dueDate)} 수업 전까지 결제 예정` : `${fmtMD(t.dueDate)} 결제 예정`) : '';
       return `
         <div class="tuition-item">
           <div>
             <div class="tu-month">${tuitionMonthLabel(t.yearMonth)}</div>
             ${t.paidDate ? `<div class="tu-amount">${escapeHtml(t.paidDate)} 납부</div>` : ''}
+            ${dueTxt ? `<div class="tu-amount">${escapeHtml(dueTxt)}</div>` : ''}
           </div>
-          <span class="badge ${badgeCls}">${t.status === '완납' ? '완납' : '미납'}</span>
+          <span class="badge ${badgeCls}">${badgeTxt}</span>
         </div>
       `;
     }).join('');
