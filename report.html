@@ -1332,7 +1332,7 @@
     }
   }
 
-  function fmtMD(ds){
+  function fmtMDStr(ds){
     const m = String(ds||'').match(/^\d{4}-(\d{2})-(\d{2})$/);
     return m ? (parseInt(m[1],10) + '/' + parseInt(m[2],10)) : String(ds||'');
   }
@@ -1356,7 +1356,7 @@
       const badgeCls = t.status === '완납' ? 'badge-done' : upcoming ? 'badge-wait' : 'badge-unpaid';
       const badgeTxt = t.status === '완납' ? '완납' : upcoming ? '결제 예정' : '미납';
       const dueTxt = (upcoming && t.dueDate)
-        ? (t.dueKind === 'class' ? `${fmtMD(t.dueDate)} 수업 전까지 결제 예정` : `${fmtMD(t.dueDate)} 결제 예정`) : '';
+        ? (t.dueKind === 'class' ? `${fmtMDStr(t.dueDate)} 수업 전까지 결제 예정` : `${fmtMDStr(t.dueDate)} 결제 예정`) : '';
       return `
         <div class="tuition-item">
           <div>
