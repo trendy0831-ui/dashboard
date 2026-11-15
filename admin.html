@@ -1028,6 +1028,17 @@
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
   .cl-banner.slim{padding:10px 14px;font-size:13px;margin-bottom:10px;}
   .cl-banner b{font-weight:800;}
+  /* 보강 안내 문구 바로 수정 (2026-11-15) */
+  .cl-memo-wrap{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap;}
+  .cl-memo-text{cursor:pointer;border-bottom:1px dashed var(--teal);padding-bottom:1px;}
+  .cl-memo-edit,.cl-memo-cancel{border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);border-radius:8px;padding:4px 9px;
+    font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .cl-memo-edit{margin-left:4px;}
+  .cl-memo-save{border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:8px;padding:4px 11px;font-size:12px;font-weight:700;
+    cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .cl-memo-input{flex:1;min-width:120px;border:1.5px solid var(--teal);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;
+    color:var(--ink);background:#fff;}
+  .cl-memo-wrap button:disabled,.cl-memo-wrap input:disabled{opacity:.6;cursor:default;}
   .cl-btn{border:1.5px solid var(--teal);background:var(--card);color:var(--teal);font-size:13px;font-weight:700;border-radius:8px;
     padding:7px 12px;cursor:pointer;white-space:nowrap;}
   .cl-btn:hover{background:var(--teal);color:#fff;}
@@ -2117,6 +2128,64 @@ async function removeAdjustIds(ids){
   }
   await afterScheduleChange();
 }
+// 보강 안내 문구 수정 (2026-11-15): 같은 id로 문구만 바꾼 줄을 "추가"한다 — 서버는 id별 마지막 줄을 최신으로 읽으므로
+// 기존 줄은 지우지 않고, 보강 칸(슬롯)도 그대로라 출석·숙제 기록에는 영향이 없다.
+async function saveAdjustMemo(ids, memo){
+  const set = new Set(ids);
+  const targets = adjusts.filter(a=> set.has(a.id) && a.status === 'active');
+  if(!targets.length) return false;
+  const prev = targets.map(a=> a.memo);
+  const rows = targets.map(a=>({ id: a.id, date: a.date, type: a.type, name: a.name, block: a.block, slot: a.slot, memo, group: a.group }));
+  targets.forEach(a=>{ a.memo = memo; });
+  try{
+    await apiPost({ action:'saveScheduleAdjust', rows });
+  }catch(e){
+    targets.forEach((a,i)=>{ a.memo = prev[i]; });
+    showSaveFailToast('문구를 저장하지 못했어요. 다시 시도해주세요.');
+    renderAdjustModal(); renderCardView();
+    return false;
+  }
+  renderAdjustModal(); renderCardView();
+  showRosterToast('보강 문구를 고쳤어요', 'ok');
+  return true;
+}
+function openAdjMemoEdit(wrap){
+  if(wrap.classList.contains('editing')) return;
+  const ids = (wrap.getAttribute('data-adj-memo-ids') || '').split(',').filter(Boolean);
+  const cur = (adjusts.find(a=> a.id === ids[0]) || {}).memo || '';
+  wrap.classList.add('editing');
+  wrap.innerHTML = `<b>보강</b><input type="text" class="cl-memo-input" maxlength="100" placeholder="보강 안내 문구"><button type="button" class="cl-memo-save">저장</button><button type="button" class="cl-memo-cancel">취소</button>`;
+  const inp = wrap.querySelector('.cl-memo-input');
+  inp.value = cur;
+  inp.focus(); inp.select();
+  let busy = false;
+  const save = async ()=>{
+    if(busy) return;
+    const v = inp.value.trim();
+    if(v === cur){ renderCardView(); return; }
+    busy = true;
+    wrap.querySelectorAll('button,input').forEach(el=>{ el.disabled = true; });
+    await saveAdjustMemo(ids, v);
+  };
+  wrap.querySelector('.cl-memo-save').onclick = save;
+  wrap.querySelector('.cl-memo-cancel').onclick = ()=> renderCardView();
+  inp.addEventListener('keydown', e=>{
+    if(e.isComposing) return; // 한글 조합 중 Enter는 무시
+    if(e.key === 'Enter'){ e.preventDefault(); save(); }
+    else if(e.key === 'Escape'){ renderCardView(); }
+  });
+}
+document.addEventListener('click', e=>{
+  const t = e.target.closest ? e.target.closest('.cl-memo-edit, .cl-memo-text') : null;
+  if(!t) return;
+  const wrap = t.closest('.cl-memo-wrap');
+  if(wrap) openAdjMemoEdit(wrap);
+});
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Enter' || !e.target.classList || !e.target.classList.contains('cl-memo-text')) return;
+  const wrap = e.target.closest('.cl-memo-wrap');
+  if(wrap){ e.preventDefault(); openAdjMemoEdit(wrap); }
+});
 /* ---- 수업 일정 조정 창 ---- */
 const adjForm = { type:'extra', scope:'some', sel:new Map() }; // sel: 이름 -> 시간(보강일 때)
 let adjExamRows = null;
@@ -3296,7 +3365,7 @@ function renderDayContent(){
         html += `<div class="time-label">${b}</div><div class="slot-group">` + byBlock[b].map(a=>slotHtml(b, a.slot-1, rawNameFor(a.name))).join('') + `</div>`;
       });
       // 2026-10-29: 보강 안내 띠("보강 취소")는 학생 카드 아래에 둔다
-      html += `<div class="cl-banner slim" style="margin-top:6px"><div><b>보강</b>${list[0].memo?` · ${escapeHtml(list[0].memo)}`:''}</div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="보강">보강 취소</button></div>`;
+      html += `<div class="cl-banner slim" style="margin-top:6px"><div class="cl-memo-wrap" data-adj-memo-ids="${list.map(a=>a.id).join(',')}"><b>보강</b>${list[0].memo?`<span> · </span><span class="cl-memo-text" role="button" tabindex="0">${escapeHtml(list[0].memo)}</span>`:''}<button type="button" class="cl-memo-edit">${list[0].memo?'수정':'문구 추가'}</button></div><button type="button" class="cl-btn" data-adj-ids="${list.map(a=>a.id).join(',')}" data-adj-label="보강">보강 취소</button></div>`;
     });
   }
   if(!html) html = `<div class="empty-hint">이 요일에는 배정된 학생이 없어요.<br><button type="button" class="cl-btn" data-adj-open="${dateStr}">이 날 수업 일정 조정</button></div>`;
