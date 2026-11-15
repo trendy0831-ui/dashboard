@@ -506,6 +506,22 @@
   .status-dlg .btn{border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;
     border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);}
   .status-dlg .btn.primary{background:var(--teal);color:#fff;}
+  .status-dlg .btn:disabled{opacity:.6;cursor:default;}
+  .status-dlg .slot-box{background:var(--soft);border-radius:9px;padding:10px 12px;margin-top:12px;font-size:13px;color:var(--teal-dark);}
+  .status-dlg .slot-box b{display:block;margin-bottom:6px;}
+  .status-dlg .slot-box label{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink);margin:6px 0 0;cursor:pointer;}
+  .status-dlg .slot-box input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);flex-shrink:0;}
+  .status-dlg .dlg-err{font-size:12.5px;color:var(--teal-dark);font-weight:700;margin-top:10px;line-height:1.5;}
+  /* 학생 관리: 재원 / 퇴원·휴원 탭 (2026-11-15) — 명단에서 자리를 비운 퇴원 학생도 퇴원·휴원 탭에서 보고 바로 재원으로 복귀시킨다 */
+  .stu-seg{display:inline-flex;background:var(--soft);border-radius:10px;padding:3px;margin-bottom:14px;}
+  .stu-seg button{border:0;background:transparent;font-family:inherit;padding:8px 16px;font-size:13.5px;font-weight:700;
+    border-radius:8px;color:var(--teal-dark);cursor:pointer;}
+  .stu-seg button.on{background:var(--teal);color:#fff;}
+  .student-card.wd-card .slot-badge{background:transparent;border:1px dashed var(--teal);color:var(--ink-soft);}
+  .wd-card .wd-btn{display:block;width:100%;margin-top:12px;background:var(--teal);color:#fff;border:1px solid var(--teal);border-radius:9px;
+    padding:9px 0;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .wd-card .wd-btn.ghost{background:var(--card);color:var(--teal-dark);}
+  .wd-card .wd-btn:disabled{opacity:.6;cursor:default;}
   /* 학생 카드 접이식 섹션 (2026-11): 수강료 / 준비 교재는 기본으로 한 줄 요약만 보이고, 설정·관리를 누르면 펼쳐진다 */
   .sc-sec{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
   .sc-sec > summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;}
@@ -4364,6 +4380,190 @@ function askStatusChange(name, nextStatus){
     });
   });
 }
+/* ============ 퇴원·휴원 학생 목록 + 재원 복귀 (2026-11-15) ============ */
+// 학생 카드는 "지금 명단에 자리가 있는 학생"만 그리기 때문에, 퇴원하면서 명단 칸을 비운 학생은 화면에서 사라진다.
+// 그래서 학생정보 기준으로 퇴원 학생을 따로 모아 보여 주고, 여기서 바로 재원으로 되돌릴 수 있게 한다.
+// 아무것도 지우지 않는다: 상태는 "학생상태이력"에, 자리는 "명단"에 적용 시작일과 함께 줄만 추가된다.
+// 한 학생의 명단 이력에서 { current: 지금 있는 자리, last: 마지막으로 있던 자리(지금은 비운 것) } 를 찾는다.
+function studentSlotTrail(name){
+  const today = localTodayStr();
+  const isMine = raw=>{ const p = parseStudentEntry(raw); return p.name === name && p.status !== '종료'; };
+  const bySlot = {};
+  rosterHistory.forEach(it=>{
+    const slotNo = parseInt(it.slot, 10);
+    if(!(slotNo >= 1 && slotNo <= SUB)) return;
+    const k = it.day+'|'+String(it.block).trim()+'|'+slotNo;
+    (bySlot[k] = bySlot[k] || []).push(it);
+  });
+  const current = [], past = [];
+  Object.keys(bySlot).forEach(k=>{
+    const rows = bySlot[k];
+    const [day, block, slotStr] = k.split('|');
+    const slot = parseInt(slotStr, 10);
+    if(DAYS.indexOf(day) < 0 || BLOCKS.indexOf(block) < 0) return;
+    if(isMine(rosterNameAt(day, block, slot - 1, today))){ current.push({ day, block, slot }); return; }
+    let best = null; // 이 자리에 마지막으로 있었던 때: {raw, endedAt}
+    rows.forEach(r=>{
+      if(!isMine(r.name)) return;
+      const from = String(r.effectiveFrom || '');
+      let end = '';
+      rows.forEach(o=>{
+        const of = String(o.effectiveFrom || '');
+        if(of > from && !isMine(o.name) && (!end || of < end)) end = of;
+      });
+      if(!end || end > today) return; // 아직 끝나지 않았거나 앞으로 끝날 예정
+      if(!best || end > best.endedAt) best = { raw: String(r.name).trim(), endedAt: end };
+    });
+    if(best) past.push({ day, block, slot, raw: best.raw, endedAt: best.endedAt });
+  });
+  const order = (a,b)=> (DAYS.indexOf(a.day) - DAYS.indexOf(b.day)) || (BLOCKS.indexOf(a.block) - BLOCKS.indexOf(b.block));
+  let last = [];
+  if(past.length){
+    // 가장 최근에 비운 날짜 기준 7일 안에 함께 비운 자리만 "마지막 수업 자리"로 본다 (오래전에 옮긴 옛 시간대는 제외)
+    const maxEnd = past.reduce((m,p)=> p.endedAt > m ? p.endedAt : m, '');
+    const d = new Date(maxEnd + 'T00:00:00'); d.setDate(d.getDate() - 7);
+    const floor = toDateStr(d);
+    last = past.filter(p=> p.endedAt >= floor).sort(order);
+  }
+  return { current: current.sort(order), last };
+}
+// [{day, block}] → "화·목 16:00, 토 10:00"
+function fmtSlotList(slots){
+  const byBlock = {};
+  const blocks = [];
+  slots.forEach(s=>{
+    if(!byBlock[s.block]){ byBlock[s.block] = []; blocks.push(s.block); }
+    if(byBlock[s.block].indexOf(s.day) < 0) byBlock[s.block].push(s.day);
+  });
+  return blocks.map(b=> byBlock[b].join('·') + ' ' + b).join(', ');
+}
+let studentViewMode = 'active'; // 학생 관리 탭 위의 전환: 'active'(재원) | 'withdrawn'(퇴원·휴원)
+function renderWithdrawnSection(){
+  const seg = document.getElementById('studentSeg');
+  const grid = document.getElementById('studentGrid');
+  const el = document.getElementById('withdrawnGrid');
+  if(!seg || !grid || !el) return;
+  const list = studentInfoList.filter(s=> s && s.name && s.status === '퇴원')
+    .sort((a,b)=> String(a.name).localeCompare(String(b.name), 'ko'));
+  const activeCount = Object.keys(slotsByStudent()).filter(raw=> studentStatusOf(parseStudentEntry(raw).name) !== '퇴원').length;
+  if(!list.length) studentViewMode = 'active'; // 퇴원 학생이 없으면 탭 자체를 숨기고 지금처럼 재원 카드만 보여 준다
+  const wd = studentViewMode === 'withdrawn';
+  seg.style.display = list.length ? '' : 'none';
+  seg.innerHTML = `<button type="button" data-mode="active" class="${wd ? '' : 'on'}">재원 ${activeCount}</button><button type="button" data-mode="withdrawn" class="${wd ? 'on' : ''}">퇴원·휴원 ${list.length}</button>`;
+  seg.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{ studentViewMode = b.getAttribute('data-mode'); renderWithdrawnSection(); };
+  });
+  grid.style.display = wd ? 'none' : '';
+  el.style.display = wd ? '' : 'none';
+  el.innerHTML = list.map(s=>{
+    const trail = studentSlotTrail(s.name);
+    const slots = trail.current.length ? trail.current : trail.last;
+    const badges = slots.map(x=>`<span class="slot-badge">${escapeHtml(x.day)} ${escapeHtml(x.block)}</span>`).join('');
+    const pending = s.pendingChange || null;
+    const action = pending
+      ? `<button type="button" class="wd-btn ghost" data-wd-cancel="${escapeHtml(s.name)}" data-from="${escapeHtml(pending.effectiveFrom)}">${escapeHtml(fmtMDStr(pending.effectiveFrom))}부터 ${escapeHtml(pending.status)} 예정 · 취소</button>`
+      : `<button type="button" class="wd-btn" data-wd-return="${escapeHtml(s.name)}">재원 복귀</button>`;
+    return `<div class="student-card wd-card">
+      <div class="sc-name">${escapeHtml(s.name)}</div>
+      <div class="sc-meta">${s.statusSince ? `퇴원 ${escapeHtml(s.statusSince)}~` : '퇴원'}</div>
+      ${badges ? `<div class="sc-slots">${badges}</div>` : ''}
+      ${action}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-wd-return]').forEach(btn=>{
+    btn.onclick = ()=> returnStudentFlow(btn.getAttribute('data-wd-return'), btn);
+  });
+  el.querySelectorAll('[data-wd-cancel]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      btn.disabled = true;
+      try{
+        await apiPost({ action:'cancelStudentStatusChange', name: btn.getAttribute('data-wd-cancel'), effectiveFrom: btn.getAttribute('data-from') });
+      }catch(err){
+        showSaveFailToast('예정 취소에 실패했어요. 인터넷 연결을 확인해주세요.');
+      }
+      await loadStudentInfoList(true);
+      await renderStudentGrid();
+    };
+  });
+}
+// 고른 자리들을 적용일(effDate) 기준으로 실제 넣을 칸으로 바꾼다. 원래 칸이 차 있으면 같은 요일·시간의 빈 칸을 찾는다.
+// 돌려주는 값: { rows: 명단 저장용 행들, full: 빈 칸이 없어 못 넣는 자리들 }
+function planSlotRestore(slots, effDate, effectiveFromField){
+  const rows = [], full = [], taken = {};
+  slots.forEach(s=>{
+    const free = idx=> !taken[s.day+'|'+s.block+'|'+idx] && !String(rosterNameAt(s.day, s.block, idx, effDate) || '').trim();
+    let idx = free(s.slot - 1) ? s.slot - 1 : -1;
+    if(idx < 0){ for(let i=0; i<SUB; i++){ if(free(i)){ idx = i; break; } } }
+    if(idx < 0){ full.push(s); return; }
+    taken[s.day+'|'+s.block+'|'+idx] = true;
+    const row = { day: s.day, block: s.block, slot: idx + 1, name: s.raw };
+    if(effectiveFromField) row.effectiveFrom = effectiveFromField;
+    rows.push(row);
+  });
+  return { rows, full };
+}
+// 재원 복귀 창: 적용 시작일 + (자리를 비운 학생이면) 마지막 수업 자리 복원 체크. 확인하면 {effectiveFrom, rows}, 취소하면 null.
+function askStudentReturn(name, lastSlots){
+  return new Promise(resolve=>{
+    const today = localTodayStr();
+    const back = document.createElement('div');
+    back.className = 'status-dlg-back';
+    back.innerHTML = `
+      <div class="status-dlg" role="dialog" aria-modal="true">
+        <h3>${escapeHtml(name)} 학생 재원 복귀</h3>
+        <p>언제부터 재원으로 처리할까요?</p>
+        <label for="returnDlgDate">적용 시작일</label>
+        <input type="date" id="returnDlgDate">
+        <div class="hint">비워 두면 <b>오늘(${today})부터</b> 적용돼요. 지난 기록은 그대로 남아요.</div>
+        ${lastSlots.length ? `<div class="slot-box"><b>수업 자리도 함께 복원할까요?</b>${
+          lastSlots.map((s,i)=>`<label><input type="checkbox" data-slot-idx="${i}" checked>${escapeHtml(s.day)} ${escapeHtml(s.block)}에 다시 배정</label>`).join('')
+        }</div>` : ''}
+        <div class="dlg-err" hidden></div>
+        <div class="btns"><button type="button" class="btn" data-act="cancel">취소</button><button type="button" class="btn primary" data-act="ok">재원 적용</button></div>
+      </div>`;
+    document.body.appendChild(back);
+    const close = v=>{ back.remove(); resolve(v); };
+    const errEl = back.querySelector('.dlg-err');
+    back.addEventListener('change', ()=>{ errEl.hidden = true; });
+    back.addEventListener('click', e=>{
+      if(e.target === back) return close(null);
+      const b = e.target.closest('[data-act]');
+      if(!b) return;
+      if(b.getAttribute('data-act') === 'cancel') return close(null);
+      const v = back.querySelector('#returnDlgDate').value || '';
+      const picked = [];
+      back.querySelectorAll('[data-slot-idx]').forEach(cb=>{ if(cb.checked) picked.push(lastSlots[parseInt(cb.getAttribute('data-slot-idx'), 10)]); });
+      const plan = planSlotRestore(picked, v || today, v);
+      if(plan.full.length){
+        errEl.textContent = `${fmtSlotList(plan.full)}은(는) 지금 자리가 꽉 차 있어요. 체크를 풀고, 복귀 후 명단 편집에서 다른 시간에 넣어 주세요.`;
+        errEl.hidden = false;
+        return;
+      }
+      close({ effectiveFrom: v, rows: plan.rows });
+    });
+  });
+}
+async function returnStudentFlow(name, btn){
+  const trail = studentSlotTrail(name);
+  const picked = await askStudentReturn(name, trail.current.length ? [] : trail.last);
+  if(!picked) return;
+  if(btn){ btn.disabled = true; btn.textContent = '처리 중…'; }
+  let ok = true;
+  if(picked.rows.length){
+    ok = await saveRosterRowsVerified(picked.rows); // 자리부터 넣고, 저장된 것이 확인되면 상태를 바꾼다
+    if(!ok) showSaveFailToast('수업 자리 저장이 확인되지 않아 복귀를 멈췄어요. 잠시 뒤 다시 눌러 주세요.');
+  }
+  if(ok){
+    try{
+      await apiPost({ action:'setStudentStatus', name: name, status: '재원', effectiveFrom: picked.effectiveFrom });
+      showRosterToast(`${name} 학생을 재원으로 되돌렸어요`, 'ok');
+    }catch(err){
+      showSaveFailToast('재원 상태 변경에 실패했어요. 인터넷 연결을 확인해주세요.');
+    }
+  }
+  await loadStudentInfoList(true);
+  await renderStudentGrid();
+}
 function studentTextbookOf(name){
   const found = studentInfoList.find(s => s.name === name);
   if(!found) return null;
@@ -4430,8 +4630,10 @@ async function renderStudentGrid(){
   const el = document.getElementById('studentGrid');
   if(!el) return;
   await Promise.all([loadStudentInfoList(), loadTuitionFees()]);
+  renderWithdrawnSection(); // 재원 / 퇴원·휴원 탭 (퇴원 학생은 명단에 자리가 없어도 보인다)
   const bySlot = slotsByStudent();
-  const names = Object.keys(bySlot).sort((a,b)=>a.localeCompare(b,'ko'));
+  // 퇴원 학생은 위의 "퇴원·휴원" 탭에서 따로 보여 주므로 재원 카드에서는 뺀다
+  const names = Object.keys(bySlot).filter(raw=> studentStatusOf(parseStudentEntry(raw).name) !== '퇴원').sort((a,b)=>a.localeCompare(b,'ko'));
   if(!names.length){
     el.innerHTML = `<div class="student-grid-empty">등록된 학생이 없어요. 출결 관리 &gt; 명단 편집에서 학생을 추가해주세요.</div>`;
     return;
@@ -5828,7 +6030,7 @@ function switchPage(page){
     const el = document.getElementById('studentsPageEl');
     el.style.display = '';
     if(!el.dataset.built){
-      el.innerHTML = `<div class="student-grid" id="studentGrid"></div>`;
+      el.innerHTML = `<div class="stu-seg" id="studentSeg" style="display:none"></div><div class="student-grid" id="studentGrid"></div><div class="student-grid" id="withdrawnGrid" style="display:none"></div>`;
       el.dataset.built = '1';
     }
     renderStudentGrid();
