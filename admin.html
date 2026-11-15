@@ -797,6 +797,15 @@
   .tl-btn:disabled{opacity:.6;cursor:default;}
   .tl-link{border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
   .tl-row.tr-sess .ts-bar{margin-top:10px;}
+  /* 완납 버튼을 누르면 줄 바로 아래에 열리는 "납부일 바로 수정" 한 줄 (2026-11-15) */
+  .tl-quick{display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px 12px;background:var(--card);border-top:1px dashed var(--line);}
+  .tl-row.qe .tl-quick{display:flex;}
+  .tl-row.qe .tl-state.ok{background:var(--card);box-shadow:inset 0 0 0 1px var(--teal);}
+  .tl-quick b{font-size:12.5px;font-weight:700;color:var(--teal-dark);}
+  .tuition-row .tl-quick input[type=date]{width:auto;border-color:var(--teal);background:#fff;padding:6px 8px;}
+  .tl-chip{border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .tl-chip.x{margin-left:auto;border-color:var(--line);color:var(--ink-soft);}
+  .tl-qsaved{font-size:12px;font-weight:700;color:var(--teal-dark);}
   @media (max-width:560px){
     .tl-head{flex-wrap:wrap;row-gap:6px;}
     .tl-meta{order:3;flex-basis:100%;margin-top:-4px;}
@@ -5722,6 +5731,7 @@ async function renderTuitionList(){
             <span class="tl-amt">${tgt}회분 · <b>${cnt}/${tgt}회</b></span>
             <button type="button" class="tl-state ${cls}" data-paid="${showSt === 'paid' ? '1' : ''}">${label}</button>
           </div>
+          ${(paidRec && !isPastMonth) ? `<div class="tl-quick"><b>납부일</b><input type="date" class="tl-qdate" value="${rec.paidDate}"><button type="button" class="tl-chip tl-qtoday">오늘</button><button type="button" class="tl-chip x tl-qcancel">결제 취소</button></div>` : ''}
           <div class="tl-detail">
             <div class="ts-bar"><i style="width:${pct}%"></i></div>
             ${sinceTxt ? `<div class="ts-since">${escapeHtml(sinceTxt)}</div>` : ''}
@@ -5765,6 +5775,7 @@ async function renderTuitionList(){
           <span class="tl-amt">${total ? fmtWon(total) + '원' : '금액 미등록'}</span>
           <button type="button" class="tl-state ${cls}" data-status="${rawStatus}">${label}</button>
         </div>
+        <div class="tl-quick"><b>납부일</b><input type="date" class="tl-qdate" value="${rec.paidDate || ''}"><button type="button" class="tl-chip tl-qtoday">오늘</button><span class="tl-qsaved"></span><button type="button" class="tl-chip x tl-qcancel">결제 취소</button></div>
         <div class="tl-detail">
           <div class="tl-grid">
             <label class="tl-f"><span>정규 <i class="tr-tag tr-tag-reg${regTag === '수정됨' ? ' edited' : ''}">${regTag}</i></span><input type="number" class="tuition-regular" placeholder="금액" min="0" step="10000" value="${regular}"></label>
@@ -5831,6 +5842,8 @@ async function renderTuitionList(){
     btn.className = 'tl-state ' + (paid ? 'ok' : 'pay');
     btn.textContent = paid ? ('완납' + (date ? ' · ' + fmtMDStr(date) : '')) : '결제 받음';
     row.querySelector('.tl-cancel').style.display = paid ? '' : 'none';
+    row.querySelector('.tl-qdate').value = date;
+    if(!paid) row.classList.remove('qe');
   }
   // 한 학생의 저장 요청은 순서대로 보낸다(연달아 눌러도 옛 값이 새 값을 덮어쓰지 않도록, 저장 시점의 화면 값을 읽고 사이에 잠깐 간격을 둔다)
   // delay를 주면(금액 칸) 마지막 변경 후 그 시간이 지났을 때 한 번만 저장한다 — ▲▼를 여러 번 눌러도 저장은 1번.
@@ -5902,8 +5915,13 @@ async function renderTuitionList(){
     const mkPaid = (date, amount)=> ({ name, yearMonth: date.slice(0, 7), amount: amount ? String(amount) : '', specialFee:'', status:'완납', paidDate: date, memo:'' });
     const stateBtn = row.querySelector('.tl-state');
     // 줄 오른쪽 버튼: 아직 결제 전이면 오늘 날짜로 바로 결제 기록 (완납이면 줄만 펼침)
+    const quick = row.querySelector('.tl-quick');
     stateBtn.addEventListener('click', async e=>{
-      if(stateBtn.getAttribute('data-paid') === '1') return;
+      if(stateBtn.getAttribute('data-paid') === '1'){
+        // 완납 버튼: 줄 바로 아래에 납부일 한 줄만 연다 (지난 달 화면처럼 고칠 수 없는 경우엔 예전처럼 줄을 펼친다)
+        if(quick){ e.stopPropagation(); row.classList.toggle('qe'); }
+        return;
+      }
       e.stopPropagation();
       if(isPastMonth) return;
       const date = toDateStr(new Date());
@@ -5937,6 +5955,20 @@ async function renderTuitionList(){
       recs.push({ name, yearMonth: date.slice(0, 7), amount: amount ? String(amount) : '', specialFee: date.slice(0, 7) === yearMonth && rec.specialFee ? String(rec.specialFee) : '', status:'완납', paidDate: date, memo: date.slice(0, 7) === yearMonth ? (rec.memo || '') : '' });
       await saveSess(recs, '납부일을 고쳤어요 ✓');
     };
+    if(quick){
+      const qd = quick.querySelector('.tl-qdate');
+      const applyQuick = ()=>{
+        const full = row.querySelector('.ts-date');
+        if(!qd.value || !editBtn || !full){ qd.value = rec.paidDate; return; }
+        if(qd.value === rec.paidDate) return;
+        full.value = qd.value;
+        editBtn.click(); // 확인 창 → 저장 (아래 "납부일·금액 수정"과 같은 동작)
+        if(!editBtn.disabled){ qd.value = rec.paidDate; full.value = rec.paidDate; } // 확인 창에서 취소함
+      };
+      qd.addEventListener('change', applyQuick);
+      quick.querySelector('.tl-qtoday').onclick = ()=>{ qd.value = toDateStr(new Date()); applyQuick(); };
+      quick.querySelector('.tl-qcancel').onclick = ()=>{ const u = row.querySelector('.ts-undo'); if(u) u.click(); };
+    }
     const undo = row.querySelector('.ts-undo');
     if(undo){
       undo.onclick = async ()=>{
@@ -5961,13 +5993,30 @@ async function renderTuitionList(){
     });
     row.querySelector('.tuition-memo').addEventListener('change', ()=> queueSave(row));
     btn.addEventListener('click', e=>{
-      if(btn.getAttribute('data-status') === '완납') return; // 이미 완납이면 줄만 펼침
-      e.stopPropagation(); // 결제 받음: 완납 + 오늘 날짜 (날짜가 이미 있으면 그대로)
+      e.stopPropagation();
+      if(btn.getAttribute('data-status') === '완납'){ row.classList.toggle('qe'); return; } // 완납 버튼: 줄 바로 아래에 납부일 한 줄만 연다
+      // 결제 받음: 완납 + 오늘 날짜 (날짜가 이미 있으면 그대로)
       btn.setAttribute('data-status', '완납');
       if(!dateInput.value) dateInput.value = toDateStr(new Date());
       refreshLine(row);
       queueSave(row);
     });
+    // 빠른 납부일 수정 줄: 아래 펼침 칸의 납부일과 같은 값을 쓴다
+    const qd = row.querySelector('.tl-qdate');
+    const qSaved = row.querySelector('.tl-qsaved');
+    const applyQuick = ()=>{
+      if(!qd.value){ qd.value = dateInput.value; return; } // 날짜를 지우는 것은 "결제 취소"로
+      if(qd.value === dateInput.value) return;
+      dateInput.value = qd.value;
+      refreshLine(row);
+      queueSave(row);
+      qSaved.textContent = '저장됨 ✓';
+      clearTimeout(row._qTimer);
+      row._qTimer = setTimeout(()=>{ qSaved.textContent = ''; }, 2000);
+    };
+    qd.addEventListener('change', applyQuick);
+    row.querySelector('.tl-qtoday').onclick = ()=>{ qd.value = toDateStr(new Date()); applyQuick(); };
+    row.querySelector('.tl-qcancel').onclick = ()=> row.querySelector('.tl-cancel').click();
     row.querySelector('.tl-cancel').addEventListener('click', ()=>{
       btn.setAttribute('data-status', '미납');
       dateInput.value = '';
