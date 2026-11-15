@@ -804,6 +804,7 @@
   .tl-quick b{font-size:12.5px;font-weight:700;color:var(--teal-dark);}
   .tuition-row .tl-quick input[type=date]{width:auto;border-color:var(--teal);background:#fff;padding:6px 8px;}
   .tl-chip{border:1px solid var(--teal);background:var(--card);color:var(--teal-dark);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .tl-chip:disabled,.tuition-row .tl-quick input:disabled{opacity:.55;cursor:default;}
   .tl-chip.x{margin-left:auto;border-color:var(--line);color:var(--ink-soft);}
   .tl-qsaved{font-size:12px;font-weight:700;color:var(--teal-dark);}
   @media (max-width:560px){
@@ -5731,7 +5732,7 @@ async function renderTuitionList(){
             <span class="tl-amt">${tgt}회분 · <b>${cnt}/${tgt}회</b></span>
             <button type="button" class="tl-state ${cls}" data-paid="${showSt === 'paid' ? '1' : ''}">${label}</button>
           </div>
-          ${(paidRec && !isPastMonth) ? `<div class="tl-quick"><b>납부일</b><input type="date" class="tl-qdate" value="${rec.paidDate}"><button type="button" class="tl-chip tl-qtoday">오늘</button><button type="button" class="tl-chip x tl-qcancel">결제 취소</button></div>` : ''}
+          ${(paidRec && !isPastMonth) ? `<div class="tl-quick"><b>납부일</b><input type="date" class="tl-qdate" value="${rec.paidDate}"><button type="button" class="tl-chip tl-qtoday">오늘</button><span class="tl-qsaved"></span><button type="button" class="tl-chip x tl-qcancel">결제 취소</button></div>` : ''}
           <div class="tl-detail">
             <div class="ts-bar"><i style="width:${pct}%"></i></div>
             ${sinceTxt ? `<div class="ts-since">${escapeHtml(sinceTxt)}</div>` : ''}
@@ -5894,21 +5895,26 @@ async function renderTuitionList(){
     const defAmount = row.getAttribute('data-default-amount') || '';
     const stateEl = row.querySelector('.tr-state');
     const rec = rows.find(r => r.name === name) || {};
+    // 저장 진행 글자는 펼침 칸과 "납부일 바로 수정" 줄 양쪽에 보여 준다 (회차 저장은 회차를 다시 세느라 몇 초 걸린다)
+    const say = (t, isErr)=>{
+      stateEl.textContent = t; stateEl.style.color = isErr ? 'var(--red)' : '';
+      const q = row.querySelector('.tl-qsaved'); if(q) q.textContent = t;
+    };
     async function saveSess(recs, okText){
-      stateEl.textContent = '저장 중...';
+      say('저장 중...');
       try{
         for(let i=0; i<recs.length; i++){
           await apiPost({ action:'saveTuition', record: recs[i] });
           if(i < recs.length - 1) await new Promise(r=>setTimeout(r, 900));
         }
-        stateEl.textContent = okText;
+        say(okText + ' · 회차 다시 세는 중...');
         await new Promise(r=>setTimeout(r, 2500)); // 서버가 시트에 쓰는 시간을 기다린다
         await refreshSessionCounts();
         await renderTuitionList();
       }catch(e){
         showSaveFailToast('수강료 저장에 실패했어요. 인터넷 연결을 확인해주세요.');
-        stateEl.textContent = '저장 실패 · 다시 시도해 주세요';
-        stateEl.style.color = 'var(--red)';
+        say('저장 실패 · 다시 시도해 주세요', true);
+        row.querySelectorAll('.tl-qdate,.tl-qtoday,.tl-qcancel,.ts-edit,.ts-pay').forEach(el=>{ el.disabled = false; });
       }
     }
     const paidRec = rec.status === '완납' && rec.paidDate;
@@ -5963,7 +5969,10 @@ async function renderTuitionList(){
         if(qd.value === rec.paidDate) return;
         full.value = qd.value;
         editBtn.click(); // 확인 창 → 저장 (아래 "납부일·금액 수정"과 같은 동작)
-        if(!editBtn.disabled){ qd.value = rec.paidDate; full.value = rec.paidDate; } // 확인 창에서 취소함
+        if(!editBtn.disabled){ qd.value = rec.paidDate; full.value = rec.paidDate; return; } // 확인 창에서 취소함
+        // 저장이 끝나 목록이 다시 그려질 때까지(몇 초) 버튼 날짜를 먼저 바꾸고 칸을 잠가 둔다 — 다 되면 이 줄은 닫힌다
+        stateBtn.textContent = '완납 · ' + fmtMDStr(qd.value);
+        quick.querySelectorAll('.tl-qdate,.tl-qtoday,.tl-qcancel').forEach(el=>{ el.disabled = true; });
       };
       qd.addEventListener('change', applyQuick);
       quick.querySelector('.tl-qtoday').onclick = ()=>{ qd.value = toDateStr(new Date()); applyQuick(); };
@@ -6012,7 +6021,7 @@ async function renderTuitionList(){
       queueSave(row);
       qSaved.textContent = '저장됨 ✓';
       clearTimeout(row._qTimer);
-      row._qTimer = setTimeout(()=>{ qSaved.textContent = ''; }, 2000);
+      row._qTimer = setTimeout(()=>{ qSaved.textContent = ''; row.classList.remove('qe'); }, 1500); // 저장 표시를 잠깐 보여 준 뒤 줄을 닫는다
     };
     qd.addEventListener('change', applyQuick);
     row.querySelector('.tl-qtoday').onclick = ()=>{ qd.value = toDateStr(new Date()); applyQuick(); };
