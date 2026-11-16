@@ -3382,6 +3382,11 @@ function attachCardHandlers(){
       const target = el.getAttribute('data-status');
       const prevStatus = rec.status;
       rec.status = (rec.status === target) ? "normal" : target;
+      // 2026-11-16: 결석이 아니게 되면(출석·지각·미체크) 남아 있던 "보강 대기" 표시와 예정일을 함께 지운다
+      // — 지우지 않으면 학부모 리포트 보강 탭에 "결석 · 보강 대기"로 계속 남는다. (보강 완료 기록은 건드리지 않는다)
+      if(prevStatus === "absent" && rec.status !== "absent" && (rec.makeupStatus || "none") === "wait"){
+        rec.makeupStatus = "none"; rec.makeupDone = false; rec.makeupDate = "";
+      }
       setRecLocal(dateStr, block, slot, rec);
       bumpSessionCount(parseStudentEntry(rosterNameAt(dayNameForDate(dateStr), block, slot, dateStr)).name, prevStatus, rec.status, dateStr); // 회차 결제 학생이면 숫자도 바로 맞춘다
       renderCardView();
