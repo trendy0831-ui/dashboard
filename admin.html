@@ -6580,6 +6580,24 @@ document.getElementById('themeSave').onclick = saveTheme;
 document.getElementById('themeModal').addEventListener('click', e=>{ if(e.target.id==='themeModal') closeThemeModal(true); });
 document.getElementById('themeColorInput').addEventListener('input', e=> themeSetPreview_(e.target.value));
 
+// 2026-11: 마지막으로 보던 탭이 대시보드가 아니면, 데이터 로딩을 기다리는 동안에도 대시보드 화면이
+// 먼저 비치지 않도록 제목·메뉴 표시만 미리 맞춰 둔다 (실제 화면 구성은 로딩이 끝난 뒤 switchPage가 한다)
+(function preApplyLastPage(){
+  try{
+    const sp = localStorage.getItem(LAST_PAGE_KEY);
+    if(!sp || sp === 'dashboard' || !PAGE_TITLES[sp]) return;
+    document.getElementById('pageTitle').textContent = PAGE_TITLES[sp];
+    document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
+      b.classList.toggle('active', b.getAttribute('data-page') === sp);
+    });
+    const g = document.getElementById('dashGreeting'); if(g) g.style.display = 'none';
+    document.getElementById('dashboardPage').style.display = 'none';
+    if(sp === 'attendance'){
+      document.getElementById('attendancePage').style.display = '';
+      document.getElementById('attendanceTopActions').style.display = '';
+    }
+  }catch(e){}
+})();
 (async function init(){
   await adminAuthBootstrap(); // 로그인 보호가 켜져 있으면 여기서 로그인 창을 띄우고 통과할 때까지 기다린다
   try{
