@@ -6187,8 +6187,8 @@ function initDashCollapsibles(){
 const LAST_PAGE_KEY = 'adminLastPage';
 function switchPage(page){
   currentPage = page;
-  // 2026-11: 새로고침해도 보던 탭에 그대로 머물도록 현재 탭을 기억(이 브라우저 탭 안에서만)
-  try{ sessionStorage.setItem(LAST_PAGE_KEY, page); }catch(e){}
+  // 2026-11: 새로고침·재접속해도 마지막으로 보던 탭에서 시작하도록 기억(이 브라우저 전체)
+  try{ localStorage.setItem(LAST_PAGE_KEY, page); }catch(e){}
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-page')===page);
@@ -6618,7 +6618,7 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   // 리셋되어 "그 탭이 영영 안 열린다/느리다"처럼 보였음 — 2026-09-13 수정)
   if(currentPage === 'dashboard'){
     let savedPage = null;
-    try{ savedPage = sessionStorage.getItem(LAST_PAGE_KEY); }catch(e){}
+    try{ savedPage = localStorage.getItem(LAST_PAGE_KEY); }catch(e){}
     switchPage((savedPage && PAGE_TITLES[savedPage]) ? savedPage : 'dashboard');
   }
   setSyncStatus('ok');
