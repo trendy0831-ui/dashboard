@@ -1068,7 +1068,7 @@
   /* ===== 카톡 문구 만들기 (2026-11) ===== */
   #kakaoModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;background:rgba(20,30,26,.45);}
   #kakaoModal.open{display:flex;}
-  #kakaoModal .km-box{background:var(--card);width:780px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
+  #kakaoModal .km-box{background:var(--card);width:1140px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
     max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
   #kakaoModal .km-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 8px;}
   #kakaoModal .km-head h2{margin:0;font-size:19px;font-weight:800;}
@@ -1081,7 +1081,7 @@
   #kakaoModal .km-bar input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);}
   #kakaoModal .km-count{margin-left:auto;color:var(--ink-soft);font-size:13px;}
   #kakaoModal .km-body{overflow-y:auto;padding:0 24px;}
-  #kakaoModal .km-row{display:grid;grid-template-columns:128px 1fr 98px;gap:14px;padding:16px 0;border-bottom:1px solid var(--line);align-items:start;}
+  #kakaoModal .km-row{display:grid;grid-template-columns:130px minmax(0,1fr) minmax(0,1.1fr);gap:20px;padding:16px 0;border-bottom:1px solid var(--line);align-items:start;}
   #kakaoModal .km-nm{font-size:15px;font-weight:800;color:var(--ink);}
   #kakaoModal .km-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;font-weight:600;}
   #kakaoModal .km-chip{display:inline-block;margin-top:6px;font-size:11.5px;font-weight:700;color:var(--teal);background:var(--soft);border-radius:6px;padding:2px 7px;}
@@ -1104,13 +1104,15 @@
   #kakaoModal .km-popnote{font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
   #kakaoModal .km-txt{white-space:pre-wrap;word-break:break-all;font-size:13.5px;line-height:1.6;background:var(--soft);color:var(--ink);border-radius:10px;padding:10px 12px;}
   #kakaoModal .km-txt.empty{color:var(--ink-soft);}
+  #kakaoModal .km-c1 .km-copy{margin-top:12px;}
   #kakaoModal .km-copy{border:none;background:var(--teal);color:#fff;font-size:13.5px;font-weight:700;border-radius:9px;padding:10px 0;cursor:pointer;width:100%;}
   #kakaoModal .km-copy.done{background:#fff;color:var(--teal);box-shadow:inset 0 0 0 1.5px var(--teal);}
   #kakaoModal .km-copy:disabled{opacity:.45;cursor:default;}
   #kakaoModal .km-empty{padding:28px 0;text-align:center;font-size:14px;color:var(--ink-soft);line-height:1.6;}
   #kakaoModal .km-foot{padding:11px 24px;font-size:12.5px;line-height:1.55;color:var(--ink-soft);background:var(--paper);border-top:1px solid var(--line);}
-  @media (max-width:640px){
+  @media (max-width:900px){
     #kakaoModal .km-row{grid-template-columns:1fr;gap:8px;}
+    #kakaoModal .km-c1 .km-copy{width:auto;padding:10px 18px;}
     #kakaoModal .km-count{margin-left:0;}
   }
   .weekly-attend-rate.weekly-attend-closed{font-size:13px;color:var(--teal);}
@@ -2658,16 +2660,15 @@ function kakaoRender(){
     if(!r.attend) notes.push('출결 미체크');
     if(!r.reportId) notes.push('리포트 ID 미발급');
     return `<div class="km-row" data-i="${i}">
-      <div><div class="km-nm">${escapeHtml(r.name)}</div>${meta?`<div class="km-sub">${meta}</div>`:''}${notes.map(n=>`<span class="km-chip">${n}</span>`).join(' ')}</div>
-      <div>
+      <div class="km-c1"><div class="km-nm">${escapeHtml(r.name)}</div>${meta?`<div class="km-sub">${meta}</div>`:''}${notes.map(n=>`<span class="km-chip">${n}</span>`).join(' ')}<button type="button" class="km-copy">📋 복사</button></div>
+      <div class="km-c2">
         <div class="km-fl km-fl0">코멘트</div>
         <div class="km-attrow"><input type="text" class="km-att" list="kakaoAttList" maxlength="120" value="${escapeHtml(r.att)}" placeholder="코멘트 한 줄 (직접 쓰거나 오른쪽에서 고르기)" aria-label="${escapeHtml(r.name)} 코멘트"><button type="button" class="km-pick" aria-expanded="false">📚 문구 선택</button></div>
         <div class="km-popslot"></div>
         <div class="km-fl">다음 숙제</div>
         <input type="text" class="km-hw" list="kakaoHwList" maxlength="120" value="${escapeHtml(r.nextHw)}" placeholder="예: 중1-1 고쟁이 오답프린트 (비우면 「다음숙제」 블록이 빠져요)" aria-label="${escapeHtml(r.name)} 다음 숙제">
-        <div class="km-txt"></div>
       </div>
-      <div><button type="button" class="km-copy">📋 복사</button></div>
+      <div class="km-c3"><div class="km-txt"></div></div>
     </div>`;
   }).join('');
   kakaoRefreshTexts();
