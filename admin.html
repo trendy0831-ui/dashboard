@@ -1436,6 +1436,27 @@
   </div>
 </div>
 <script>
+/* 2026-11: 마지막으로 보던 탭이 대시보드가 아니면, 아래 큰 스크립트를 읽어 들이는 동안에도 대시보드가
+   먼저 비치지 않도록 제목·메뉴 표시만 미리 맞춘다. (제목은 아래 PAGE_TITLES와 같은 값 — 바꿀 땐 함께 수정)
+   실제 화면 구성은 데이터 로딩이 끝난 뒤 switchPage()가 한다. */
+(function(){
+  try{
+    var T={students:'학생 관리',attendance:'출결 관리',grades:'성적·오답노트',tuition:'수강료 관리',notice:'공지사항',report:'학생 리포트',noteAnalyzer:'오답노트'};
+    var sp=sessionStorage.getItem('adminLastPage');
+    if(!sp||!T[sp]) return;
+    document.getElementById('pageTitle').textContent=T[sp];
+    var n=document.querySelectorAll('.nav-item[data-page]');
+    for(var k=0;k<n.length;k++) n[k].classList.toggle('active', n[k].getAttribute('data-page')===sp);
+    var g=document.getElementById('dashGreeting'); if(g) g.style.display='none';
+    document.getElementById('dashboardPage').style.display='none';
+    if(sp==='attendance'){
+      document.getElementById('attendancePage').style.display='';
+      document.getElementById('attendanceTopActions').style.display='';
+    }
+  }catch(e){}
+})();
+</script>
+<script>
 /* ============ 기존 attendance.html과 동일한 데이터/동기화 레이어 ============ */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSVS9mzGr116jePeDPKV1lesU4hI7wIm_11yjYaYruLS38kWj32-E_QHEny3K8l00E/exec";
 const DAYS = ["월","화","수","목","금","토"];
@@ -6187,8 +6208,8 @@ function initDashCollapsibles(){
 const LAST_PAGE_KEY = 'adminLastPage';
 function switchPage(page){
   currentPage = page;
-  // 2026-11: 새로고침·재접속해도 마지막으로 보던 탭에서 시작하도록 기억(이 브라우저 전체)
-  try{ localStorage.setItem(LAST_PAGE_KEY, page); }catch(e){}
+  // 2026-11: 새로고침해도 보던 탭 유지 — 이 브라우저 탭 안에서만 기억하므로 새로 열면 대시보드로 시작
+  try{ sessionStorage.setItem(LAST_PAGE_KEY, page); }catch(e){}
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-page')===page);
@@ -6580,24 +6601,6 @@ document.getElementById('themeSave').onclick = saveTheme;
 document.getElementById('themeModal').addEventListener('click', e=>{ if(e.target.id==='themeModal') closeThemeModal(true); });
 document.getElementById('themeColorInput').addEventListener('input', e=> themeSetPreview_(e.target.value));
 
-// 2026-11: 마지막으로 보던 탭이 대시보드가 아니면, 데이터 로딩을 기다리는 동안에도 대시보드 화면이
-// 먼저 비치지 않도록 제목·메뉴 표시만 미리 맞춰 둔다 (실제 화면 구성은 로딩이 끝난 뒤 switchPage가 한다)
-(function preApplyLastPage(){
-  try{
-    const sp = localStorage.getItem(LAST_PAGE_KEY);
-    if(!sp || sp === 'dashboard' || !PAGE_TITLES[sp]) return;
-    document.getElementById('pageTitle').textContent = PAGE_TITLES[sp];
-    document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
-      b.classList.toggle('active', b.getAttribute('data-page') === sp);
-    });
-    const g = document.getElementById('dashGreeting'); if(g) g.style.display = 'none';
-    document.getElementById('dashboardPage').style.display = 'none';
-    if(sp === 'attendance'){
-      document.getElementById('attendancePage').style.display = '';
-      document.getElementById('attendanceTopActions').style.display = '';
-    }
-  }catch(e){}
-})();
 (async function init(){
   await adminAuthBootstrap(); // 로그인 보호가 켜져 있으면 여기서 로그인 창을 띄우고 통과할 때까지 기다린다
   try{
@@ -6636,7 +6639,7 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   // 리셋되어 "그 탭이 영영 안 열린다/느리다"처럼 보였음 — 2026-09-13 수정)
   if(currentPage === 'dashboard'){
     let savedPage = null;
-    try{ savedPage = localStorage.getItem(LAST_PAGE_KEY); }catch(e){}
+    try{ savedPage = sessionStorage.getItem(LAST_PAGE_KEY); }catch(e){}
     switchPage((savedPage && PAGE_TITLES[savedPage]) ? savedPage : 'dashboard');
   }
   setSyncStatus('ok');
