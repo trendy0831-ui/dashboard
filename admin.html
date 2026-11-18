@@ -6184,8 +6184,11 @@ function initDashCollapsibles(){
     };
   });
 }
+const LAST_PAGE_KEY = 'adminLastPage';
 function switchPage(page){
   currentPage = page;
+  // 2026-11: 새로고침해도 보던 탭에 그대로 머물도록 현재 탭을 기억(이 브라우저 탭 안에서만)
+  try{ sessionStorage.setItem(LAST_PAGE_KEY, page); }catch(e){}
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
   document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-page')===page);
@@ -6614,7 +6617,9 @@ document.getElementById('themeColorInput').addEventListener('input', e=> themeSe
   // (버그: 예전엔 무조건 대시보드로 되돌려서, 로딩 중 탭을 누르면 화면이 다시 대시보드로
   // 리셋되어 "그 탭이 영영 안 열린다/느리다"처럼 보였음 — 2026-09-13 수정)
   if(currentPage === 'dashboard'){
-    switchPage('dashboard');
+    let savedPage = null;
+    try{ savedPage = sessionStorage.getItem(LAST_PAGE_KEY); }catch(e){}
+    switchPage((savedPage && PAGE_TITLES[savedPage]) ? savedPage : 'dashboard');
   }
   setSyncStatus('ok');
   startAutoRefresh();
