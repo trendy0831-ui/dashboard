@@ -1100,7 +1100,10 @@
   #kakaoModal .km-cat.on{background:var(--teal);border-color:var(--teal);color:#fff;}
   #kakaoModal .km-ph{display:block;width:100%;text-align:left;font-size:13px;line-height:1.5;padding:9px 10px;border-radius:8px;border:1px solid var(--line);margin-bottom:6px;background:#FBFDFC;color:var(--ink);cursor:pointer;font-family:inherit;}
   #kakaoModal .km-ph:hover{background:var(--soft);border-color:var(--teal);}
-  #kakaoModal .km-ph.hot{background:var(--soft);border-color:var(--teal);}
+  #kakaoModal .km-ph.hot{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  #kakaoModal .km-popfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;}
+  #kakaoModal .km-popfoot .km-popnote{margin:0;flex:1;}
+  #kakaoModal .km-done{flex:none;height:34px;padding:0 18px;border:0;border-radius:8px;background:var(--teal);color:#fff;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;}
   #kakaoModal .km-popnote{font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
   #kakaoModal .km-txt{white-space:pre-wrap;word-break:break-all;font-size:13.5px;line-height:1.6;background:var(--soft);color:var(--ink);border-radius:10px;padding:10px 12px;}
   #kakaoModal .km-txt.empty{color:var(--ink-soft);}
@@ -2479,11 +2482,11 @@ function kakaoPopHtml(row, cat){
   const sug = kakaoSuggestCats(row);
   const ordered = sug.concat(cats.filter(c=> sug.indexOf(c) < 0));
   if(!cat || ordered.indexOf(cat) < 0) cat = ordered[0];
-  const cur = row.att.trim();
+  const cur = row.att;
   const chips = ordered.map(c=>`<button type="button" class="km-cat${c===cat?' on':''}${sug.indexOf(c)>=0?' sug':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}${sug.indexOf(c)>=0?' ★':''}</button>`).join('');
   const list = kakaoPhrases.map((p,idx)=>({p,idx})).filter(x=> x.p.code === cat)
-    .map(x=>`<button type="button" class="km-ph${x.p.text===cur?' hot':''}" data-pi="${x.idx}">${escapeHtml(x.p.text)}</button>`).join('');
-  return `<div class="km-pop" data-cat="${escapeHtml(cat)}"><div class="km-cats">${chips}</div>${list}<div class="km-popnote">문장을 누르면 위 입력칸에 들어가고, 그 자리에서 고쳐 쓸 수 있어요. ★은 숙제 상태에 맞춘 추천 분류예요.</div></div>`;
+    .map(x=>`<button type="button" class="km-ph${(x.p.text && cur.indexOf(x.p.text)>=0)?' hot':''}" data-pi="${x.idx}">${escapeHtml(x.p.text)}</button>`).join('');
+  return `<div class="km-pop" data-cat="${escapeHtml(cat)}"><div class="km-cats">${chips}</div>${list}<div class="km-popfoot"><div class="km-popnote">여러 문장을 눌러 이어 붙일 수 있어요(다시 누르면 빠져요). 입력칸에서 고쳐 써도 돼요. ★은 숙제 상태에 맞춘 추천 분류예요.</div><button type="button" class="km-done">완료</button></div></div>`;
 }
 function kakaoClosePops(){
   document.querySelectorAll('#kakaoBody .km-popslot').forEach(el=>{ el.innerHTML = ''; });
@@ -2684,7 +2687,7 @@ function kakaoRender(){
       <div class="km-c1"><div class="km-nm">${escapeHtml(r.name)}</div>${meta?`<div class="km-sub">${meta}</div>`:''}${notes.map(n=>`<span class="km-chip">${n}</span>`).join(' ')}<button type="button" class="km-copy">📋 복사</button></div>
       <div class="km-c2">
         <div class="km-fl km-fl0">코멘트</div>
-        <div class="km-attrow"><input type="text" class="km-att" list="kakaoAttList" maxlength="120" value="${escapeHtml(r.att)}" placeholder="코멘트 한 줄 (직접 쓰거나 오른쪽에서 고르기)" aria-label="${escapeHtml(r.name)} 코멘트"><button type="button" class="km-pick" aria-expanded="false">📚 문구 선택</button></div>
+        <div class="km-attrow"><input type="text" class="km-att" list="kakaoAttList" maxlength="300" value="${escapeHtml(r.att)}" placeholder="코멘트 한 줄 (직접 쓰거나 오른쪽에서 고르기)" aria-label="${escapeHtml(r.name)} 코멘트"><button type="button" class="km-pick" aria-expanded="false">📚 문구 선택</button></div>
         <div class="km-popslot"></div>
         <div class="km-fl">다음 숙제</div>
         <input type="text" class="km-hw" list="kakaoHwList" maxlength="120" value="${escapeHtml(r.nextHw)}" placeholder="예: 중1-1 고쟁이 오답프린트 (비우면 「다음숙제」 블록이 빠져요)" aria-label="${escapeHtml(r.name)} 다음 숙제">
@@ -2764,17 +2767,23 @@ document.getElementById('kakaoBody').addEventListener('click', e=>{
     if(!wasOpen) kakaoOpenPop(el, row, '');
     return;
   }
+  if(e.target.closest('.km-done')){ kakaoClosePops(); return; }
   const cat = e.target.closest('.km-cat');
   if(cat){ kakaoOpenPop(el, row, cat.getAttribute('data-cat')); return; }
   const ph = e.target.closest('.km-ph');
   if(ph){
     const p = kakaoPhrases[parseInt(ph.getAttribute('data-pi'))]; if(!p) return;
     const inp = el.querySelector('.km-att');
-    inp.value = p.text;
-    row.att = p.text;
-    kakaoLs('kakaoAtt|'+kakaoDs+'|'+row.name, p.text);
+    // 여러 문장 이어 쓰기: 이미 들어 있으면 빼고, 없으면 뒤에 공백 한 칸으로 붙인다 (팝업은 열어 둔다)
+    let v = inp.value;
+    if(v.indexOf(p.text) >= 0) v = v.replace(p.text, '').replace(/\s{2,}/g, ' ').trim();
+    else v = (v.trim() ? v.trim() + ' ' : '') + p.text;
+    inp.value = v;
+    row.att = v;
+    kakaoLs('kakaoAtt|'+kakaoDs+'|'+row.name, v);
     kakaoRefreshTexts();
-    kakaoClosePops();
+    const pop = el.querySelector('.km-pop');
+    kakaoOpenPop(el, row, pop ? pop.getAttribute('data-cat') : '');
   }
 });
 document.getElementById('closureClose').addEventListener('click', closeAdjustModal);
