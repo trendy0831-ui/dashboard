@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <title>이끌림수학학원 | 학습 리포트</title>
 <style>
   :root{
@@ -98,42 +100,45 @@
     border-bottom:1px solid var(--line);
     box-shadow:0 4px 12px rgba(8,80,65,0.05);
   }
+  /* 2026-11: 탭 6개를 스크롤 없이 한 줄에 모두 보이게 6등분 (이모지 위·글자 아래) */
   .tabbar-inner{
-    display:flex;
-    gap:0;
+    display:grid;
+    grid-template-columns:repeat(6,minmax(0,1fr));
     max-width:520px;
     margin:0 auto;
-    padding:0 8px;
-    overflow-x:auto;
-    scrollbar-width:none;
-    -webkit-overflow-scrolling:touch;
+    padding:0;
   }
-  .tabbar-inner::-webkit-scrollbar{ display:none; }
   .tab-btn{
-    flex:0 0 auto;
     background:none;
     border:none;
     border-bottom:2.5px solid transparent;
     font-family:inherit;
-    font-size:13px;
+    font-size:12px;
     font-weight:700;
     color:var(--ink-soft);
-    padding:14px 11px 11px;
+    padding:10px 0 9px;
     cursor:pointer;
     display:flex;
+    flex-direction:column;
     align-items:center;
     justify-content:center;
-    gap:5px;
+    gap:3px;
     position:relative;
     white-space:nowrap;
   }
+  .tab-btn .tab-emoji{ font-size:20px; line-height:1.2; }
   .tab-btn.active{
     color:var(--teal-dark);
     border-bottom-color:var(--teal);
+    background:#EEF4F0;
   }
+  @media (max-width:350px){ .tab-btn{ font-size:11px; } }
   .tab-new-dot{
-    width:6px;
-    height:6px;
+    position:absolute;
+    top:6px;
+    left:calc(50% + 11px);
+    width:7px;
+    height:7px;
     border-radius:50%;
     background:var(--red);
     flex-shrink:0;
@@ -758,27 +763,27 @@
     <div class="tabbar">
       <div class="tabbar-inner">
         <button class="tab-btn" data-tab="notice">
-          📢 공지사항
+          <span class="tab-emoji">📢</span>공지사항
           <span class="tab-new-dot" id="tab-notice-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn active" data-tab="attend">
-          ✅ 출결·숙제
+          <span class="tab-emoji">✅</span>출결·숙제
           <span class="tab-new-dot" id="tab-attend-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn" data-tab="exam" id="tab-exam-btn">
-          <span id="tab-exam-label">📅 시험</span>
+          <span class="tab-emoji" id="tab-exam-emoji">📅</span><span id="tab-exam-label">시험</span>
           <span class="tab-new-dot" id="tab-exam-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn" data-tab="makeup">
-          🔁 보강
+          <span class="tab-emoji">🔁</span>보강
           <span class="tab-new-dot" id="tab-makeup-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn" data-tab="textbook">
-          📘 교재
+          <span class="tab-emoji">📘</span>교재
           <span class="tab-new-dot" id="tab-textbook-dot" style="display:none;"></span>
         </button>
         <button class="tab-btn" data-tab="tuition">
-          💰 수강료
+          <span class="tab-emoji">💰</span>수강료
           <span class="tab-new-dot" id="tab-tuition-dot" style="display:none;"></span>
         </button>
       </div>
@@ -1271,7 +1276,8 @@
     });
 
     // ── 시험/테스트 탭 표시 형태 (초등부는 개인 테스트 기록이 주가 되고, 중등 이상은 학교 D-day가 우선) ──
-    document.getElementById('tab-exam-label').textContent = student.isElementary ? '📝 테스트' : '📅 시험';
+    document.getElementById('tab-exam-emoji').textContent = student.isElementary ? '📝' : '📅';
+    document.getElementById('tab-exam-label').textContent = student.isElementary ? '테스트' : '시험';
     document.getElementById('exam-secondary').style.display = student.isElementary ? 'none' : 'block';
     document.getElementById('elem-test-title').style.display = student.isElementary ? 'none' : '';
     document.getElementById('elem-test-section').style.display = 'block';
