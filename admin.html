@@ -103,6 +103,14 @@
   .edit-toggle{background:var(--card);border:1.5px solid var(--teal);color:var(--teal);
     border-radius:9px;padding:5px 13px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .edit-toggle.active{background:var(--teal);color:#fff;}
+  .edit-toggle.primary{background:var(--teal);color:#fff;}
+  .manage-wrap{position:relative;}
+  .manage-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:170px;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 10px 28px rgba(0,0,0,.14);z-index:80;}
+  .manage-wrap.open .manage-menu{display:block;}
+  .manage-item{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:11px 12px;
+    font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .manage-item:hover{background:var(--soft);}
   .sync-status{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);
     font-weight:600;white-space:nowrap;}
   .sync-dot{width:7px;height:7px;border-radius:50%;background:#6FA05A;flex-shrink:0;}
@@ -673,9 +681,6 @@
   .gr-chip:hover{border-color:var(--teal);}
   .gr-chip.on{background:var(--deep);border-color:var(--deep);color:#fff;}
   .gr-chip.on small{color:rgba(255,255,255,.78);}
-  .gr-tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px;}
-  .gr-tab{padding:11px 22px;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;background:none;color:var(--ink-soft);font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;}
-  .gr-tab.on{color:var(--teal);border-bottom-color:var(--teal);font-weight:800;}
   .grades-layout{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;}
   @media (max-width: 900px){ .grades-layout{grid-template-columns:1fr;} }
   .grades-stu-list{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
@@ -834,34 +839,21 @@
   #themeModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;
     background:rgba(20,30,26,.45);}
   #themeModal.open{display:flex;}
-  .tm-box{background:var(--card);width:520px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
+  .tm-box{background:var(--card);width:420px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
     overflow:hidden;max-height:calc(100vh - 32px);display:flex;flex-direction:column;}
   .tm-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 12px;}
   .tm-head h2{margin:0;font-size:19px;font-weight:800;}
   .tm-close{border:none;background:none;font-size:24px;color:var(--ink-soft);cursor:pointer;line-height:1;}
   .tm-body{padding:0 24px 8px;overflow-y:auto;}
-  .tm-sec{font-size:13px;font-weight:700;color:var(--ink-soft);margin:16px 0 10px;}
-  .tm-demo{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-  .tm-demo div{border-radius:10px;padding:13px 0;text-align:center;font-weight:700;font-size:14px;
-    color:#fff;background:var(--deep);transition:background .2s;}
-  .tm-demo .d-btn{background:var(--teal);color:#fff;}
-  .tm-demo .d-soft{background:var(--soft);color:var(--teal-dark);}
   .tm-swatches{display:flex;flex-wrap:wrap;gap:14px 12px;}
-  .tm-sw{width:58px;text-align:center;cursor:pointer;border:none;background:none;padding:0;font-family:inherit;}
+  .tm-sw{width:76px;text-align:center;cursor:pointer;border:none;background:none;padding:0;font-family:inherit;}
   .tm-sw i{display:block;width:50px;height:50px;border-radius:50%;margin:0 auto 6px;border:3px solid transparent;
     box-shadow:0 0 0 2px var(--card) inset;transition:transform .15s;}
   .tm-sw:hover i{transform:scale(1.06);}
   .tm-sw.on i{border-color:var(--ink);}
+  .tm-sw.on i::after{content:"✓";display:flex;align-items:center;justify-content:center;height:100%;color:#fff;font-size:22px;font-weight:800;}
   .tm-sw span{font-size:12px;color:var(--ink-soft);}
   .tm-sw.on span{color:var(--ink);font-weight:700;}
-  .tm-custom{display:flex;align-items:center;gap:14px;background:var(--paper);border:1px solid var(--line);
-    border-radius:12px;padding:14px 16px;cursor:pointer;}
-  .tm-custom input[type=color]{width:46px;height:46px;border:0;padding:0;background:none;border-radius:10px;cursor:pointer;}
-  .tm-custom input[type=color]::-webkit-color-swatch{border-radius:10px;border:1px solid var(--line);}
-  .tm-custom b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;}
-  .tm-custom small{color:var(--ink-soft);font-size:13px;}
-  .tm-warn{display:none;font-size:12.5px;color:var(--amber);margin-top:8px;font-weight:700;}
-  .tm-warn.show{display:block;}
   .tm-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 24px 20px;
     border-top:1px solid var(--line);margin-top:14px;}
   .tm-foot small{color:var(--ink-soft);font-size:13px;}
@@ -1152,8 +1144,6 @@
 
 
 
-/* 오답노트(iframe) */
-.note-frame{ display:block; width:100%; height:calc(100vh - 150px); min-height:620px; border:0; border-radius:16px; background:transparent; }
 </style>
 </head>
 <body>
@@ -1209,7 +1199,7 @@
       </button>
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
-        성적·오답노트
+        성적
       </button>
       <button class="nav-item" data-page="report">
         <span class="nav-emoji" aria-hidden="true">🧾</span>
@@ -1266,15 +1256,7 @@
       <button class="tm-close" id="themeClose" aria-label="닫기">×</button>
     </div>
     <div class="tm-body">
-      <div class="tm-demo"><div>사이드바</div><div class="d-btn">버튼</div><div class="d-soft">배지·강조</div></div>
-      <div class="tm-sec">최근 사용한 색상</div>
       <div class="tm-swatches" id="themeSwatches"></div>
-      <div class="tm-sec">직접 고르기</div>
-      <label class="tm-custom">
-        <input type="color" id="themeColorInput" value="#2F493C">
-        <div><b id="themeHex">#2F493C</b><br><small>원하는 색을 자유롭게 선택하세요</small></div>
-      </label>
-      <div class="tm-warn" id="themeWarn">⚠️ 너무 밝은 색은 배지·강조 영역의 흰 글자와 대비가 약해질 수 있어요.</div>
     </div>
     <div class="tm-foot">
       <small>모든 기기에 적용됩니다</small>
@@ -1342,7 +1324,7 @@
       </button>
       <button class="nav-item" data-page="grades">
         <span class="nav-emoji" aria-hidden="true">📈</span>
-        성적·오답노트
+        성적
       </button>
       <button class="nav-item" data-page="report">
         <span class="nav-emoji" aria-hidden="true">🧾</span>
@@ -1381,9 +1363,15 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A6F5A" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/></svg>
           <input type="date" id="datePick">
         </div>
-        <button class="edit-toggle" id="kakaoOpen">📨 카톡 문구</button>
-        <button class="edit-toggle" id="closureOpen">수업 일정 조정</button>
-        <button class="edit-toggle" id="toggleEdit">명단 편집</button>
+        <button class="edit-toggle primary" id="kakaoOpen">📨 카톡 문구</button>
+        <div class="manage-wrap" id="manageWrap">
+          <button class="edit-toggle" id="manageBtn" type="button" aria-haspopup="true" aria-expanded="false">관리 ▾</button>
+          <div class="manage-menu" id="manageMenu" role="menu">
+            <button class="manage-item" id="closureOpen" type="button" role="menuitem">수업 일정 조정</button>
+            <button class="manage-item" id="manageEditItem" type="button" role="menuitem">명단 편집</button>
+          </div>
+        </div>
+        <button class="edit-toggle" id="toggleEdit" style="display:none;">편집 종료</button>
       </div>
     </div>
     <div id="pageContent">
@@ -1432,7 +1420,6 @@
         <div id="tuitionPageEl" style="display:none;"></div>
         <div id="noticePageEl" style="display:none;"></div>
         <div id="reportPageEl" style="display:none;"></div>
-        <div id="noteAnalyzerPageEl" style="display:none;"></div>
       </div>
       <div id="dashboardPage"></div>
     </div>
@@ -1444,7 +1431,7 @@
    실제 화면 구성은 데이터 로딩이 끝난 뒤 switchPage()가 한다. */
 (function(){
   try{
-    var T={students:'학생 관리',attendance:'출결 관리',grades:'성적·오답노트',tuition:'수강료 관리',notice:'공지사항',report:'학생 리포트',noteAnalyzer:'오답노트'};
+    var T={students:'학생 관리',attendance:'출결 관리',grades:'성적',tuition:'수강료 관리',notice:'공지사항',report:'학생 리포트'};
     var sp=sessionStorage.getItem('adminLastPage');
     if(!sp||!T[sp]) return;
     document.getElementById('pageTitle').textContent=T[sp];
@@ -1722,10 +1709,6 @@ document.getElementById('alEye').addEventListener('click', ()=>{
 document.querySelectorAll('[data-admin-logout]').forEach(b=> b.addEventListener('click', ()=>{
   authClearToken(); location.reload();
 }));
-// 오답노트(note.html iframe)에서 인증 오류가 나면 부모 창에서 로그인 창을 띄운다
-window.addEventListener('message', ev=>{
-  if(ev.origin === location.origin && ev.data && ev.data.type === 'authRequired'){ authExpired(); }
-});
 async function apiGetOnce(params){
   await apiAcquireSlot();
   try{
@@ -3849,6 +3832,9 @@ function setEditMode(on){
   const btn = document.getElementById('toggleEdit');
   btn.textContent = on ? '편집 종료' : '명단 편집';
   btn.classList.toggle('active', on);
+  // 편집 중에는 "편집 종료" 버튼을 바로 보이게, 평소에는 관리 메뉴 안의 "명단 편집"으로만 연다
+  btn.style.display = on ? '' : 'none';
+  document.getElementById('manageWrap').style.display = on ? 'none' : '';
   document.getElementById('editSaveBar').style.display = on ? 'flex' : 'none';
   if(on){
     rosterEditSnapshot = JSON.parse(JSON.stringify(roster));
@@ -3870,16 +3856,26 @@ document.getElementById('toggleEdit').onclick = async ()=>{
     }
   }
 };
+// 출결 상단 바의 "관리" 메뉴 (수업 일정 조정 / 명단 편집)
+(function(){
+  const wrap = document.getElementById('manageWrap');
+  const btn = document.getElementById('manageBtn');
+  function setOpen(on){ wrap.classList.toggle('open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+  btn.addEventListener('click', e=>{ e.stopPropagation(); setOpen(!wrap.classList.contains('open')); });
+  document.getElementById('manageMenu').addEventListener('click', ()=> setOpen(false));
+  document.addEventListener('click', e=>{ if(!wrap.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape') setOpen(false); });
+  document.getElementById('manageEditItem').addEventListener('click', ()=> document.getElementById('toggleEdit').click());
+})();
 /* ============ 페이지 전환 (사이드바 + 모바일 오버레이 공통) ============ */
 const PAGE_TITLES = {
   dashboard:  "대시보드",
   students:   "학생 관리",
   attendance: "출결 관리",
-  grades:     "성적·오답노트",
+  grades:     "성적",
   tuition:    "수강료 관리",
   notice:     "공지사항",
-  report:     "학생 리포트",
-  noteAnalyzer: "오답노트"
+  report:     "학생 리포트"
 };
 let currentPage = 'dashboard';
 function emptyPagePanel(icon, title, desc){
@@ -4008,11 +4004,23 @@ async function renderUpcomingExams(){
     el.innerHTML = `<div class="reason-feed-empty">시험 일정을 불러오지 못했어요.</div>`;
     return;
   }
+  // 2026-11-28: 재원 학생이 다니는 학교의 시험만 보여준다 (퇴원·휴원 학생과 종료된 자리의 학교는 뺀다)
+  // 학교 이름은 "동도중학교"/"동도중", "경북고등학교"/"경북고"처럼 적은 방식이 달라도 같은 학교로 본다.
+  const schoolKey = x => String(x||'').replace(/\s+/g,'').replace(/(여|남)자(?=[중고])/,'$1').replace(/(중|고)등학교$/,'$1').replace(/학교$/,'');
+  await loadStudentInfoList();
+  const schoolSet = new Set();
+  activeStudentEntries().forEach(st=>{
+    const info = studentStatusInfoOf(st.name);
+    if(info && (info.status === '퇴원' || info.status === '휴원')) return;
+    const sc = schoolKey(st.school || (info && info.school) || '');
+    if(sc) schoolSet.add(sc);
+  });
   const today = new Date();
   const todayStr = toDateStr(today);
   const horizon = toDateStr(addDays(today, 28));
   const items = (rows || [])
     .filter(r => r.school && r.examStart)
+    .filter(r => schoolSet.has(schoolKey(r.school)))
     .filter(r => r.examStart >= todayStr && r.examStart <= horizon)
     .map(r=>{
       let dday = null;
@@ -4030,7 +4038,7 @@ async function renderUpcomingExams(){
   if(labelEl) labelEl.innerHTML = items.length ? `<span class="badge-count">${items.length}건</span>` : '';
   if(!items.length){
     el.className = 'reason-feed';
-    el.innerHTML = `<div class="reason-feed-empty">앞으로 4주 이내 예정된 시험이 없어요.</div>`;
+    el.innerHTML = `<div class="reason-feed-empty">재원생 학교 중 앞으로 4주 이내 예정된 시험이 없어요.</div>`;
     return;
   }
   el.className = 'compact-grid';
@@ -5458,7 +5466,6 @@ function secondaryStudents(){
     .filter(item => !/초$/.test((item.stu.school || '').trim()))
     .sort(byGrade);
 }
-let gradesTab = 'grades'; // 'grades' | 'note'
 function gradesAllStudents(){
   return allStudentNames()
     .map(raw => ({ raw, stu: parseStudentEntry(raw) }))
@@ -5469,15 +5476,8 @@ function renderGradesPage(){
   if(!el.dataset.built){
     el.innerHTML = `
       <div class="gr-chips" id="gradesChips"></div>
-      <div class="gr-tabs">
-        <button class="gr-tab" id="grTabGrades" type="button">성적</button>
-        <button class="gr-tab" id="grTabNote" type="button">오답노트</button>
-      </div>
       <div id="gradesMain"></div>
-      <div id="gradesNoteWrap" style="display:none;"></div>
     `;
-    document.getElementById('grTabGrades').onclick = ()=>{ gradesTab = 'grades'; applyGradesTab(); };
-    document.getElementById('grTabNote').onclick = ()=>{ gradesTab = 'note'; applyGradesTab(); };
     el.dataset.built = '1';
   }
   const students = gradesAllStudents();
@@ -5485,7 +5485,7 @@ function renderGradesPage(){
     gradesSelectedName = students.length ? students[0].stu.name : '';
   }
   renderGradesChips();
-  applyGradesTab();
+  applyGradesView();
 }
 function renderGradesChips(){
   const el = document.getElementById('gradesChips');
@@ -5501,21 +5501,11 @@ function renderGradesChips(){
     b.onclick = ()=>{
       gradesSelectedName = b.getAttribute('data-name');
       renderGradesChips();
-      applyGradesTab();
+      applyGradesView();
     };
   });
 }
-function applyGradesTab(){
-  const isNote = gradesTab === 'note';
-  document.getElementById('grTabGrades').classList.toggle('on', !isNote);
-  document.getElementById('grTabNote').classList.toggle('on', isNote);
-  document.getElementById('gradesMain').style.display = isNote ? 'none' : '';
-  document.getElementById('gradesNoteWrap').style.display = isNote ? '' : 'none';
-  if(isNote){
-    ensureGradesNoteFrame();
-    sendGradesNoteStudent();
-    return;
-  }
+function applyGradesView(){
   if(!gradesSelectedName){
     document.getElementById('gradesMain').innerHTML = `
       <div class="empty-panel"><div class="big">📝</div><div class="title">학생을 선택하세요</div></div>`;
@@ -5527,20 +5517,6 @@ function applyGradesTab(){
     return;
   }
   renderGradesMain();
-}
-// 오답노트 탭: 처음 열 때만 불러온다 (note.html을 고쳐 올릴 때마다 v 값을 바꿔 주면 새 파일을 불러온다)
-function ensureGradesNoteFrame(){
-  const wrap = document.getElementById('gradesNoteWrap');
-  if(wrap.dataset.built) return;
-  wrap.innerHTML = '<iframe class="note-frame" id="gradesNoteFrame" src="note.html?embed=1&v=20261027" title="오답노트"></iframe>';
-  wrap.dataset.built = '1';
-  document.getElementById('gradesNoteFrame').addEventListener('load', sendGradesNoteStudent);
-}
-// 위에서 고른 학생을 오답노트 화면의 학생 선택에도 맞춰 준다
-function sendGradesNoteStudent(){
-  const f = document.getElementById('gradesNoteFrame');
-  if(!f || !f.contentWindow) return;
-  f.contentWindow.postMessage({ type:'selectStudent', name: gradesSelectedName }, location.origin);
 }
 let gradesMainFor = ''; // 성적 입력 화면이 이미 그려져 있는 학생 (탭만 오갈 때 입력 중인 내용을 지우지 않기 위함)
 async function renderGradesMain(){
@@ -6281,7 +6257,7 @@ function switchPage(page){
   // 학생관리/성적관리/수강료/공지사항/리포트도 대시보드와 같은 방식으로,
   // 각자 자기만의 화면을 유지한 채(탭을 오갈 때 지우지 않고) 다시 방문할 때마다
   // 조용히 최신 내용으로 갱신한다 (2026-09-02, 사용자 요청)
-  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','reportPageEl','noteAnalyzerPageEl'].forEach(id=>{
+  ['studentsPageEl','gradesPageEl','tuitionPageEl','noticePageEl','reportPageEl'].forEach(id=>{
     document.getElementById(id).style.display = 'none';
   });
   if(page === 'students'){
@@ -6304,15 +6280,6 @@ function switchPage(page){
   } else if(page === 'report'){
     document.getElementById('reportPageEl').style.display = '';
     renderReportPage();
-  } else if(page === 'noteAnalyzer'){
-    // 오답노트: 처음 눌렀을 때만 불러온다 (admin 첫 화면 속도에 영향 없음)
-    const el = document.getElementById('noteAnalyzerPageEl');
-    el.style.display = '';
-    if(!el.dataset.built){
-      // 2026-10-15: v 값은 note.html을 고쳐서 올릴 때마다 바꿔 주면, 브라우저 캐시에 남은 옛 버전 대신 새 파일을 불러온다.
-      el.innerHTML = '<iframe class="note-frame" src="note.html?embed=1&v=20261027" title="오답노트" loading="lazy"></iframe>';
-      el.dataset.built = '1';
-    }
   }
 }
 function navRipple(el, e){
@@ -6440,12 +6407,14 @@ function renderAll(){
 // 저장된 색은 시트의 "설정" 탭(action=settings)에 두어 모든 기기에서 같은 색이 보이고,
 // 로딩 순간의 깜빡임을 줄이기 위해 localStorage에도 마지막 값을 캐시해 둔다.
 const THEME_DEFAULT = '#2F493C';
-// 2026-09: 고정 프리셋 대신 "최근에 실제로 저장한 색"을 서버(Code.gs)에서 받아와 스와치로 보여준다
-// (최대 10개, 최근순). 처음 로딩 때 깜빡임 없이 뭔가 보이도록 기본값으로 하나 채워두고,
-// loadTheme()이 서버에서 실제 이력을 받아오면 이 배열을 교체한다.
-let THEME_RECENT = [THEME_DEFAULT];
+// 2026-11-28: 고르는 색은 어두운 틸 계열 4가지로 줄였다 (저장된 색이 이 중에 없으면 "현재 색"으로 하나 더 보여준다).
+const THEME_PRESETS = [
+  { hex:'#2F493C', name:'딥틸 (기본)' },
+  { hex:'#203229', name:'짙은 틸' },
+  { hex:'#3C5B4B', name:'연한 틸' },
+  { hex:'#2B2F2D', name:'먹색' }
+];
 const THEME_LS_KEY = 'ikk_theme_color';
-const THEME_RECENT_LS_KEY = 'ikk_theme_recent';
 let themeCurrent = THEME_DEFAULT;   // 저장돼 있는(적용 중인) 색
 let themePreview = THEME_DEFAULT;   // 모달에서 고르는 중인 색
 
@@ -6528,32 +6497,21 @@ function applyTheme(hex){
 }
 function themeSetPreview_(hex){
   themePreview = applyTheme(hex);
-  const input = document.getElementById('themeColorInput');
-  if(input) input.value = themePreview;
-  const hexEl = document.getElementById('themeHex');
-  if(hexEl) hexEl.textContent = themePreview;
   document.querySelectorAll('#themeSwatches .tm-sw').forEach(b=>{
     b.classList.toggle('on', b.getAttribute('data-hex').toUpperCase() === themePreview);
   });
-  const warn = document.getElementById('themeWarn');
-  if(warn) warn.classList.toggle('show', themeIsLight_(themePreview));
 }
-// "최근 사용한 색상" 스와치 목록을 다시 그린다 — 모달을 열 때, 그리고 새 색을 저장한 직후에도
-// 최신 상태로 갱신해야 하므로(고정 프리셋이 아니라 계속 바뀌는 목록이라) 매번 통째로 다시 그린다.
+// 색 선택 버튼(4개 + 필요하면 현재 색)을 그린다
 function renderThemeSwatches(){
   const wrap = document.getElementById('themeSwatches');
   if(!wrap) return;
-  wrap.innerHTML = THEME_RECENT.map(hex=>
-    `<button type="button" class="tm-sw" data-hex="${hex}"><i style="background:${hex}"></i><span>${hex}</span></button>`
+  const list = THEME_PRESETS.slice();
+  const cur = String(themeCurrent || '').toUpperCase();
+  if(cur && !list.some(p=>p.hex === cur)) list.push({ hex: cur, name:'현재 색' });
+  wrap.innerHTML = list.map(p=>
+    `<button type="button" class="tm-sw" data-hex="${p.hex}"><i style="background:${p.hex}"></i><span>${p.name}</span></button>`
   ).join('');
   wrap.querySelectorAll('.tm-sw').forEach(b=>{ b.onclick = ()=> themeSetPreview_(b.getAttribute('data-hex')); });
-}
-// 새로 저장한 색을 THEME_RECENT 맨 앞으로 올리고(중복 제거), 최대 10개까지만 남긴다.
-// — 서버(Code.gs saveSettings_)와 같은 규칙이라, 서버 응답을 다시 안 받아와도 화면이 바로 최신 상태로 보인다.
-function themeRecentAdd_(hex){
-  const upper = hex.toUpperCase();
-  THEME_RECENT = [upper, ...THEME_RECENT.filter(c=>c.toUpperCase()!==upper)].slice(0,10);
-  try{ localStorage.setItem(THEME_RECENT_LS_KEY, JSON.stringify(THEME_RECENT)); }catch(e){}
 }
 function openThemeModal(){
   renderThemeSwatches();
@@ -6572,7 +6530,6 @@ async function saveTheme(){
   try{
     await apiPost({ action:'saveSettings', settings:{ themeColor: themePreview } });
     themeCurrent = themePreview;
-    themeRecentAdd_(themeCurrent);
     renderThemeSwatches();
     try{ localStorage.setItem(THEME_LS_KEY, themeCurrent); }catch(e){}
     closeThemeModal(false);
@@ -6586,10 +6543,6 @@ async function loadTheme(){
   try{
     const data = await apiGet({action:'settings'});
     const hex = data && data.themeColor ? String(data.themeColor) : THEME_DEFAULT;
-    if(data && Array.isArray(data.recentColors) && data.recentColors.length){
-      THEME_RECENT = data.recentColors.map(c=>String(c).toUpperCase()).slice(0,10);
-      try{ localStorage.setItem(THEME_RECENT_LS_KEY, JSON.stringify(THEME_RECENT)); }catch(e){}
-    }
     themeCurrent = applyTheme(hex);
     try{ localStorage.setItem(THEME_LS_KEY, themeCurrent); }catch(e){}
   }catch(e){
@@ -6600,15 +6553,12 @@ async function loadTheme(){
 try{
   const cached = localStorage.getItem(THEME_LS_KEY);
   if(cached){ themeCurrent = applyTheme(cached); }
-  const cachedRecent = localStorage.getItem(THEME_RECENT_LS_KEY);
-  if(cachedRecent){ const arr = JSON.parse(cachedRecent); if(Array.isArray(arr) && arr.length) THEME_RECENT = arr; }
 }catch(e){}
 document.querySelectorAll('[data-theme-open]').forEach(b=>{ b.onclick = openThemeModal; });
 document.getElementById('themeClose').onclick = ()=> closeThemeModal(true);
 document.getElementById('themeCancel').onclick = ()=> closeThemeModal(true);
 document.getElementById('themeSave').onclick = saveTheme;
 document.getElementById('themeModal').addEventListener('click', e=>{ if(e.target.id==='themeModal') closeThemeModal(true); });
-document.getElementById('themeColorInput').addEventListener('input', e=> themeSetPreview_(e.target.value));
 
 (async function init(){
   await adminAuthBootstrap(); // 로그인 보호가 켜져 있으면 여기서 로그인 창을 띄우고 통과할 때까지 기다린다
