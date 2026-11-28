@@ -4006,9 +4006,11 @@ async function renderUpcomingExams(){
   }
   // 2026-11-28: 재원 학생이 다니는 학교의 시험만 보여준다 (퇴원·휴원 학생과 종료된 자리의 학교는 뺀다)
   // 학교 이름은 "동도중학교"/"동도중", "경북고등학교"/"경북고"처럼 적은 방식이 달라도 같은 학교로 본다.
-  const schoolKey = x => String(x||'').replace(/\s+/g,'').replace(/(여|남)자(?=[중고])/,'$1').replace(/(중|고)등학교$/,'$1').replace(/학교$/,'');
+  const schoolKey = x => String(x||'').replace(/\s+/g,'').replace(/(여|남)자(?=[중고])/,'$1').replace(/(중|고)등학교$/,'$1').replace(/학교$/,'').replace(/^대구/,'');
+  // 재원생이 없어도 시험 카드를 늘 보여줄 학교
+  const alwaysSchools = ['대구중앙고등학교'];
   await loadStudentInfoList();
-  const schoolSet = new Set();
+  const schoolSet = new Set(alwaysSchools.map(schoolKey));
   activeStudentEntries().forEach(st=>{
     const info = studentStatusInfoOf(st.name);
     if(info && (info.status === '퇴원' || info.status === '휴원')) return;
