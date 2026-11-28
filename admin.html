@@ -11,6 +11,7 @@
     --teal:#35493D;            /* 학원 기준 틸 — 메인 포인트색(버튼·활성탭) (2026-11-28: #2F493C -> #35493D, 블로그 카드뉴스 색과 통일) */
     --teal-dark:#243229;       /* 진한 틸 — 밝은 배경 위 텍스트/포인트 */
     --teal-light:#435B4C;      /* 밝은 틸 — 사이드바 활성 메뉴 배경 */
+    --side-bg:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%); /* 사이드바 배경 — 두 색 테마를 고르면 JS가 덮어씀 */
     --deep:#35493D;            /* 사이드바 배경 — 그라데이션 없이 --teal과 동일한 단색 사용 */
     --soft:#D5E6DD;            /* 테마색의 연한 배경(배지·강조) — 색상 테마 선택 시 자동 계산 */
     --side-fg:#FFFFFF;         /* 사이드바 글자색(어두운 배경 위, 테마 밝기에 따라 자동 전환) */
@@ -45,10 +46,10 @@
   #shell{display:flex;min-height:100vh;}
   /* 사이드바 뒤에 고정으로 깔리는 그라데이션 — 유리(사이드바)가 이걸 비춰서 은은하게 보이게 함 */
   #sidebarBackdrop{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;z-index:0;pointer-events:none;
-    background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);}
+    background:var(--side-bg);}
   #sidebar{width:var(--sidebar-w);flex-shrink:0;color:var(--side-fg);
     display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:1;
-    background:linear-gradient(135deg,var(--teal-dark) 0%,var(--teal) 100%);
+    background:var(--side-bg);
     border-right:1px solid rgba(255,255,255,.10);}
   .side-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;box-sizing:border-box;
     border-bottom:1px solid rgba(255,255,255,.12);position:relative;z-index:1;}
@@ -839,7 +840,7 @@
   #themeModal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:16px;
     background:rgba(20,30,26,.45);}
   #themeModal.open{display:flex;}
-  .tm-box{background:var(--card);width:420px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
+  .tm-box{background:var(--card);width:500px;max-width:100%;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);
     overflow:hidden;max-height:calc(100vh - 32px);display:flex;flex-direction:column;}
   .tm-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 12px;}
   .tm-head h2{margin:0;font-size:19px;font-weight:800;}
@@ -6410,12 +6411,18 @@ function renderAll(){
 // 로딩 순간의 깜빡임을 줄이기 위해 localStorage에도 마지막 값을 캐시해 둔다.
 const THEME_DEFAULT = '#35493D';
 const THEME_LEGACY_DEFAULT = '#2F493C'; // 예전 기본색 — 저장돼 있던 이 값은 새 기본색으로 취급한다 (2026-11-28)
-// 2026-11-28: 고르는 색은 어두운 틸 계열 4가지로 줄였다 (저장된 색이 이 중에 없으면 "현재 색"으로 하나 더 보여준다).
+// 2026-11-28: 테마는 "위색|아래색" 두 색 그라데이션 8가지 + 기본 딥틸(단색). 저장값은 '#위색|#아래색' 문자열 하나(예전 단색 '#RRGGBB'도 그대로 읽힘).
+// 위색은 버튼·강조·오른쪽 화면 배경 색조에, 두 색은 사이드바 그라데이션에 쓴다.
 const THEME_PRESETS = [
   { hex:'#35493D', name:'딥틸 (기본)' },
-  { hex:'#203229', name:'짙은 틸' },
-  { hex:'#3C5B4B', name:'연한 틸' },
-  { hex:'#2B2F2D', name:'먹색' }
+  { hex:'#12283A|#2F7A62', name:'잉크·민트' },
+  { hex:'#35493D|#14303C', name:'딥틸·잉크' },
+  { hex:'#701A16|#2B0D10', name:'레드와인' },
+  { hex:'#1F3F73|#0F6E73', name:'블루·청록' },
+  { hex:'#4A5240|#24382E', name:'올리브' },
+  { hex:'#1F7A4D|#12283A', name:'에메랄드' },
+  { hex:'#3A7CA5|#12283A', name:'스카이블루' },
+  { hex:'#1E2832|#3D5F82', name:'차콜·스틸' }
 ];
 const THEME_LS_KEY = 'ikk_theme_color';
 let themeCurrent = THEME_DEFAULT;   // 저장돼 있는(적용 중인) 색
@@ -6464,13 +6471,20 @@ function themeSetLightness_(hex, l){ // hex의 색상(hue)·채도는 유지하�
   else if(h<300){r2=x;g2=0;b2=cc;} else {r2=cc;g2=0;b2=x;}
   return themeRgbToHex_((r2+m)*255,(g2+m)*255,(b2+m)*255);
 }
-function applyTheme(hex){
+function themeParse_(v){ // '#위색' 또는 '#위색|#아래색' → { c1, c2 }  (c2는 없으면 null)
+  const parts = String(v||'').split('|');
+  const c1 = themeHexToRgb_(parts[0]) ? parts[0].toUpperCase() : THEME_DEFAULT;
+  const c2 = parts[1] && themeHexToRgb_(parts[1]) ? parts[1].toUpperCase() : null;
+  return { c1: c1===THEME_LEGACY_DEFAULT ? THEME_DEFAULT : c1, c2 };
+}
+function applyTheme(value){
   const root = document.documentElement.style;
-  let valid = themeHexToRgb_(hex) ? hex.toUpperCase() : THEME_DEFAULT;
-  if(valid === THEME_LEGACY_DEFAULT) valid = THEME_DEFAULT;
-  if(valid === THEME_DEFAULT){
-    // 기본 테마: CSS에 적힌 원래 값으로 되돌린다 (사이드바 관련 값만 — 메인 화면 배경/카드는 아래에서 항상 다시 계산)
-    ['--deep','--teal','--teal-dark','--teal-light','--soft','--side-fg','--side-fg-soft','--side-fg-dim','--deep-rgb','--teal-rgb'].forEach(k=>root.removeProperty(k));
+  const t = themeParse_(value);
+  const valid = t.c1;
+  const normalized = t.c2 ? valid+'|'+t.c2 : valid;
+  if(valid === THEME_DEFAULT && !t.c2){
+    // 기본 테마: CSS에 적힌 원래 값으로 되돌린다
+    ['--deep','--teal','--teal-dark','--teal-light','--soft','--side-fg','--side-fg-soft','--side-fg-dim','--deep-rgb','--teal-rgb','--side-bg','--paper','--card','--line'].forEach(k=>root.removeProperty(k));
   }else{
     root.setProperty('--deep', valid);
     const tealHex = themeMix_(valid, 255, 0.12);
@@ -6478,12 +6492,22 @@ function applyTheme(hex){
     root.setProperty('--teal-dark', themeMix_(valid, 0, 0.12));
     root.setProperty('--teal-light', themeMix_(valid, 255, 0.22)); // 사이드바 활성 메뉴 배경 — 테마색보다 한 톤 밝게
     root.setProperty('--soft', themeMix_(valid, 255, 0.88));
+    // 사이드바 배경: 두 색이면 위(진하게 유지)→아래로 두 번째 색이 번지는 그라데이션, 한 색이면 기존 단색 느낌
+    if(t.c2){
+      root.setProperty('--side-bg', `linear-gradient(165deg,${valid} 0%,${valid} 38%,${t.c2} 100%)`);
+    }else{
+      root.removeProperty('--side-bg');
+    }
+    // 오른쪽(메인) 화면 배경·카드·테두리도 위색의 아주 연한 색조를 따라간다
+    root.setProperty('--paper', themeMix_(valid, 255, 0.925));
+    root.setProperty('--card', themeMix_(valid, 255, 0.97));
+    root.setProperty('--line', themeMix_(valid, 255, 0.84));
     // 사이드바 유리 배경 그라데이션도 테마색을 따라가도록 r,g,b 값을 같이 갱신
     const deepRgb = themeHexToRgb_(valid);
     if(deepRgb) root.setProperty('--deep-rgb', deepRgb.join(','));
     const tealRgb = themeHexToRgb_(tealHex);
     if(tealRgb) root.setProperty('--teal-rgb', tealRgb.join(','));
-    // 사이드바 배경(--deep)이 테마색을 그대로 쓰므로, 밝은 색을 고르면 글자색도 어둡게 자동 전환한다
+    // 사이드바 글자색: 밝은 색을 고르면 어둡게 자동 전환
     if(themeIsLight_(valid)){
       root.setProperty('--side-fg', '#2E2A1F');
       root.setProperty('--side-fg-soft', 'rgba(46,42,31,.72)');
@@ -6494,10 +6518,9 @@ function applyTheme(hex){
       root.setProperty('--side-fg-dim', 'rgba(255,255,255,.5)');
     }
   }
-  // 메인(오른쪽) 화면은 사이드바 테마색과 상관없이 항상 기존에 쓰던 밝은 크림톤(--paper/--card 기본값) 유지
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute('content', valid);
-  return valid;
+  return normalized;
 }
 function themeSetPreview_(hex){
   themePreview = applyTheme(hex);
@@ -6506,14 +6529,15 @@ function themeSetPreview_(hex){
   });
 }
 // 색 선택 버튼(4개 + 필요하면 현재 색)을 그린다
+function themeSwatchBg_(v){ const t = themeParse_(v); return t.c2 ? `linear-gradient(160deg,${t.c1} 30%,${t.c2} 100%)` : t.c1; }
 function renderThemeSwatches(){
   const wrap = document.getElementById('themeSwatches');
   if(!wrap) return;
   const list = THEME_PRESETS.slice();
   const cur = String(themeCurrent || '').toUpperCase();
-  if(cur && !list.some(p=>p.hex === cur)) list.push({ hex: cur, name:'현재 색' });
+  if(cur && !list.some(p=>p.hex.toUpperCase() === cur)) list.push({ hex: cur, name:'현재 색' });
   wrap.innerHTML = list.map(p=>
-    `<button type="button" class="tm-sw" data-hex="${p.hex}"><i style="background:${p.hex}"></i><span>${p.name}</span></button>`
+    `<button type="button" class="tm-sw" data-hex="${p.hex}"><i style="background:${themeSwatchBg_(p.hex)}"></i><span>${p.name}</span></button>`
   ).join('');
   wrap.querySelectorAll('.tm-sw').forEach(b=>{ b.onclick = ()=> themeSetPreview_(b.getAttribute('data-hex')); });
 }
