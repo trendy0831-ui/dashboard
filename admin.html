@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>학생 관리 시스템 | 혜원수학</title>
 <link rel="apple-touch-icon" href="assets/logo-180.png">
-<meta name="theme-color" content="#2F493C">
+<meta name="theme-color" content="#35493D">
 <style>
   :root{
-    --teal:#2F493C;            /* 학원 기준 틸 — 메인 포인트색(버튼·활성탭) (2026-09: #224F42 -> #2F493C 변경) */
-    --teal-dark:#203229;       /* 진한 틸 — 밝은 배경 위 텍스트/포인트 */
-    --teal-light:#3C5B4B;      /* 밝은 틸 — 사이드바 활성 메뉴 배경 */
-    --deep:#2F493C;            /* 사이드바 배경 — 그라데이션 없이 --teal과 동일한 단색 사용 */
+    --teal:#35493D;            /* 학원 기준 틸 — 메인 포인트색(버튼·활성탭) (2026-11-28: #2F493C -> #35493D, 블로그 카드뉴스 색과 통일) */
+    --teal-dark:#243229;       /* 진한 틸 — 밝은 배경 위 텍스트/포인트 */
+    --teal-light:#435B4C;      /* 밝은 틸 — 사이드바 활성 메뉴 배경 */
+    --deep:#35493D;            /* 사이드바 배경 — 그라데이션 없이 --teal과 동일한 단색 사용 */
     --soft:#D5E6DD;            /* 테마색의 연한 배경(배지·강조) — 색상 테마 선택 시 자동 계산 */
     --side-fg:#FFFFFF;         /* 사이드바 글자색(어두운 배경 위, 테마 밝기에 따라 자동 전환) */
     --side-fg-soft:rgba(255,255,255,.72);
@@ -32,8 +32,8 @@
     --gold:#C9A967;            /* 사이드바 포인트(골드) — 테마와 무관하게 고정 */
     --gold-rgb:201,169,103;
     --logo-gold:#F0D9A0;       /* "수학의 결" 로고 전용 라이트 골드 (2026-09 추가) */
-    --deep-rgb:47,73,60;       /* --deep(#2F493C)의 r,g,b — 테마 변경 시 JS가 갱신 */
-    --teal-rgb:47,73,60;       /* --teal(#2F493C)의 r,g,b */
+    --deep-rgb:53,73,61;       /* --deep(#35493D)의 r,g,b — 테마 변경 시 JS가 갱신 */
+    --teal-rgb:53,73,61;       /* --teal(#35493D)의 r,g,b */
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
@@ -6408,10 +6408,11 @@ function renderAll(){
 // 사이드바는 아이보리로 고정, 나머지 버튼(--teal)/진한 강조(--deep)/진한 글자(--teal-dark)/연한 배경(--soft)을 자동 계산한다.
 // 저장된 색은 시트의 "설정" 탭(action=settings)에 두어 모든 기기에서 같은 색이 보이고,
 // 로딩 순간의 깜빡임을 줄이기 위해 localStorage에도 마지막 값을 캐시해 둔다.
-const THEME_DEFAULT = '#2F493C';
+const THEME_DEFAULT = '#35493D';
+const THEME_LEGACY_DEFAULT = '#2F493C'; // 예전 기본색 — 저장돼 있던 이 값은 새 기본색으로 취급한다 (2026-11-28)
 // 2026-11-28: 고르는 색은 어두운 틸 계열 4가지로 줄였다 (저장된 색이 이 중에 없으면 "현재 색"으로 하나 더 보여준다).
 const THEME_PRESETS = [
-  { hex:'#2F493C', name:'딥틸 (기본)' },
+  { hex:'#35493D', name:'딥틸 (기본)' },
   { hex:'#203229', name:'짙은 틸' },
   { hex:'#3C5B4B', name:'연한 틸' },
   { hex:'#2B2F2D', name:'먹색' }
@@ -6465,7 +6466,8 @@ function themeSetLightness_(hex, l){ // hex의 색상(hue)·채도는 유지하�
 }
 function applyTheme(hex){
   const root = document.documentElement.style;
-  const valid = themeHexToRgb_(hex) ? hex.toUpperCase() : THEME_DEFAULT;
+  let valid = themeHexToRgb_(hex) ? hex.toUpperCase() : THEME_DEFAULT;
+  if(valid === THEME_LEGACY_DEFAULT) valid = THEME_DEFAULT;
   if(valid === THEME_DEFAULT){
     // 기본 테마: CSS에 적힌 원래 값으로 되돌린다 (사이드바 관련 값만 — 메인 화면 배경/카드는 아래에서 항상 다시 계산)
     ['--deep','--teal','--teal-dark','--teal-light','--soft','--side-fg','--side-fg-soft','--side-fg-dim','--deep-rgb','--teal-rgb'].forEach(k=>root.removeProperty(k));
